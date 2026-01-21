@@ -8,6 +8,9 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS min_purchase INTEGER DEFAULT NULL;
 -- Комментарий
 COMMENT ON COLUMN products.min_purchase IS 'Минимальное количество для закупки (в базовых единицах: г/мл/шт)';
 
+-- Добавляем поле buyer_id в purchase_requests
+ALTER TABLE purchase_requests ADD COLUMN IF NOT EXISTS buyer_id UUID REFERENCES buyers(id) ON DELETE SET NULL;
+
 -- Переводы
 INSERT INTO translations (key, ru, en, hi, page, context) VALUES
 ('min_purchase_tab', 'Мин. закупка', 'Min Purchase', 'न्यूनतम खरीद', 'stock', 'Таб'),
@@ -18,7 +21,8 @@ INSERT INTO translations (key, ru, en, hi, page, context) VALUES
 ('sort_name_asc', 'А → Я', 'A → Z', 'अ → ज्ञ', 'common', 'Сортировка'),
 ('sort_name_desc', 'Я → А', 'Z → A', 'ज्ञ → अ', 'common', 'Сортировка'),
 ('in_progress', 'В работе', 'In progress', 'प्रगति में', 'common', 'Статус заявки'),
-('request_in_progress', 'Заявка в работе', 'Request in progress', 'अनुरोध प्रगति में है', 'stock', 'Статус заявки')
+('request_in_progress', 'Заявка в работе', 'Request in progress', 'अनुरोध प्रगति में है', 'stock', 'Статус заявки'),
+('select_buyer', 'Выбрать закупщика', 'Select buyer', 'खरीदार चुनें', 'stock', 'Выбор закупщика')
 
 ON CONFLICT (key) DO UPDATE SET
     ru = excluded.ru,

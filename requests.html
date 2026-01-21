@@ -250,19 +250,17 @@
         <div class="modal-box max-w-4xl relative">
             <button type="button" class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2 no-print" onclick="viewRequestModal.close()">✕</button>
 
-            <div class="flex justify-between items-start mb-4 no-print">
+            <div class="flex items-start gap-4 mb-4 no-print">
                 <div>
                     <h3 class="font-bold text-lg" id="viewRequestTitle">Заявка #1</h3>
                     <p class="text-sm opacity-60" id="viewRequestPeriod">Период: ...</p>
                 </div>
-                <div class="flex gap-2">
-                    <button class="btn btn-ghost btn-sm gap-1" onclick="printViewedRequest()">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                        </svg>
-                        <span data-i18n="print">Печать</span>
-                    </button>
-                </div>
+                <button class="btn btn-primary btn-sm gap-1" onclick="printViewedRequest()">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    <span data-i18n="print">Печать</span>
+                </button>
             </div>
 
             <!-- Экранная версия (таблица) -->
@@ -281,12 +279,20 @@
             </div>
 
             
-            <div class="mt-4 flex justify-between items-center border-t pt-4">
-                <div class="text-sm opacity-60">
-                    <span data-i18n="total_items_short">Позиций</span>: <span class="font-bold" id="viewRequestCount">0</span>
-                </div>
-                <div class="no-print">
-                    <span data-i18n="total">Итого</span>: <span class="font-bold text-lg" id="viewRequestTotal">—</span>
+            <div class="mt-4 flex flex-wrap justify-between items-center gap-4 border-t pt-4">
+                <button class="btn btn-ghost btn-sm gap-1 no-print" onclick="openProductModalForViewing()">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span data-i18n="add_product">Добавить продукт</span>
+                </button>
+                <div class="flex items-center gap-4">
+                    <div class="text-sm opacity-60">
+                        <span data-i18n="total_items_short">Позиций</span>: <span class="font-bold" id="viewRequestCount">0</span>
+                    </div>
+                    <div class="no-print">
+                        <span data-i18n="total">Итого</span>: <span class="font-bold text-lg" id="viewRequestTotal">—</span>
+                    </div>
                 </div>
             </div>
 
@@ -339,6 +345,8 @@
         let selectedProduct = null;
         let currentProductCategory = 'all';
         let highlightRequestId = null; // ID заявки для подсветки после сохранения
+        let buyers = []; // Список закупщиков
+        let addingToViewedRequest = false; // Флаг: добавляем в просматриваемую заявку
 
         const t = key => Layout.t(key);
 
@@ -464,6 +472,14 @@
                 .select('*')
                 .order('sort_order');
             productCategories = data || [];
+        }
+
+        async function loadBuyers() {
+            const { data } = await Layout.db
+                .from('buyers')
+                .select('*')
+                .order('sort_order');
+            buyers = data || [];
         }
 
         async function loadStock() {
@@ -849,7 +865,11 @@
                 return;
             }
 
-            savedRequests = data || [];
+            // Добавляем данные закупщика из загруженного массива buyers
+            savedRequests = (data || []).map(req => ({
+                ...req,
+                buyer: req.buyer_id ? buyers.find(b => b.id === req.buyer_id) : null
+            }));
             renderSavedRequests();
             renderArchivedRequests();
         }
@@ -902,7 +922,16 @@
 
             return `
                 <div class="bg-base-100 rounded-lg p-4 shadow-sm" style="${cardStyle}" ${isHighlighted ? 'id="highlightedRequest"' : ''}>
-                    ${isInProgress ? `<div class="text-sm font-medium text-blue-600 mb-2 flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg> ${tr('request_in_progress', 'Заявка в работе')}</div>` : ''}
+                    ${isInProgress ? `<div class="text-sm font-medium text-blue-600 mb-4 flex items-center gap-2 flex-wrap">
+                        <span class="flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                            ${tr('request_in_progress', 'Заявка в работе')}
+                        </span>
+                        <select class="select select-bordered select-sm" onchange="updateRequestBuyer('${req.id}', this.value)">
+                            <option value="">${tr('select_buyer', 'Выбрать закупщика')}</option>
+                            ${buyers.map(b => `<option value="${b.id}" ${req.buyer_id === b.id ? 'selected' : ''}>${Layout.getName(b)}</option>`).join('')}
+                        </select>
+                    </div>` : ''}
                     <div class="flex flex-col md:flex-row md:items-center gap-4">
                         <div class="min-w-0 flex-shrink-0">
                             <div class="flex items-center gap-2 flex-wrap">
@@ -1004,6 +1033,26 @@
             }
 
             container.innerHTML = filtered.map(req => renderRequestCard(req, true)).join('');
+        }
+
+        async function updateRequestBuyer(id, buyerId) {
+            const { error } = await Layout.db
+                .from('purchase_requests')
+                .update({ buyer_id: buyerId || null })
+                .eq('id', id);
+
+            if (error) {
+                console.error('Error updating buyer:', error);
+                showAlert(tr('save_error', 'Ошибка'));
+                return;
+            }
+
+            // Обновляем локально без перезагрузки
+            const req = savedRequests.find(r => r.id === id);
+            if (req) {
+                req.buyer_id = buyerId || null;
+                req.buyer = buyers.find(b => b.id === buyerId) || null;
+            }
         }
 
         async function toggleInProgress(id) {
@@ -1289,9 +1338,14 @@
         };
 
         // ==================== PRODUCT MODAL ====================
-        function openProductModal() {
+        function openProductModalForViewing() {
+            openProductModal(true);
+        }
+
+        function openProductModal(forViewing = false) {
             selectedProduct = null;
             currentProductCategory = 'all';
+            addingToViewedRequest = forViewing;
 
             // Reset modal
             Layout.$('#productSearch').value = '';
@@ -1409,8 +1463,9 @@
             const product = products.find(p => p.id === productId);
             if (!product) return;
 
-            // Check if already in request
-            if (requestItems.some(i => i.product_id === productId)) {
+            // Check if already in request (check correct list)
+            const itemsList = addingToViewedRequest ? viewingItems : requestItems;
+            if (itemsList.some(i => i.product_id === productId)) {
                 showAlert(tr('product_already_added', 'Этот продукт уже добавлен в заявку'));
                 return;
             }
@@ -1455,27 +1510,45 @@
             const lastPrice = stock?.last_price || null;
             const quantityGrams = toGrams(quantity, unit);
 
-            requestItems.push({
-                product_id: selectedProduct.id,
-                product: selectedProduct,
-                needed: quantity,
-                in_stock: 0,
-                to_purchase: quantity,
-                unit: unit,
-                last_price: lastPrice,
-                est_sum: lastPrice ? (quantityGrams / 1000) * lastPrice : null
-            });
+            if (addingToViewedRequest) {
+                // Добавляем в просматриваемую заявку
+                viewingItems.push({
+                    id: null, // новый элемент, будет создан при сохранении
+                    product_id: selectedProduct.id,
+                    product: selectedProduct,
+                    quantity: quantity,
+                    unit: unit,
+                    last_price: lastPrice,
+                    est_sum: lastPrice ? (quantityGrams / 1000) * lastPrice : null
+                });
 
-            // Mark as unsaved
-            if (savedRequestId) {
-                savedRequestId = null;
-                Layout.$('#savedBadge').classList.add('hidden');
-                Layout.$('#saveBtn').disabled = false;
-                Layout.$('#saveBtn').classList.remove('btn-disabled');
+                productModal.close();
+                addingToViewedRequest = false;
+                renderViewedRequest();
+            } else {
+                // Добавляем в новую заявку
+                requestItems.push({
+                    product_id: selectedProduct.id,
+                    product: selectedProduct,
+                    needed: quantity,
+                    in_stock: 0,
+                    to_purchase: quantity,
+                    unit: unit,
+                    last_price: lastPrice,
+                    est_sum: lastPrice ? (quantityGrams / 1000) * lastPrice : null
+                });
+
+                // Mark as unsaved
+                if (savedRequestId) {
+                    savedRequestId = null;
+                    Layout.$('#savedBadge').classList.add('hidden');
+                    Layout.$('#saveBtn').disabled = false;
+                    Layout.$('#saveBtn').classList.remove('btn-disabled');
+                }
+
+                productModal.close();
+                renderResults();
             }
-
-            productModal.close();
-            renderResults();
         }
 
         // Close dropdown on outside click
@@ -1485,6 +1558,13 @@
             if (dropdown && input && !dropdown.contains(e.target) && e.target !== input) {
                 dropdown.classList.add('hidden');
             }
+        });
+
+        // Сбрасываем флаг при закрытии модального окна добавления продукта
+        document.addEventListener('DOMContentLoaded', () => {
+            Layout.$('#productModal')?.addEventListener('close', () => {
+                addingToViewedRequest = false;
+            });
         });
 
         // ==================== ITEM EDITING ====================
@@ -1536,7 +1616,7 @@
         async function init() {
             await Layout.init({ menuId: 'stock', itemId: 'requests' });
             await loadLocationId();
-            await Promise.all([loadProducts(), loadProductCategories(), loadStock(), loadRecipes()]);
+            await Promise.all([loadProducts(), loadProductCategories(), loadStock(), loadRecipes(), loadBuyers()]);
             selectPeriod('today');
             Layout.updateAllTranslations();
         }

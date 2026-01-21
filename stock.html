@@ -182,9 +182,11 @@
 
         function renderCategoryFilters() {
             const container = Layout.$('#categoryFilters');
-            const counts = { all: stockItems.length };
+            // Считаем только позиции с количеством > 0
+            const visibleItems = stockItems.filter(item => item.current_quantity > 0);
+            const counts = { all: visibleItems.length };
 
-            stockItems.forEach(item => {
+            visibleItems.forEach(item => {
                 const slug = item.products?.product_categories?.slug;
                 if (slug) counts[slug] = (counts[slug] || 0) + 1;
             });
@@ -211,6 +213,9 @@
             const lang = Layout.currentLang;
 
             let filtered = stockItems.filter(item => {
+                // Скрываем позиции с нулевым остатком
+                if (item.current_quantity <= 0) return false;
+
                 const matchesCategory = currentCategory === 'all' || item.products?.product_categories?.slug === currentCategory;
                 const product = item.products;
                 const matchesSearch = searchQuery === '' ||
