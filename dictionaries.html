@@ -56,7 +56,6 @@
             <button class="tab" data-tab="product_categories" data-i18n="dict_product_categories">Категории продуктов</button>
             <button class="tab" data-tab="units" data-i18n="dict_units">Единицы измерения</button>
             <button class="tab" data-tab="departments" data-i18n="dict_departments">Департаменты</button>
-            <button class="tab" data-tab="buyers" data-i18n="dict_buyers">Закупщики</button>
         </div>
 
         <!-- Tab Content -->
@@ -95,8 +94,7 @@
             recipe_categories: [],
             product_categories: [],
             units: [],
-            departments: [],
-            buyers: []
+            departments: []
         };
 
         const t = key => Layout.t(key);
@@ -182,25 +180,6 @@
                     { name: 'name_en', label: 'col_english', type: 'text', required: false, placeholder: 'Kitchen' },
                     { name: 'name_hi', label: 'col_hindi', type: 'text', required: false, placeholder: 'रसोई' },
                     { name: 'color', label: 'color', type: 'color', defaultValue: '#6366f1' }
-                ],
-                orderBy: 'sort_order'
-            },
-            buyers: {
-                table: 'buyers',
-                titleKey: 'dict_buyers',
-                columns: [
-                    { key: 'name_ru', label: 'col_russian', editable: true },
-                    { key: 'name_en', label: 'col_english', editable: true },
-                    { key: 'name_hi', label: 'col_hindi', editable: true },
-                    { key: 'phone', label: 'col_phone', editable: true },
-                    { key: 'whatsapp', label: 'whatsapp', editable: true }
-                ],
-                fields: [
-                    { name: 'name_ru', label: 'col_russian', type: 'text', required: true, placeholder: 'Ганга деви даси' },
-                    { name: 'name_en', label: 'col_english', type: 'text', required: false, placeholder: 'Ganga devi dasi' },
-                    { name: 'name_hi', label: 'col_hindi', type: 'text', required: false, placeholder: 'गंगा देवी दासी' },
-                    { name: 'phone', label: 'col_phone', type: 'text', required: false, placeholder: '+91 98765 43210' },
-                    { name: 'whatsapp', label: 'whatsapp', type: 'text', required: false, placeholder: '+91 98765 43210' }
                 ],
                 orderBy: 'sort_order'
             }
