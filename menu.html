@@ -702,11 +702,11 @@
                 const styles = getDayStyles(retreat, majorFestival, isEkadashiDay);
 
                 // Holiday label for header
-                let holidayLabel = '';
+                let holidayLine = '';
                 if (majorFestival) {
-                    holidayLabel = ` <span class="text-yellow-700 font-normal">· ${getName(majorFestival)}</span>`;
+                    holidayLine = `<div class="text-xs text-yellow-700 font-medium mt-1">${getName(majorFestival)}</div>`;
                 } else if (isEkadashiDay) {
-                    holidayLabel = ` <span class="text-amber-600 font-normal">· ${t('ekadashi')}</span>`;
+                    holidayLine = `<div class="text-xs text-amber-600 mt-1">${t('ekadashi')}</div>`;
                 }
 
                 // Acharya events
@@ -720,8 +720,8 @@
                         <div class="p-3 border-b border-base-200" style="${styles.header}">
                             <div class="flex justify-between items-start">
                                 <div>
-                                    <div class="font-semibold">${date.getDate()} ${m[date.getMonth()]}${holidayLabel}</div>
-                                    <div class="text-sm opacity-60">${d[date.getDay()]}</div>
+                                    <div class="font-semibold">${date.getDate()} ${m[date.getMonth()]}, <span class="font-normal opacity-60">${d[date.getDay()]}</span></div>
+                                    ${holidayLine}
                                 </div>
                                 <button class="btn btn-ghost btn-sm btn-square opacity-50 hover:opacity-100 no-print" onclick="openDayDetail('${dateStr}')">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -733,16 +733,17 @@
                             ${acharyaLine}
                         </div>
 
-                        <div class="p-3 space-y-2 mt-auto">
+                        <div class="p-3 space-y-2">
                             ${mealTypes.map((mt, i) => {
                                 const meal = dayMenu[mt];
                                 if (!meal?.dishes?.length) {
-                                    return `<div class="flex items-center text-sm opacity-30 py-1 no-print"><span class="w-4 text-center">${i + 1}.</span><span class="ml-1">${getMealTypeName(mt)}</span></div>`;
+                                    return '';
                                 }
                                 const dishesText = meal.dishes.map(d => {
                                     const name = getName(d.recipe);
                                     const portion = d.portion_size ? `${d.portion_size}${getUnitShort(d.portion_unit)}` : '';
-                                    return portion ? `${name} (${portion})` : name;
+                                    const link = d.recipe?.id ? `<a href="recipe.html?id=${d.recipe.id}" class="hover:text-primary hover:underline">${name}</a>` : name;
+                                    return portion ? `${link} (${portion})` : link;
                                 }).join(', ');
                                 return `
                                     <div class="text-sm py-1">
