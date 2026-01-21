@@ -30,10 +30,9 @@ const menuConfig = [
         { id: 'team', href: 'team.html' }
     ]},
     { id: 'settings', items: [
-        { id: 'festivals', href: 'festivals.html' },
-        { id: 'general', href: 'settings.html' },
         { id: 'dictionaries', href: 'dictionaries.html' },
-        { id: 'translations', href: 'translations.html' }
+        { id: 'translations', href: 'translations.html' },
+        { id: 'festivals', href: 'festivals.html' }
     ]}
 ];
 
