@@ -1343,6 +1343,20 @@
             }
         };
 
+        // Колбэк при смене локации
+        window.onLocationChange = async function() {
+            await loadLocationId();
+            await loadStockItems();
+            await loadSavedRequests();
+            // Сбрасываем текущую заявку при смене локации
+            requestItems = [];
+            savedRequestId = null;
+            Layout.$('#resultsSection').classList.add('hidden');
+            Layout.$('#requestChoiceSection').classList.remove('hidden');
+            renderSavedRequests();
+            renderArchivedRequests();
+        };
+
         // ==================== PRODUCT MODAL ====================
         function openProductModalForViewing() {
             openProductModal(true);

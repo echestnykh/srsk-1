@@ -675,6 +675,13 @@
             renderMinPurchase();
         };
 
+        // Колбэк при смене локации
+        window.onLocationChange = async function() {
+            await loadStock();
+            renderMinStock();
+            renderMinPurchase();
+        };
+
         // ==================== INIT ====================
         async function init() {
             await Layout.init({ menuId: 'stock', itemId: 'stock_settings' });

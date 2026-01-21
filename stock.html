@@ -350,6 +350,13 @@
             updatePageLanguage();
         };
 
+        // Колбэк при смене локации
+        window.onLocationChange = async function() {
+            await loadLocationId();
+            await loadStock();
+            renderCategoryFilters();
+        };
+
         // ==================== INIT ====================
         async function init() {
             await Layout.init({ menuId: 'stock', itemId: 'inventory' });
