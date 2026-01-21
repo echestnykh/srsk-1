@@ -78,12 +78,12 @@
         <!-- Tab: Min Stock -->
         <div id="tabContentMinStock" class="hidden">
             <div class="bg-base-100 rounded-lg p-6 shadow-sm">
-                <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-4">
-                    <div>
-                        <h3 class="text-lg font-semibold" data-i18n="min_stock_title">Несгораемый остаток</h3>
-                        <p class="text-sm opacity-60" data-i18n="min_stock_desc">Минимальное количество, ниже которого остаток считается критичным</p>
-                    </div>
-                    <input type="text" id="minStockSearch" class="input input-bordered input-sm w-full md:w-64" placeholder="Поиск по названию..." data-i18n-placeholder="search_placeholder" />
+                <div class="mb-4">
+                    <h3 class="text-lg font-semibold" data-i18n="min_stock_title">Несгораемый остаток</h3>
+                    <p class="text-sm opacity-60" data-i18n="min_stock_desc">Минимальное количество, ниже которого остаток считается критичным</p>
+                </div>
+                <div class="mb-4">
+                    <input type="text" id="minStockSearch" class="input input-bordered w-full max-w-md" placeholder="Поиск по названию..." data-i18n-placeholder="search_placeholder" />
                 </div>
                 <div class="border border-base-300 rounded-lg overflow-hidden">
                     <div class="overflow-x-auto">
@@ -109,14 +109,14 @@
         <!-- Tab: Min Purchase -->
         <div id="tabContentMinPurchase" class="hidden">
             <div class="bg-base-100 rounded-lg p-6 shadow-sm">
-                <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-4">
-                    <div>
-                        <h3 class="text-lg font-semibold" data-i18n="min_purchase_title">Минимальная закупка</h3>
-                        <p class="text-sm opacity-60" data-i18n="min_purchase_desc">Минимальное количество продукта, которое можно закупить</p>
-                    </div>
-                    <input type="text" id="minPurchaseSearch" class="input input-bordered input-sm w-full md:w-64" placeholder="Поиск по названию..." data-i18n-placeholder="search_placeholder" />
+                <div class="mb-4">
+                    <h3 class="text-lg font-semibold" data-i18n="min_purchase_title">Минимальная закупка</h3>
+                    <p class="text-sm opacity-60" data-i18n="min_purchase_desc">Минимальное количество продукта, которое можно закупить</p>
+                    <p class="text-sm opacity-50 mt-1" data-i18n="min_purchase_hint">Заявки будут округляться до этого значения</p>
                 </div>
-                <p class="text-sm opacity-50 mb-4" data-i18n="min_purchase_hint">Заявки будут округляться до этого значения</p>
+                <div class="mb-4">
+                    <input type="text" id="minPurchaseSearch" class="input input-bordered w-full max-w-md" placeholder="Поиск по названию..." data-i18n-placeholder="search_placeholder" />
+                </div>
                 <div class="border border-base-300 rounded-lg overflow-hidden">
                     <div class="overflow-x-auto">
                         <table class="table">

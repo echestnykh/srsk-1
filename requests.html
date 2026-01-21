@@ -132,11 +132,6 @@
             </div>
         </div>
 
-        <!-- Empty State -->
-        <div id="emptyState" class="text-center py-16 opacity-50">
-            <div class="text-5xl mb-4">📋</div>
-            <div data-i18n="select_period_hint">Выберите период и нажмите "Сформировать"</div>
-        </div>
 
         </div><!-- /tabContentNew -->
 
@@ -655,7 +650,6 @@
             // Show results section
             Layout.$('#requestChoiceSection')?.classList.add('hidden');
             Layout.$('#resultsSection').classList.remove('hidden');
-            Layout.$('#emptyState').classList.add('hidden');
 
             renderResults();
         }
@@ -688,7 +682,6 @@
             // Always show results section (hide choice section)
             Layout.$('#requestChoiceSection')?.classList.add('hidden');
             Layout.$('#resultsSection').classList.remove('hidden');
-            Layout.$('#emptyState').classList.add('hidden');
             Layout.$('#totalItems').textContent = requestItems.length;
 
             // Calculate total sum
@@ -844,7 +837,6 @@
             if (tab === 'new') {
                 Layout.$('#requestChoiceSection')?.classList.remove('hidden');
                 Layout.$('#resultsSection')?.classList.add('hidden');
-                Layout.$('#emptyState')?.classList.add('hidden');
             }
 
             if (tab === 'saved' || tab === 'archive') {
