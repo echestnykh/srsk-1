@@ -612,7 +612,6 @@
             const { data, error } = await Layout.db.from('products').select('*, product_categories(*)');
             if (error) { console.error('Error loading products:', error); return; }
             products = data || [];
-            console.log('Loaded products:', products.length);
         }
 
         async function loadProductCategories() {
@@ -630,7 +629,6 @@
 
         async function loadRequests() {
             const locationId = Layout.locations?.find(l => l.slug === Layout.currentLocation)?.id;
-            console.log('Loading requests for location:', Layout.currentLocation, locationId);
 
             let query = Layout.db
                 .from('purchase_requests')
@@ -647,7 +645,6 @@
 
             if (error) { console.error('Error loading requests:', error); return; }
             requests = data || [];
-            console.log('Loaded requests:', requests);
         }
 
         async function loadReceipts() {

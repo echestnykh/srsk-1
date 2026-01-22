@@ -689,7 +689,6 @@
             const { data, error } = await Layout.db.from('products').select('*, product_categories(*)');
             if (error) { console.error('Error loading products:', error); return; }
             products = data || [];
-            console.log('Loaded products:', products.length);
         }
 
         async function loadProductCategories() {
@@ -1262,7 +1261,6 @@
             try {
                 // Get location ID
                 const locationId = (await Layout.db.from('locations').select('id').eq('slug', Layout.currentLocation).single()).data?.id;
-                console.log('Generating from menu:', { date, locationId, mealTypes, location: Layout.currentLocation });
 
                 // Step 1: Get meals for the selected date
                 const { data: meals, error: mealsError } = await Layout.db
@@ -1273,7 +1271,6 @@
                     .in('meal_type', mealTypes);
 
                 if (mealsError) throw mealsError;
-                console.log('Meals found:', meals);
 
                 if (!meals || meals.length === 0) {
                     showAlert(tr('no_menu_for_date', 'На выбранную дату меню не найдено'));
@@ -1282,14 +1279,11 @@
 
                 // Step 2: Get dishes for these meals
                 const mealIds = meals.map(m => m.id);
-                console.log('Meal IDs:', mealIds);
 
                 const { data: dishes, error: dishesError } = await Layout.db
                     .from('menu_dishes')
                     .select('meal_id, recipe_id')
                     .in('meal_id', mealIds);
-
-                console.log('Dishes found:', dishes, 'Error:', dishesError);
 
                 if (dishesError) throw dishesError;
 
@@ -1300,7 +1294,6 @@
 
                 // Step 3: Get recipes to know their output (for scaling)
                 const recipeIds = [...new Set(dishes.map(d => d.recipe_id))];
-                console.log('Recipe IDs:', recipeIds);
                 const { data: recipes, error: recipesError } = await Layout.db
                     .from('recipes')
                     .select('id, output_amount, output_unit, portion_amount, portion_unit')
@@ -1313,8 +1306,6 @@
                     .from('recipe_ingredients')
                     .select('recipe_id, product_id, amount, unit')
                     .in('recipe_id', recipeIds);
-
-                console.log('Ingredients found:', ingredients, 'Error:', ingredientsError);
 
                 if (ingredientsError) throw ingredientsError;
 
@@ -1362,8 +1353,6 @@
                         ingredientsMap[ing.product_id] += baseAmount * scale;
                     });
                 });
-
-                console.log('Ingredients map:', ingredientsMap);
 
                 if (Object.keys(ingredientsMap).length === 0) {
                     showAlert(tr('no_ingredients', 'Ингредиенты не найдены'));
