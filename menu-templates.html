@@ -572,8 +572,11 @@
                 return `
                     <div class="flex items-center justify-between px-4 py-3 border-b border-base-200 last:border-0 hover:bg-base-50">
                         <div class="flex-1 min-w-0">
-                            <div class="font-medium">${getName(template)}</div>
-                            <div class="text-sm opacity-60">${pluralizeDays(template.day_count)} · ${pluralizeDishes(dishesCount)}${description ? ` · ${description}` : ''}</div>
+                            <div class="flex items-center gap-3">
+                                <span class="badge badge-lg bg-base-200 text-base-content font-medium">${pluralizeDays(template.day_count)}</span>
+                                <span class="font-medium">${getName(template)}</span>
+                            </div>
+                            <div class="text-sm opacity-60 mt-1 ml-16">${pluralizeDishes(dishesCount)}${description ? ` · ${description}` : ''}</div>
                         </div>
                         <div class="flex items-center gap-2 ml-4">
                             <button class="btn btn-sm btn-ghost" onclick="openTemplateEditor('${template.id}')">
