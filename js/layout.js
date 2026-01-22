@@ -19,10 +19,11 @@ const menuConfig = [
         { id: 'products', href: 'products.html' }
     ]},
     { id: 'stock', items: [
-        { id: 'inventory', href: 'stock.html' },
+        { id: 'stock_balance', href: 'stock.html' },
         { id: 'requests', href: 'requests.html' },
         { id: 'receive', href: 'receive.html' },
         { id: 'issue', href: 'issue.html' },
+        { id: 'inventory', href: 'inventory.html' },
         { id: 'stock_settings', href: 'stock-settings.html' }
     ]},
     { id: 'ashram', items: [
