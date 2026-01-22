@@ -360,6 +360,10 @@
         let templates = [];
         let selectedTemplateId = null;
 
+        // Склонение дней
+        const DAY_FORMS = { ru: ['день', 'дня', 'дней'], en: ['day', 'days'], hi: 'दिन' };
+        const pluralizeDays = n => Layout.pluralize(n, DAY_FORMS);
+
         // Конфигурация типов приёмов пищи по локациям
         const mealConfig = {
             main: ['breakfast', 'lunch', 'dinner'],
@@ -1473,7 +1477,7 @@
                 return;
             }
 
-            Layout.$('#templateDayCountText').textContent = `${dayCount} ${t('days')}`;
+            Layout.$('#templateDayCountText').textContent = pluralizeDays(dayCount);
             Layout.$('#templateDatePreview').classList.remove('hidden');
         }
 
@@ -1578,7 +1582,7 @@
             // Populate template select
             const select = Layout.$('#templateSelect');
             select.innerHTML = '<option value="">—</option>' +
-                templates.map(t => `<option value="${t.id}">${getName(t)} (${t.day_count} ${Layout.t('days')})</option>`).join('');
+                templates.map(tmpl => `<option value="${tmpl.id}">${getName(tmpl)} (${pluralizeDays(tmpl.day_count)})</option>`).join('');
 
             // Set default start date
             const today = new Date();

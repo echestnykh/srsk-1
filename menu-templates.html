@@ -306,6 +306,14 @@
         const t = key => Layout.t(key);
         const getName = (item, lang) => Layout.getName(item, lang || Layout.currentLang);
 
+        // Склонение дней
+        const DAY_FORMS = { ru: ['день', 'дня', 'дней'], en: ['day', 'days'], hi: 'दिन' };
+        const DISH_FORMS = { ru: ['блюдо', 'блюда', 'блюд'], en: ['dish', 'dishes'], hi: 'व्यंजन' };
+        const MEAL_FORMS = { ru: ['приём пищи', 'приёма пищи', 'приёмов пищи'], en: ['meal', 'meals'], hi: 'भोजन' };
+        const pluralizeDays = n => Layout.pluralize(n, DAY_FORMS);
+        const pluralizeDishes = n => Layout.pluralize(n, DISH_FORMS);
+        const pluralizeMeals = n => Layout.pluralize(n, MEAL_FORMS);
+
         function getUnitShort(unitCode) {
             if (!unitCode) return '';
             const unit = units.find(u => u.code === unitCode || u.short_ru === unitCode || u.short_en === unitCode);
@@ -463,9 +471,9 @@
             const mealsCount = mealsData?.length || 0;
             const dishesCount = mealsData?.reduce((sum, m) => sum + (m.dishes?.length || 0), 0) || 0;
 
-            Layout.$('#importDayCountText').textContent = `${dayCount} ${t('days')}`;
+            Layout.$('#importDayCountText').textContent = pluralizeDays(dayCount);
             Layout.$('#importMealsCount').textContent = mealsCount > 0
-                ? `${mealsCount} ${t('portions').replace('порций', 'приёмов пищи')}, ${dishesCount} ${t('portions').replace('порций', 'блюд')}`
+                ? `${pluralizeMeals(mealsCount)}, ${pluralizeDishes(dishesCount)}`
                 : t('no_templates').replace('шаблонов', 'данных меню');
             Layout.$('#importPreview').classList.remove('hidden');
             Layout.$('#importBtn').disabled = mealsCount === 0;
@@ -544,7 +552,8 @@
             const list = Layout.$('#templatesList');
             const countEl = Layout.$('#templatesCount');
 
-            countEl.textContent = `${templates.length} ${templates.length === 1 ? 'шаблон' : (templates.length < 5 ? 'шаблона' : 'шаблонов')}`;
+            const TEMPLATE_FORMS = { ru: ['шаблон', 'шаблона', 'шаблонов'], en: ['template', 'templates'], hi: 'टेम्पलेट' };
+            countEl.textContent = Layout.pluralize(templates.length, TEMPLATE_FORMS);
 
             if (templates.length === 0) {
                 list.innerHTML = `
@@ -564,7 +573,7 @@
                     <div class="flex items-center justify-between px-4 py-3 border-b border-base-200 last:border-0 hover:bg-base-50">
                         <div class="flex-1 min-w-0">
                             <div class="font-medium">${getName(template)}</div>
-                            <div class="text-sm opacity-60">${template.day_count} ${t('days')} · ${dishesCount} блюд${description ? ` · ${description}` : ''}</div>
+                            <div class="text-sm opacity-60">${pluralizeDays(template.day_count)} · ${pluralizeDishes(dishesCount)}${description ? ` · ${description}` : ''}</div>
                         </div>
                         <div class="flex items-center gap-2 ml-4">
                             <button class="btn btn-sm btn-ghost" onclick="openTemplateEditor('${template.id}')">
