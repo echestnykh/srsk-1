@@ -766,6 +766,9 @@
         }
 
         async function saveTemplate() {
+            const saveBtn = document.querySelector('#templateEditorModal .btn-primary');
+            if (saveBtn.disabled) return;
+
             const nameRu = Layout.$('#templateNameRu').value.trim();
             if (!nameRu) {
                 alert('Введите название шаблона');
@@ -774,6 +777,9 @@
 
             const locationId = getCurrentLocation()?.id;
             const dayCount = parseInt(Layout.$('#templateDayCount').value) || 7;
+
+            saveBtn.disabled = true;
+            saveBtn.textContent = '...';
 
             try {
                 let templateId = editingTemplateId;
@@ -859,6 +865,9 @@
             } catch (error) {
                 console.error('Error saving template:', error);
                 alert('Ошибка сохранения');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = t('save');
             }
         }
 
@@ -1094,6 +1103,9 @@
         }
 
         async function applyTemplate() {
+            const applyBtn = document.querySelector('#applyTemplateModal .btn-primary');
+            if (applyBtn.disabled) return;
+
             const startDateStr = Layout.$('#applyStartDate').value;
             if (!startDateStr) return;
 
@@ -1104,6 +1116,9 @@
             if (!locationId) return;
 
             const isCafe = Layout.currentLocation === 'cafe';
+
+            applyBtn.disabled = true;
+            applyBtn.textContent = '...';
 
             try {
                 // Calculate dates to apply
@@ -1175,6 +1190,9 @@
             } catch (error) {
                 console.error('Error applying template:', error);
                 alert('Ошибка применения шаблона');
+            } finally {
+                applyBtn.disabled = false;
+                applyBtn.textContent = t('apply_template');
             }
         }
 

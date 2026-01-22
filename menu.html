@@ -1482,6 +1482,9 @@
         }
 
         async function saveAsTemplate() {
+            const saveBtn = document.querySelector('#saveTemplateModal .btn-primary');
+            if (saveBtn.disabled) return;
+
             const name = Layout.$('#newTemplateName').value.trim();
             const fromDate = Layout.$('#templateFromDate').value;
             const toDate = Layout.$('#templateToDate').value;
@@ -1507,6 +1510,9 @@
 
             const locationId = getCurrentLocation()?.id;
             if (!locationId) return;
+
+            saveBtn.disabled = true;
+            saveBtn.textContent = '...';
 
             try {
                 // Create template
@@ -1573,6 +1579,9 @@
             } catch (error) {
                 console.error('Error saving template:', error);
                 alert('Ошибка сохранения шаблона');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = t('save');
             }
         }
 
@@ -1655,6 +1664,9 @@
         }
 
         async function applySelectedTemplate() {
+            const applyBtn = Layout.$('#applyTemplateBtn2');
+            if (applyBtn.disabled) return;
+
             if (!selectedTemplateId) return;
 
             const startDateStr = Layout.$('#applyStartDate').value;
@@ -1667,6 +1679,9 @@
             if (!locationId) return;
 
             const isCafe = Layout.currentLocation === 'cafe';
+
+            applyBtn.disabled = true;
+            applyBtn.textContent = '...';
 
             try {
                 const startDate = parseLocalDate(startDateStr);
@@ -1736,6 +1751,9 @@
             } catch (error) {
                 console.error('Error applying template:', error);
                 alert('Ошибка применения шаблона');
+            } finally {
+                applyBtn.disabled = false;
+                applyBtn.textContent = t('apply_template');
             }
         }
 
