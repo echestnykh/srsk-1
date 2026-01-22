@@ -199,6 +199,19 @@
         <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
 
+    <!-- Success Modal -->
+    <dialog id="successModal" class="modal">
+        <div class="modal-box max-w-sm text-center">
+            <div class="text-5xl mb-4">✓</div>
+            <h3 class="font-bold text-lg mb-2" id="successTitle"></h3>
+            <p class="opacity-70" id="successMessage"></p>
+            <div class="modal-action justify-center">
+                <button type="button" class="btn btn-primary" onclick="successModal.close()">OK</button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+
     <!-- Add Dish Modal -->
     <dialog id="dishModal" class="modal">
         <div class="modal-box max-w-lg relative">
@@ -379,6 +392,13 @@
             retreats = retreatsData || [];
 
             renderTemplates();
+        }
+
+        // ==================== SUCCESS MODAL ====================
+        function showSuccess(title, message) {
+            Layout.$('#successTitle').textContent = title;
+            Layout.$('#successMessage').textContent = message || '';
+            successModal.showModal();
         }
 
         // ==================== AUTO-TRANSLATE ====================
@@ -1186,7 +1206,13 @@
                 }
 
                 applyTemplateModal.close();
-                alert(t('template_applied'));
+
+                const endDate = new Date(startDate);
+                endDate.setDate(endDate.getDate() + template.day_count - 1);
+                const formatDisplayDate = d => d.toLocaleDateString(Layout.currentLang === 'ru' ? 'ru-RU' : 'en-US', {
+                    day: 'numeric', month: 'long', year: 'numeric'
+                });
+                showSuccess(t('template_applied'), `${formatDisplayDate(startDate)} — ${formatDisplayDate(endDate)}`);
             } catch (error) {
                 console.error('Error applying template:', error);
                 alert('Ошибка применения шаблона');
