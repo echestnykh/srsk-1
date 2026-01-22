@@ -164,6 +164,13 @@
                     <label class="label"><span class="label-text-alt opacity-60" data-i18n="waste_percent_hint">Процент отходов при чистке</span></label>
                 </div>
 
+                <!-- Ссылка на покупку -->
+                <div>
+                    <label class="label"><span class="label-text font-medium" data-i18n="purchase_url">Ссылка на покупку</span></label>
+                    <input type="url" name="purchase_url" class="input input-bordered w-full" placeholder="https://amazon.in/..." />
+                    <label class="label"><span class="label-text-alt opacity-60" data-i18n="purchase_url_hint">Amazon, магазин и т.д.</span></label>
+                </div>
+
                 <div class="modal-action">
                     <button type="button" class="btn btn-ghost" onclick="editModal.close()" data-i18n="cancel">Отмена</button>
                     <button type="submit" class="btn btn-primary" data-i18n="save">Сохранить</button>
@@ -609,6 +616,7 @@
             // Показываем/скрываем и заполняем поле waste_percent
             toggleWastePercentField(product.category_id);
             Layout.$('input[name="waste_percent"]').value = product.waste_percent || '';
+            Layout.$('input[name="purchase_url"]').value = product.purchase_url || '';
 
             editModal.showModal();
         }
@@ -624,6 +632,7 @@
             const wastePercentValue = formData.get('waste_percent');
             const shouldSaveWaste = category && WASTE_CATEGORIES.includes(category.slug);
 
+            const purchaseUrl = formData.get('purchase_url')?.trim();
             const productData = {
                 category_id: categoryId,
                 name_ru: formData.get('name_ru'),
@@ -631,7 +640,8 @@
                 name_hi: formData.get('name_hi'),
                 translit: formData.get('translit') || null,
                 unit: formData.get('unit'),
-                waste_percent: shouldSaveWaste && wastePercentValue ? parseFloat(wastePercentValue) : null
+                waste_percent: shouldSaveWaste && wastePercentValue ? parseFloat(wastePercentValue) : null,
+                purchase_url: purchaseUrl || null
             };
 
             let error;
@@ -652,7 +662,6 @@
                         products[idx] = {
                             ...products[idx],
                             ...productData,
-                            waste_percent: productData.waste_percent,
                             product_categories: cat ? { slug: cat.slug, name_ru: cat.name_ru, name_en: cat.name_en, name_hi: cat.name_hi } : null
                         };
                     }

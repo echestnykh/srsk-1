@@ -789,7 +789,7 @@
                                 if (isCafe) {
                                     return `
                                         <div class="text-sm py-1">
-                                            <div class="text-xs opacity-60 leading-tight">${dishesText}</div>
+                                            <div class="text-xs leading-tight">${dishesText}</div>
                                         </div>
                                     `;
                                 }
@@ -798,7 +798,7 @@
                                         <div class="flex items-center">
                                             <span class="w-4 text-center font-medium">${i + 1}.</span>
                                             <span class="ml-1 flex-1 truncate font-medium">${getPersonName(meal.cook) || '—'}</span>
-                                            <span class="text-xs opacity-60 ml-2">${meal.portions}</span>
+                                            <span class="font-medium ml-2">${meal.portions}</span>
                                         </div>
                                         <div class="text-xs opacity-60 ml-5 leading-tight">${dishesText}</div>
                                     </div>

@@ -77,7 +77,7 @@
                             <input type="date" id="menuLoadDate" class="input input-bordered w-full" />
                         </div>
 
-                        <div>
+                        <div id="mealTypeSection">
                             <label class="label"><span class="label-text font-medium" data-i18n="meal_type">Приём пищи</span></label>
                             <div class="flex gap-4">
                                 <label class="label cursor-pointer gap-2">
@@ -671,6 +671,7 @@
 
             if (tab === 'new') {
                 Layout.$('#tabNew').classList.remove('hidden');
+                backToChoice();
             } else if (tab === 'saved') {
                 Layout.$('#tabSaved').classList.remove('hidden');
                 renderSavedIssuances();
@@ -685,9 +686,10 @@
 
         // ==================== DATA LOADING ====================
         async function loadProducts() {
-            const { data, error } = await Layout.db.from('products').select('*, product_categories(slug, name_ru, name_en, name_hi, emoji)');
+            const { data, error } = await Layout.db.from('products').select('*, product_categories(*)');
             if (error) { console.error('Error loading products:', error); return; }
-            products = data;
+            products = data || [];
+            console.log('Loaded products:', products.length);
         }
 
         async function loadProductCategories() {
@@ -1190,6 +1192,24 @@
             if (currentTab === 'deleted') renderDeletedIssuances();
         };
 
+        window.onLocationChange = async function() {
+            await loadStock();
+            await loadIssuances();
+            updateMealTypeCheckboxes();
+            renderIssuanceItems();
+            if (currentTab === 'saved') renderSavedIssuances();
+            if (currentTab === 'archive') renderArchivedIssuances();
+            if (currentTab === 'deleted') renderDeletedIssuances();
+        };
+
+        // Скрыть/показать чекбоксы приёмов пищи в зависимости от локации
+        function updateMealTypeCheckboxes() {
+            const mealTypeSection = Layout.$('#mealTypeSection');
+            if (mealTypeSection) {
+                mealTypeSection.classList.toggle('hidden', Layout.currentLocation === 'cafe');
+            }
+        }
+
         // ==================== CHOICE SECTION ====================
         function showChoiceSection() {
             Layout.$('#issueChoiceSection').classList.remove('hidden');
@@ -1218,25 +1238,31 @@
 
         async function generateFromMenu() {
             const date = Layout.$('#menuLoadDate').value;
-            const includeBreakfast = Layout.$('#menuLoadBreakfast').checked;
-            const includeLunch = Layout.$('#menuLoadLunch').checked;
-            const includeDinner = Layout.$('#menuLoadDinner').checked;
+            const isCafe = Layout.currentLocation === 'cafe';
 
+            // Для кафе используем 'menu', для остальных — выбранные чекбоксы
+            let mealTypes = [];
+            if (isCafe) {
+                mealTypes = ['menu'];
+            } else {
+                const includeBreakfast = Layout.$('#menuLoadBreakfast').checked;
+                const includeLunch = Layout.$('#menuLoadLunch').checked;
+                const includeDinner = Layout.$('#menuLoadDinner').checked;
 
-            if (!includeBreakfast && !includeLunch && !includeDinner) {
-                showAlert(tr('select_meal', 'Выберите хотя бы один приём пищи'));
-                return;
+                if (!includeBreakfast && !includeLunch && !includeDinner) {
+                    showAlert(tr('select_meal', 'Выберите хотя бы один приём пищи'));
+                    return;
+                }
+
+                if (includeBreakfast) mealTypes.push('breakfast');
+                if (includeLunch) mealTypes.push('lunch');
+                if (includeDinner) mealTypes.push('dinner');
             }
 
             try {
                 // Get location ID
                 const locationId = (await Layout.db.from('locations').select('id').eq('slug', Layout.currentLocation).single()).data?.id;
-
-                // Build meal types filter
-                const mealTypes = [];
-                if (includeBreakfast) mealTypes.push('breakfast');
-                if (includeLunch) mealTypes.push('lunch');
-                if (includeDinner) mealTypes.push('dinner');
+                console.log('Generating from menu:', { date, locationId, mealTypes, location: Layout.currentLocation });
 
                 // Step 1: Get meals for the selected date
                 const { data: meals, error: mealsError } = await Layout.db
@@ -1247,6 +1273,7 @@
                     .in('meal_type', mealTypes);
 
                 if (mealsError) throw mealsError;
+                console.log('Meals found:', meals);
 
                 if (!meals || meals.length === 0) {
                     showAlert(tr('no_menu_for_date', 'На выбранную дату меню не найдено'));
@@ -1255,20 +1282,25 @@
 
                 // Step 2: Get dishes for these meals
                 const mealIds = meals.map(m => m.id);
+                console.log('Meal IDs:', mealIds);
+
                 const { data: dishes, error: dishesError } = await Layout.db
                     .from('menu_dishes')
                     .select('meal_id, recipe_id')
                     .in('meal_id', mealIds);
 
+                console.log('Dishes found:', dishes, 'Error:', dishesError);
+
                 if (dishesError) throw dishesError;
 
                 if (!dishes || dishes.length === 0) {
-                    showAlert(tr('no_ingredients', 'Для выбранных приёмов пищи нет блюд'));
+                    showAlert(tr('no_dishes', 'Для выбранных приёмов пищи нет блюд'));
                     return;
                 }
 
                 // Step 3: Get recipes to know their output (for scaling)
                 const recipeIds = [...new Set(dishes.map(d => d.recipe_id))];
+                console.log('Recipe IDs:', recipeIds);
                 const { data: recipes, error: recipesError } = await Layout.db
                     .from('recipes')
                     .select('id, output_amount, output_unit, portion_amount, portion_unit')
@@ -1281,6 +1313,8 @@
                     .from('recipe_ingredients')
                     .select('recipe_id, product_id, amount, unit')
                     .in('recipe_id', recipeIds);
+
+                console.log('Ingredients found:', ingredients, 'Error:', ingredientsError);
 
                 if (ingredientsError) throw ingredientsError;
 
@@ -1329,8 +1363,10 @@
                     });
                 });
 
+                console.log('Ingredients map:', ingredientsMap);
+
                 if (Object.keys(ingredientsMap).length === 0) {
-                    showAlert(tr('no_ingredients', 'Для выбранных приёмов пищи нет блюд'));
+                    showAlert(tr('no_ingredients', 'Ингредиенты не найдены'));
                     return;
                 }
 
@@ -1386,6 +1422,7 @@
             renderSavedIssuances();
             renderArchivedIssuances();
             renderDeletedIssuances();
+            updateMealTypeCheckboxes();
             initialized = true;
             Layout.updateAllTranslations();
         }

@@ -593,6 +593,8 @@
 
             if (tab === 'new') {
                 Layout.$('#tabNew').classList.remove('hidden');
+                // Сбрасываем форму и показываем секцию выбора
+                backToChoice();
             } else if (tab === 'saved') {
                 Layout.$('#tabSaved').classList.remove('hidden');
                 renderSavedReceipts();
@@ -607,9 +609,10 @@
 
         // ==================== DATA LOADING ====================
         async function loadProducts() {
-            const { data, error } = await Layout.db.from('products').select('*, product_categories(slug, name_ru, name_en, name_hi, emoji)');
+            const { data, error } = await Layout.db.from('products').select('*, product_categories(*)');
             if (error) { console.error('Error loading products:', error); return; }
-            products = data;
+            products = data || [];
+            console.log('Loaded products:', products.length);
         }
 
         async function loadProductCategories() {
@@ -626,14 +629,25 @@
         }
 
         async function loadRequests() {
-            const { data, error } = await Layout.db
+            const locationId = Layout.locations?.find(l => l.slug === Layout.currentLocation)?.id;
+            console.log('Loading requests for location:', Layout.currentLocation, locationId);
+
+            let query = Layout.db
                 .from('purchase_requests')
                 .select('*, purchase_request_items(*, products(*))')
                 .neq('status', 'archived')
+                .neq('status', 'deleted')
                 .order('created_at', { ascending: false });
+
+            if (locationId) {
+                query = query.eq('location_id', locationId);
+            }
+
+            const { data, error } = await query;
 
             if (error) { console.error('Error loading requests:', error); return; }
             requests = data || [];
+            console.log('Loaded requests:', requests);
         }
 
         async function loadReceipts() {
@@ -780,15 +794,35 @@
             }
         }
 
+        // Конвертация из базовых единиц (г, мл) в единицы продукта (кг, л)
+        function convertFromBase(quantity, unit) {
+            if (!unit) return quantity;
+            const u = unit.toLowerCase();
+            if (u === 'kg') return quantity / 1000;
+            if (u === 'l') return quantity / 1000;
+            return quantity;
+        }
+
+        // Конвертация в базовые единицы для сохранения
+        function convertToBase(quantity, unit) {
+            if (!unit) return quantity;
+            const u = unit.toLowerCase();
+            if (u === 'kg') return quantity * 1000;
+            if (u === 'l') return quantity * 1000;
+            return quantity;
+        }
+
         function loadFromRequest(requestId) {
             const req = requests.find(r => r.id === requestId);
             if (!req) return;
 
             receiptItemsList = [];
             (req.purchase_request_items || []).forEach(item => {
+                const product = products.find(p => p.id === item.product_id);
+                const displayQty = convertFromBase(item.quantity, product?.unit);
                 receiptItemsList.push({
                     product_id: item.product_id,
-                    quantity: item.quantity,
+                    quantity: displayQty,
                     price: item.price || 0
                 });
             });
@@ -860,12 +894,17 @@
                     return;
                 }
 
-                const items = receiptItemsList.map(i => ({
-                    receipt_id: receipt.id,
-                    product_id: i.product_id,
-                    quantity: i.quantity,
-                    price: i.price || null
-                }));
+                // Конвертируем количества в базовые единицы для сохранения
+                const items = receiptItemsList.map(i => {
+                    const product = products.find(p => p.id === i.product_id);
+                    const baseQty = convertToBase(i.quantity, product?.unit);
+                    return {
+                        receipt_id: receipt.id,
+                        product_id: i.product_id,
+                        quantity: baseQty,
+                        price: i.price || null
+                    };
+                });
 
                 const { error: itemsError } = await Layout.db.from('stock_receipt_items').insert(items);
 
@@ -873,8 +912,11 @@
                     console.error('Error saving items:', itemsError);
                 }
 
-                // Update stock quantities
+                // Update stock quantities (в базовых единицах)
                 for (const item of receiptItemsList) {
+                    const product = products.find(p => p.id === item.product_id);
+                    const baseQty = convertToBase(item.quantity, product?.unit);
+
                     const { data: stockItem } = await Layout.db
                         .from('stock')
                         .select('id, current_quantity')
@@ -884,14 +926,14 @@
 
                     if (stockItem) {
                         await Layout.db.from('stock').update({
-                            current_quantity: stockItem.current_quantity + item.quantity,
+                            current_quantity: stockItem.current_quantity + baseQty,
                             last_price: item.price || undefined
                         }).eq('id', stockItem.id);
                     } else {
                         await Layout.db.from('stock').insert({
                             location_id: locationId,
                             product_id: item.product_id,
-                            current_quantity: item.quantity,
+                            current_quantity: baseQty,
                             min_quantity: 0,
                             last_price: item.price || null
                         });
@@ -1193,6 +1235,16 @@
             renderBuyerSelect();
             renderReceiptItems();
             renderRequestsList();
+            if (currentTab === 'saved') renderSavedReceipts();
+            if (currentTab === 'archive') renderArchivedReceipts();
+            if (currentTab === 'deleted') renderDeletedReceipts();
+        };
+
+        window.onLocationChange = async function() {
+            await loadRequests();
+            await loadReceipts();
+            renderRequestsList();
+            renderReceiptItems();
             if (currentTab === 'saved') renderSavedReceipts();
             if (currentTab === 'archive') renderArchivedReceipts();
             if (currentTab === 'deleted') renderDeletedReceipts();
