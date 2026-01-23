@@ -75,9 +75,9 @@
         <!-- Filters (only for list view) -->
         <div class="mb-6" id="filtersBlock">
             <div class="tabs tabs-boxed bg-base-100 inline-flex">
-                <button class="tab tab-active" data-filter="not_checked_in" onclick="setFilter('not_checked_in')" data-i18n="bookings_filter_not_checked_in">Не заселились</button>
+                <button class="tab tab-active" data-filter="all" onclick="setFilter('all')" data-i18n="bookings_filter_all">Все</button>
+                <button class="tab" data-filter="not_checked_in" onclick="setFilter('not_checked_in')" data-i18n="bookings_filter_not_checked_in">Не заселились</button>
                 <button class="tab" data-filter="upcoming" onclick="setFilter('upcoming')" data-i18n="bookings_filter_upcoming">Предстоящие</button>
-                <button class="tab" data-filter="all" onclick="setFilter('all')" data-i18n="bookings_filter_all">Все</button>
             </div>
         </div>
 
@@ -326,7 +326,7 @@
         let rooms = [];
         let floorPlans = [];
         let retreats = [];
-        let currentFilter = 'not_checked_in';
+        let currentFilter = 'all';
         let currentView = 'list';
         let calendarYear = new Date().getFullYear();
         let calendarMonth = new Date().getMonth();
