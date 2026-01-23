@@ -148,11 +148,15 @@
                             <span class="text-xs" data-i18n="floor_plan_occupied">Заселена</span>
                         </div>
                         <div class="flex items-center gap-1">
-                            <span class="w-3 h-3 bg-orange-500"></span>
-                            <span class="text-xs" data-i18n="floor_plan_departing">Освобождается</span>
+                            <span class="w-3 h-3 bg-yellow-500"></span>
+                            <span class="text-xs" data-i18n="floor_plan_booked">Забронировано</span>
                         </div>
                         <div class="flex items-center gap-1">
                             <span class="w-3 h-3 bg-red-500"></span>
+                            <span class="text-xs" data-i18n="needs_cleaning">Уборка</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <span class="w-3 h-3 bg-gray-500"></span>
                             <span class="text-xs" data-i18n="floor_plan_maintenance">Ремонт</span>
                         </div>
                         <div class="flex items-center gap-1">
@@ -272,6 +276,7 @@
         let floorPlans = [];
         let rooms = [];
         let occupancy = [];
+        let occupancyWithBookings = [];
         let departures = [];  // Выезды сегодня
         let currentBuilding = null;
         let currentFloor = 1;
@@ -316,6 +321,11 @@
 
         async function loadOccupancy() {
             const { data } = await Layout.db.rpc('get_room_occupancy', { target_date: today });
+            return data || [];
+        }
+
+        async function loadOccupancyWithBookings() {
+            const { data } = await Layout.db.rpc('get_room_occupancy_with_bookings', { target_date: today });
             return data || [];
         }
 
@@ -409,20 +419,13 @@
 
         // Цвета статусов
         const statusColors = {
-            available: '#10b981',   // Зелёный
-            occupied: '#8b5cf6',    // Фиолетовый
-            departing: '#f97316',   // Оранжевый
-            maintenance: '#ef4444', // Красный
-            mothballed: '#9ca3af'   // Серый
+            available: '#10b981',    // Зелёный - свободно
+            occupied: '#8b5cf6',     // Фиолетовый - заселено
+            booked: '#eab308',       // Жёлтый - забронировано
+            cleaning: '#ef4444',     // Красный - требует уборки
+            maintenance: '#6b7280',  // Серый - на ремонте
+            mothballed: '#9ca3af'    // Светло-серый - законсервировано
         };
-
-        function getBaseStatus(room) {
-            if (room.status === 'maintenance') return 'maintenance';
-            if (room.status === 'mothballed') return 'mothballed';
-            const isDeparting = departures.some(d => d.room_id === room.id);
-            if (isDeparting) return 'departing';
-            return null; // Нужно определять по занятости
-        }
 
         function renderRoomMarkers() {
             const svg = Layout.$('#floorPlanSvg');
@@ -431,9 +434,11 @@
             const floorRooms = rooms.filter(r => r.floor === currentFloor && r.plan_x != null && r.plan_y != null);
 
             floorRooms.forEach(room => {
-                const roomOccupancy = occupancy.find(o => o.room_id === room.id);
-                const occupied = roomOccupancy?.occupied || 0;
-                const capacity = roomOccupancy?.capacity || room.capacity || 1;
+                const roomOcc = occupancyWithBookings.find(o => o.room_id === room.id) || occupancy.find(o => o.room_id === room.id);
+                const occupied = roomOcc?.occupied || 0;
+                const booked = roomOcc?.booked || 0;
+                const needsCleaning = roomOcc?.needs_cleaning || 0;
+                const capacity = roomOcc?.capacity || room.capacity || 1;
 
                 const x = parseFloat(room.plan_x);
                 const y = parseFloat(room.plan_y);
@@ -446,8 +451,10 @@
                 g.style.cursor = 'pointer';
                 g.onclick = () => openRoomModal(room.id);
 
-                // Проверяем особые статусы (ремонт, консервация, выезд сегодня)
-                const baseStatus = getBaseStatus(room);
+                // Проверяем особые статусы (приоритет: уборка > ремонт > консервация)
+                const baseStatus = needsCleaning > 0 ? 'cleaning' :
+                                   room.status === 'maintenance' ? 'maintenance' :
+                                   room.status === 'mothballed' ? 'mothballed' : null;
 
                 if (baseStatus) {
                     // Особый статус - один цвет на всю комнату
@@ -467,7 +474,8 @@
                         rect.setAttribute('y', y);
                         rect.setAttribute('width', halfW);
                         rect.setAttribute('height', h);
-                        rect.setAttribute('fill', i < occupied ? statusColors.occupied : statusColors.available);
+                        const bedStatus = i < occupied ? 'occupied' : (i < occupied + booked ? 'booked' : 'available');
+                        rect.setAttribute('fill', statusColors[bedStatus]);
                         rect.setAttribute('stroke', '#e5e7eb');
                         rect.setAttribute('stroke-width', '0.15');
                         g.appendChild(rect);
@@ -487,7 +495,8 @@
                         rect.setAttribute('y', y + py * halfH);
                         rect.setAttribute('width', halfW);
                         rect.setAttribute('height', halfH);
-                        rect.setAttribute('fill', i < occupied ? statusColors.occupied : statusColors.available);
+                        const bedStatus = i < occupied ? 'occupied' : (i < occupied + booked ? 'booked' : 'available');
+                        rect.setAttribute('fill', statusColors[bedStatus]);
                         rect.setAttribute('stroke', '#e5e7eb');
                         rect.setAttribute('stroke-width', '0.15');
                         g.appendChild(rect);
@@ -499,7 +508,8 @@
                     rect.setAttribute('y', y);
                     rect.setAttribute('width', w);
                     rect.setAttribute('height', h);
-                    rect.setAttribute('fill', occupied > 0 ? statusColors.occupied : statusColors.available);
+                    const bedStatus = occupied > 0 ? 'occupied' : (booked > 0 ? 'booked' : 'available');
+                    rect.setAttribute('fill', statusColors[bedStatus]);
                     g.appendChild(rect);
                 }
 
@@ -772,9 +782,10 @@
         async function init() {
             await Layout.init({ module: 'housing', menuId: 'housing', itemId: 'occupancy' });
 
-            [buildings, occupancy, departures] = await Promise.all([
+            [buildings, occupancy, occupancyWithBookings, departures] = await Promise.all([
                 loadBuildings(),
                 loadOccupancy(),
+                loadOccupancyWithBookings(),
                 loadDepartures()
             ]);
 

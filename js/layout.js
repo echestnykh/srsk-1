@@ -55,9 +55,13 @@ const modules = {
         menuConfig: [
             { id: 'housing', items: [
                 { id: 'occupancy', href: 'housing/occupancy.html' },
+                { id: 'bookings', href: 'housing/bookings.html' },
                 { id: 'buildings', href: 'housing/buildings.html' },
                 { id: 'rooms', href: 'housing/rooms.html' },
                 { id: 'guests', href: 'housing/guests.html' }
+            ]},
+            { id: 'cleaning', items: [
+                { id: 'cleaning', href: 'housing/cleaning.html' }
             ]},
             { id: 'ashram', items: [
                 { id: 'retreats', href: 'retreats.html' },
@@ -483,9 +487,14 @@ function getHeaderHTML() {
 
                 <!-- Desktop Navigation -->
                 <nav class="hidden desktop:flex items-center gap-2" id="mainNav">
-                    ${menuConfig.map(({ id }) => `
-                        <a href="#" class="nav-link px-5 py-6 text-base font-semibold tracking-wide uppercase ${id === currentPage.menuId ? 'active' : 'opacity-60'}" data-submenu="${id}" data-menu-id="${id}">${t('nav_' + id)}</a>
-                    `).join('')}
+                    ${menuConfig.map(({ id, items }) => {
+                        // Single-item menu: direct link without submenu
+                        if (items.length === 1) {
+                            return `<a href="${adjustHref(items[0].href)}" class="nav-link px-5 py-6 text-base font-semibold tracking-wide uppercase ${id === currentPage.menuId ? 'active' : 'opacity-60'}" data-menu-id="${id}">${t('nav_' + id)}</a>`;
+                        }
+                        // Multi-item menu: submenu trigger
+                        return `<a href="#" class="nav-link px-5 py-6 text-base font-semibold tracking-wide uppercase ${id === currentPage.menuId ? 'active' : 'opacity-60'}" data-submenu="${id}" data-menu-id="${id}">${t('nav_' + id)}</a>`;
+                    }).join('')}
                 </nav>
 
                 <!-- Right: Language, User, Mobile Menu Button -->
@@ -555,12 +564,14 @@ function getFooterHTML() {
                 `).join('')}
             </nav>
 
-            <!-- Второй уровень меню -->
+            <!-- Второй уровень меню (только если больше одного пункта) -->
+            ${footerLinks.length > 1 ? `
             <nav class="flex flex-wrap justify-center gap-4 sm:gap-6 mb-4" id="footerNav">
                 ${footerLinks.map(item => `
                     <a href="${adjustHref(item.href)}" class="text-sm font-medium uppercase tracking-wide ${item.id === currentPage.itemId ? 'text-primary' : 'opacity-60 hover:opacity-100'}">${t('nav_' + item.id)}</a>
                 `).join('')}
             </nav>
+            ` : '<div id="footerNav"></div>'}
 
             <!-- Кнопка наверх -->
             <div class="flex justify-center">
@@ -600,19 +611,30 @@ function buildMobileMenu() {
     if (!nav) return;
     const menuConfig = getMenuConfig();
 
-    nav.innerHTML = menuConfig.map(({ id, items }) => `
-        <div class="mobile-nav-item ${id === currentPage.menuId ? 'open' : ''}" data-has-submenu>
-            <button class="w-full flex items-center px-4 py-3 text-base font-semibold uppercase tracking-wide hover:bg-base-200 rounded-lg">
-                ${t('nav_' + id)}
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-2 transition-transform arrow-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-            </button>
-            <div class="submenu pl-4">
-                ${items.map(item => `<a href="${adjustHref(item.href)}" class="block px-4 py-3 text-base font-medium rounded-lg hover:bg-base-200 ${item.id === currentPage.itemId ? 'text-primary' : ''}">${t('nav_' + item.id)}</a>`).join('')}
+    nav.innerHTML = menuConfig.map(({ id, items }) => {
+        // Single-item menu: direct link
+        if (items.length === 1) {
+            return `
+                <div class="mobile-nav-item">
+                    <a href="${adjustHref(items[0].href)}" class="block px-4 py-3 text-base font-semibold uppercase tracking-wide hover:bg-base-200 rounded-lg ${id === currentPage.menuId ? 'text-primary' : ''}">${t('nav_' + id)}</a>
+                </div>
+            `;
+        }
+        // Multi-item menu: accordion
+        return `
+            <div class="mobile-nav-item ${id === currentPage.menuId ? 'open' : ''}" data-has-submenu>
+                <button class="w-full flex items-center px-4 py-3 text-base font-semibold uppercase tracking-wide hover:bg-base-200 rounded-lg">
+                    ${t('nav_' + id)}
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-2 transition-transform arrow-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <div class="submenu pl-4">
+                    ${items.map(item => `<a href="${adjustHref(item.href)}" class="block px-4 py-3 text-base font-medium rounded-lg hover:bg-base-200 ${item.id === currentPage.itemId ? 'text-primary' : ''}">${t('nav_' + item.id)}</a>`).join('')}
+                </div>
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 
     $$('.mobile-nav-item[data-has-submenu] button', nav).forEach(btn => {
         btn.addEventListener('click', () => {
@@ -629,11 +651,15 @@ function buildSubmenuBar() {
     if (!bar) return;
     const menuConfig = getMenuConfig();
 
-    bar.innerHTML = menuConfig.map(({ id, items }) => `
-        <nav class="container mx-auto px-4 flex items-center submenu-group ${id !== currentPage.menuId ? 'hidden' : ''}" data-group="${id}">
-            ${items.map(item => `<a href="${adjustHref(item.href)}" class="submenu-link px-5 py-2 text-base font-semibold tracking-wide uppercase ${item.id === currentPage.itemId ? 'active' : 'text-white/70 hover:text-white'}">${t('nav_' + item.id)}</a>`).join('')}
-        </nav>
-    `).join('');
+    bar.innerHTML = menuConfig.map(({ id, items }) => {
+        // Don't render submenu for single-item menus
+        if (items.length === 1) return '';
+        return `
+            <nav class="container mx-auto px-4 flex items-center submenu-group ${id !== currentPage.menuId ? 'hidden' : ''}" data-group="${id}">
+                ${items.map(item => `<a href="${adjustHref(item.href)}" class="submenu-link px-5 py-2 text-base font-semibold tracking-wide uppercase ${item.id === currentPage.itemId ? 'active' : 'text-white/70 hover:text-white'}">${t('nav_' + item.id)}</a>`).join('')}
+            </nav>
+        `;
+    }).join('');
 
     initSubmenuMargins();
 }
@@ -675,17 +701,21 @@ function updateFooterLanguage() {
         `).join('');
     }
 
-    // Обновляем второй уровень меню
+    // Обновляем второй уровень меню (только если больше одного пункта)
     const footerNav = $('#footerNav');
     if (footerNav) {
         const currentMenu = menuConfig.find(m => m.id === currentPage.menuId);
         const footerLinks = currentMenu ? currentMenu.items : menuConfig[0].items;
 
-        // Используем ключи переводов nav_menu, nav_recipes, etc.
-        footerNav.innerHTML = footerLinks.map(item => {
-            const key = `nav_${item.id}`;
-            return `<a href="${adjustHref(item.href)}" class="text-sm font-medium uppercase tracking-wide ${item.id === currentPage.itemId ? 'text-primary' : 'opacity-60 hover:opacity-100'}">${t(key)}</a>`;
-        }).join('');
+        // Показываем только если больше одного пункта
+        if (footerLinks.length > 1) {
+            footerNav.innerHTML = footerLinks.map(item => {
+                const key = `nav_${item.id}`;
+                return `<a href="${adjustHref(item.href)}" class="text-sm font-medium uppercase tracking-wide ${item.id === currentPage.itemId ? 'text-primary' : 'opacity-60 hover:opacity-100'}">${t(key)}</a>`;
+            }).join('');
+        } else {
+            footerNav.innerHTML = '';
+        }
     }
 
     // Обновляем девиз
@@ -837,15 +867,23 @@ function initHeaderEvents() {
     // Desktop nav
     $$('.nav-link').forEach(link => {
         link.addEventListener('click', e => {
+            const submenuId = link.dataset.submenu;
+
+            // Single-item menus: allow navigation (don't preventDefault)
+            if (!submenuId) {
+                // Let the link navigate normally
+                return;
+            }
+
+            // Multi-item menus: show submenu
             e.preventDefault();
             $$('.nav-link').forEach(l => { l.classList.remove('active'); l.classList.add('opacity-60'); });
             link.classList.add('active');
             link.classList.remove('opacity-60');
 
-            const submenuId = link.dataset.submenu;
             $$('.submenu-group').forEach(g => g.classList.add('hidden'));
 
-            if (submenuId && innerWidth >= DESKTOP_BP) {
+            if (innerWidth >= DESKTOP_BP) {
                 $('#submenuBar').classList.remove('hidden');
                 const group = $(`.submenu-group[data-group="${submenuId}"]`);
                 if (group) group.classList.remove('hidden');

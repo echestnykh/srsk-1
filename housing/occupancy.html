@@ -14,9 +14,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/common.css">
     <style>
-        .room-available { border-left: 4px solid #10b981; }
-        .room-partial { border-left: 4px solid #f59e0b; }
-        .room-full { border-left: 4px solid #ef4444; }
+        /* Цвета статусов комнат теперь задаются inline */
 
         /* План этажа */
         .floor-plan-container {
@@ -56,12 +54,20 @@
         <!-- Page Header -->
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <h1 class="text-2xl font-bold" data-i18n="occupancy_title">Заселение</h1>
-            <button class="btn btn-primary gap-2" onclick="openResidentModal()">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                </svg>
-                <span data-i18n="add_resident">Заселить</span>
-            </button>
+            <div class="flex gap-2">
+                <button class="btn btn-outline btn-warning gap-2" onclick="openBookingModal()">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span data-i18n="add_booking">Забронировать</span>
+                </button>
+                <button class="btn btn-primary gap-2" onclick="openResidentModal()">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span data-i18n="add_resident">Заселить</span>
+                </button>
+            </div>
         </div>
 
         <!-- Stats + Chart -->
@@ -105,6 +111,31 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
                 </svg>
             </button>
+        </div>
+
+        <!-- Legend -->
+        <div class="flex flex-wrap items-center gap-4 mb-4 text-sm" id="statusLegend">
+            <span class="opacity-60" data-i18n="legend">Легенда:</span>
+            <div class="flex items-center gap-1">
+                <span class="w-3 h-3 rounded-full" style="background-color: #10b981"></span>
+                <span data-i18n="status_available">Свободно</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <span class="w-3 h-3 rounded-full" style="background-color: #eab308"></span>
+                <span data-i18n="status_booked">Забронировано</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <span class="w-3 h-3 rounded-full" style="background-color: #f59e0b"></span>
+                <span data-i18n="status_partial">Частично заселено</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <span class="w-3 h-3 rounded-full" style="background-color: #8b5cf6"></span>
+                <span data-i18n="status_occupied">Заселено</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <span class="w-3 h-3 rounded-full" style="background-color: #ef4444"></span>
+                <span data-i18n="status_cleaning">Уборка</span>
+            </div>
         </div>
 
         <!-- Search + Date + Tabs -->
@@ -276,16 +307,216 @@
         <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
 
+    <!-- Booking Modal -->
+    <dialog id="bookingModal" class="modal">
+        <div class="modal-box max-w-4xl relative">
+            <button type="button" class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" onclick="closeBookingModal()">✕</button>
+            <h3 class="font-bold text-lg mb-4" id="bookingModalTitle" data-i18n="booking_title">Новая бронь</h3>
+
+            <!-- Steps indicator -->
+            <div class="flex items-center justify-center gap-4 mb-6">
+                <div class="flex items-center gap-2" id="bookingStep1Indicator">
+                    <span class="w-8 h-8 rounded-full bg-primary text-primary-content flex items-center justify-center font-bold">1</span>
+                    <span class="font-medium" data-i18n="booking_step_1">Данные брони</span>
+                </div>
+                <div class="w-12 h-px bg-base-300"></div>
+                <div class="flex items-center gap-2 opacity-40" id="bookingStep2Indicator">
+                    <span class="w-8 h-8 rounded-full bg-base-300 flex items-center justify-center font-bold">2</span>
+                    <span class="font-medium" data-i18n="booking_step_2">Выбор комнат</span>
+                </div>
+            </div>
+
+            <!-- Step 1: Booking Data -->
+            <div id="bookingStep1">
+                <form id="bookingForm" class="space-y-4">
+                    <input type="hidden" name="id" />
+
+                    <!-- Booking Name (optional) -->
+                    <div>
+                        <label class="label"><span class="label-text font-medium" data-i18n="booking_name">Название брони</span></label>
+                        <input type="text" name="name" class="input input-bordered w-full" data-i18n-placeholder="booking_name_placeholder" placeholder="Например: Группа из Москвы" />
+                    </div>
+
+                    <!-- Contact Person -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="label"><span class="label-text font-medium" data-i18n="booking_contact_name">Контактное лицо</span><span class="text-error ml-1">*</span></label>
+                            <input type="text" name="contact_name" class="input input-bordered w-full" required />
+                        </div>
+                        <div>
+                            <label class="label"><span class="label-text font-medium" data-i18n="booking_contact_phone">Телефон</span></label>
+                            <input type="tel" name="contact_phone" class="input input-bordered w-full" />
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="label"><span class="label-text font-medium" data-i18n="booking_contact_email">Email</span></label>
+                            <input type="email" name="contact_email" class="input input-bordered w-full" />
+                        </div>
+                        <div>
+                            <label class="label"><span class="label-text font-medium" data-i18n="booking_contact_country">Страна</span></label>
+                            <input type="text" name="contact_country" class="input input-bordered w-full" />
+                        </div>
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <!-- Booking Details -->
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="label"><span class="label-text font-medium" data-i18n="booking_beds_count">Количество мест</span><span class="text-error ml-1">*</span></label>
+                            <input type="number" name="beds_count" min="1" max="50" value="1" class="input input-bordered w-full" required />
+                        </div>
+                        <div>
+                            <label class="label"><span class="label-text font-medium" data-i18n="check_in">Заезд</span><span class="text-error ml-1">*</span></label>
+                            <input type="date" name="check_in" class="input input-bordered w-full" required />
+                        </div>
+                        <div>
+                            <label class="label"><span class="label-text font-medium" data-i18n="check_out">Выезд</span><span class="text-error ml-1">*</span></label>
+                            <input type="date" name="check_out" class="input input-bordered w-full" required />
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="label"><span class="label-text font-medium" data-i18n="booking_retreat">Ретрит</span></label>
+                            <select name="retreat_id" id="bookingRetreatSelect" class="select select-bordered w-full">
+                                <option value="">—</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="label"><span class="label-text font-medium" data-i18n="booking_notes">Примечания</span></label>
+                            <input type="text" name="notes" class="input input-bordered w-full" />
+                        </div>
+                    </div>
+                </form>
+
+                <div class="modal-action">
+                    <button type="button" class="btn btn-ghost" onclick="closeBookingModal()" data-i18n="cancel">Отмена</button>
+                    <button type="button" class="btn btn-primary" onclick="goToBookingStep2()" data-i18n="booking_next">Далее</button>
+                </div>
+            </div>
+
+            <!-- Step 2: Room Selection -->
+            <div id="bookingStep2" class="hidden">
+                <!-- Building selector -->
+                <div class="flex items-center justify-between mb-4">
+                    <select id="bookingBuildingSelect" class="select select-bordered" onchange="renderBookingPlan()">
+                        <!-- Buildings will be populated -->
+                    </select>
+                    <div class="badge badge-lg badge-warning gap-2">
+                        <span data-i18n="booking_selected">Выбрано</span>
+                        <span id="bookingSelectedCount">0</span>
+                        <span data-i18n="booking_of">из</span>
+                        <span id="bookingTotalCount">1</span>
+                    </div>
+                </div>
+
+                <!-- Legend -->
+                <div class="flex flex-wrap gap-3 items-center mb-4 text-sm">
+                    <div class="flex items-center gap-1">
+                        <span class="w-3 h-3 rounded" style="background-color: #10b981"></span>
+                        <span data-i18n="floor_plan_available">Свободно</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <span class="w-3 h-3 rounded" style="background-color: #8b5cf6"></span>
+                        <span data-i18n="floor_plan_occupied">Заселена</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <span class="w-3 h-3 rounded" style="background-color: #eab308"></span>
+                        <span data-i18n="floor_plan_booked">Забронировано</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <span class="w-3 h-3 rounded ring-2 ring-primary" style="background-color: #10b981"></span>
+                        <span>Выбрано для брони</span>
+                    </div>
+                </div>
+
+                <!-- Floor plans grid -->
+                <div id="bookingPlanContainer" class="grid grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+                    <!-- Plans will be rendered here -->
+                </div>
+
+                <div class="modal-action">
+                    <button type="button" class="btn btn-ghost" onclick="goToBookingStep1()" data-i18n="booking_back">Назад</button>
+                    <button type="button" class="btn btn-primary" id="bookingSaveBtn" onclick="saveBooking()" disabled data-i18n="booking_save">Сохранить</button>
+                </div>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+
+    <!-- Check-in from Booking Modal -->
+    <dialog id="checkinBookingModal" class="modal">
+        <div class="modal-box max-w-md relative">
+            <button type="button" class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" onclick="closeCheckinBookingModal()">✕</button>
+            <h3 class="font-bold text-lg mb-4" data-i18n="booking_checkin_title">Заселить гостя</h3>
+
+            <div class="bg-warning/20 rounded-lg p-3 mb-4">
+                <div class="text-sm font-medium" data-i18n="booking_checkin_from_booking">Из брони:</div>
+                <div id="checkinBookingInfo" class="text-sm opacity-70"></div>
+            </div>
+
+            <form id="checkinBookingForm" class="space-y-4">
+                <input type="hidden" name="resident_id" />
+
+                <!-- Team Member Selection -->
+                <div>
+                    <label class="label"><span class="label-text font-medium" data-i18n="select_team_member">Выбрать из команды</span></label>
+                    <select name="team_member_id" id="checkinTeamMemberSelect" class="select select-bordered w-full">
+                        <option value="">— Гость (ввести данные ниже) —</option>
+                    </select>
+                </div>
+
+                <!-- Guest Data -->
+                <div id="checkinGuestDataSection">
+                    <div class="divider text-sm opacity-60" data-i18n="or_enter_guest">Или введите данные гостя</div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="label"><span class="label-text font-medium" data-i18n="guest_name">Имя гостя</span></label>
+                            <input type="text" name="guest_name" class="input input-bordered w-full" />
+                        </div>
+                        <div>
+                            <label class="label"><span class="label-text font-medium" data-i18n="guest_phone">Телефон</span></label>
+                            <input type="tel" name="guest_phone" class="input input-bordered w-full" />
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="label"><span class="label-text font-medium" data-i18n="guest_country">Страна</span></label>
+                            <input type="text" name="guest_country" class="input input-bordered w-full" />
+                        </div>
+                        <div>
+                            <label class="label"><span class="label-text font-medium" data-i18n="guest_email">Email</span></label>
+                            <input type="email" name="guest_email" class="input input-bordered w-full" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-action">
+                    <button type="button" class="btn btn-ghost" onclick="closeCheckinBookingModal()" data-i18n="cancel">Отмена</button>
+                    <button type="submit" class="btn btn-primary" data-i18n="save">Сохранить</button>
+                </div>
+            </form>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+
     <script src="../js/layout.js"></script>
     <script>
         // ==================== STATE ====================
         let occupancy = [];
+        let occupancyWithBookings = [];
         let buildings = [];
         let buildingTypes = [];
         let rooms = [];
         let categories = [];
         let teamMembers = [];
         let residents = [];
+        let retreats = [];
         let arrivals = [];
         let departures = [];
         let tomorrowArrivals = [];
@@ -302,6 +533,12 @@
         let weekOffset = 0; // 0 = текущая неделя, 1 = следующая, -1 = прошлая
         let occupancyChart = null;
         let statsCollapsed = localStorage.getItem('srsk_stats_collapsed') !== 'false';
+
+        // Booking state
+        let bookingStep = 1;
+        let bookingSelectedBeds = new Set(); // Set of room_id + '_' + bed_index
+        let bookingBuildingId = null;
+        let editingBookingId = null;
 
         const t = key => Layout.t(key);
         const today = new Date().toISOString().split('T')[0];
@@ -378,7 +615,8 @@
                 .from('residents')
                 .select(`*, rooms(id, number, floor, buildings(id, name_ru, name_en, name_hi)),
                          resident_categories(id, name_ru, name_en, name_hi, color),
-                         team_members(id, first_name, last_name, spiritual_name)`)
+                         team_members(id, first_name, last_name, spiritual_name),
+                         bookings(id, contact_name, contact_phone, check_in, check_out)`)
                 .eq('status', 'active')
                 .lte('check_in', date)
                 .or(`check_out.is.null,check_out.gte.${date}`)
@@ -393,6 +631,20 @@
                 .eq('id', residentId)
                 .single();
             return data;
+        }
+
+        async function loadRetreats() {
+            const { data } = await Layout.db
+                .from('retreats')
+                .select('*')
+                .gte('end_date', today)
+                .order('start_date');
+            return data || [];
+        }
+
+        async function loadOccupancyWithBookings(date = selectedDate) {
+            const { data } = await Layout.db.rpc('get_room_occupancy_with_bookings', { target_date: date });
+            return data || [];
         }
 
         function calcOccupancyByType() {
@@ -530,8 +782,9 @@
 
         async function refreshDateData() {
             // Перезагружаем данные для выбранной даты
-            [occupancy, residents] = await Promise.all([
+            [occupancy, occupancyWithBookings, residents] = await Promise.all([
                 loadOccupancy(selectedDate),
+                loadOccupancyWithBookings(selectedDate),
                 loadResidents(selectedDate)
             ]);
             occupancyByType = calcOccupancyByType();
@@ -812,27 +1065,55 @@
                         </div>
                         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 p-4">
                             ${building.rooms.map(room => {
-                                let statusClass = 'room-available';
+                                // Получаем данные с разделением occupied/booked/needs_cleaning
+                                const roomWithBookings = occupancyWithBookings.find(r => r.room_id === room.room_id);
+                                const occupied = roomWithBookings?.occupied ?? room.occupied ?? 0;
+                                const booked = roomWithBookings?.booked ?? 0;
+                                const needsCleaning = roomWithBookings?.needs_cleaning ?? 0;
+                                const capacity = room.capacity || 1;
+
                                 let statusIcon = '🟢';
-                                if (room.occupied > 0 && room.occupied < room.capacity) {
-                                    statusClass = 'room-partial';
+                                let borderColor = '#10b981'; // green
+                                let statusLabel = '';
+
+                                if (needsCleaning > 0) {
+                                    // Требует уборки (выезд сегодня) - КРАСНЫЙ, важно!
+                                    statusIcon = '🧹';
+                                    borderColor = '#ef4444'; // red
+                                    statusLabel = `<div class="text-xs text-error font-medium">${t('needs_cleaning') || 'Уборка'}</div>`;
+                                } else if (occupied >= capacity) {
+                                    // Полностью заселено
+                                    statusIcon = '🟣';
+                                    borderColor = '#8b5cf6'; // purple
+                                } else if (occupied > 0) {
+                                    // Частично заселено
+                                    statusIcon = '🟠';
+                                    borderColor = '#f59e0b'; // orange
+                                } else if (booked > 0) {
+                                    // Только забронировано (не заселено)
                                     statusIcon = '🟡';
-                                } else if (room.occupied >= room.capacity) {
-                                    statusClass = 'room-full';
-                                    statusIcon = '🔴';
+                                    borderColor = '#eab308'; // yellow
+                                }
+
+                                // Формируем текст занятости
+                                let occupancyText = `${occupied}/${capacity}`;
+                                if (booked > 0) {
+                                    occupancyText = `${occupied}+${booked}/${capacity}`;
                                 }
 
                                 return `
-                                    <div class="bg-base-200/50 rounded-lg p-3 ${statusClass} cursor-pointer hover:bg-base-200 transition-colors"
+                                    <div class="bg-base-200/50 rounded-lg p-3 cursor-pointer hover:bg-base-200 transition-colors"
+                                         style="border-left: 4px solid ${borderColor}"
                                          onclick="openRoomModal('${room.room_id}')">
                                         <div class="flex items-center justify-between mb-1">
                                             <span class="font-bold">${room.room_number}</span>
                                             <span class="text-xs">${statusIcon}</span>
                                         </div>
                                         <div class="text-sm opacity-60">
-                                            ${room.occupied}/${room.capacity} ${t('beds')}
+                                            ${occupancyText} ${t('beds')}
                                         </div>
-                                        ${room.room_type_name_ru ? `
+                                        ${statusLabel}
+                                        ${!statusLabel && room.room_type_name_ru ? `
                                             <div class="text-xs opacity-40 mt-1">${Layout.currentLang === 'ru' ? room.room_type_name_ru : room.room_type_name_en || room.room_type_name_ru}</div>
                                         ` : ''}
                                     </div>
@@ -907,11 +1188,12 @@
 
         // Цвета статусов для плана
         const statusColors = {
-            available: '#10b981',
-            occupied: '#8b5cf6',
-            departing: '#f97316',
-            maintenance: '#ef4444',
-            mothballed: '#9ca3af'
+            available: '#10b981',    // Зелёный - свободно
+            occupied: '#8b5cf6',     // Фиолетовый - заселено
+            booked: '#eab308',       // Жёлтый - забронировано
+            cleaning: '#ef4444',     // Красный - требует уборки (выезд сегодня)
+            maintenance: '#6b7280',  // Серый - на ремонте
+            mothballed: '#9ca3af'    // Светло-серый - законсервировано
         };
 
         function renderPlanView() {
@@ -996,9 +1278,11 @@
             );
 
             floorRooms.forEach(room => {
-                const roomOccupancy = occupancy.find(o => o.room_id === room.id);
-                const occupied = roomOccupancy?.occupied || 0;
-                const capacity = roomOccupancy?.capacity || room.capacity || 1;
+                const roomOcc = occupancyWithBookings.find(o => o.room_id === room.id);
+                const occupied = roomOcc?.occupied || 0;
+                const booked = roomOcc?.booked || 0;
+                const needsCleaning = roomOcc?.needs_cleaning || 0;
+                const capacity = roomOcc?.capacity || room.capacity || 1;
 
                 const x = parseFloat(room.plan_x);
                 const y = parseFloat(room.plan_y);
@@ -1010,10 +1294,10 @@
                 g.style.cursor = 'pointer';
                 g.onclick = () => openRoomModal(room.id);
 
-                // Проверяем особые статусы
-                const baseStatus = room.status === 'maintenance' ? 'maintenance' :
-                                   room.status === 'mothballed' ? 'mothballed' :
-                                   departures.some(d => d.room_id === room.id) ? 'departing' : null;
+                // Проверяем особые статусы (приоритет: уборка > ремонт > консервация)
+                const baseStatus = needsCleaning > 0 ? 'cleaning' :
+                                   room.status === 'maintenance' ? 'maintenance' :
+                                   room.status === 'mothballed' ? 'mothballed' : null;
 
                 if (baseStatus) {
                     const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -1031,7 +1315,9 @@
                         rect.setAttribute('y', y);
                         rect.setAttribute('width', halfW);
                         rect.setAttribute('height', h);
-                        rect.setAttribute('fill', i < occupied ? statusColors.occupied : statusColors.available);
+                        // Сначала занятые, потом забронированные, потом свободные
+                        const bedStatus = i < occupied ? 'occupied' : (i < occupied + booked ? 'booked' : 'available');
+                        rect.setAttribute('fill', statusColors[bedStatus]);
                         rect.setAttribute('stroke', '#e5e7eb');
                         rect.setAttribute('stroke-width', '0.15');
                         g.appendChild(rect);
@@ -1047,7 +1333,8 @@
                         rect.setAttribute('y', y + py * halfH);
                         rect.setAttribute('width', halfW);
                         rect.setAttribute('height', halfH);
-                        rect.setAttribute('fill', i < occupied ? statusColors.occupied : statusColors.available);
+                        const bedStatus = i < occupied ? 'occupied' : (i < occupied + booked ? 'booked' : 'available');
+                        rect.setAttribute('fill', statusColors[bedStatus]);
                         rect.setAttribute('stroke', '#e5e7eb');
                         rect.setAttribute('stroke-width', '0.15');
                         g.appendChild(rect);
@@ -1058,7 +1345,8 @@
                     rect.setAttribute('y', y);
                     rect.setAttribute('width', w);
                     rect.setAttribute('height', h);
-                    rect.setAttribute('fill', occupied > 0 ? statusColors.occupied : statusColors.available);
+                    const bedStatus = occupied > 0 ? 'occupied' : (booked > 0 ? 'booked' : 'available');
+                    rect.setAttribute('fill', statusColors[bedStatus]);
                     g.appendChild(rect);
                 }
 
@@ -1077,11 +1365,15 @@
         // ==================== ROOM MODAL ====================
         async function openRoomModal(roomId) {
             selectedRoomId = roomId;
-            const room = occupancy.find(r => r.room_id === roomId);
+            const room = occupancyWithBookings.find(r => r.room_id === roomId) || occupancy.find(r => r.room_id === roomId);
             if (!room) return;
 
-            // Находим жильцов комнаты
+            // Находим жильцов комнаты (включая placeholder от броней)
             const roomResidents = residents.filter(r => r.room_id === roomId);
+
+            // Разделяем на заселённых и забронированных
+            const checkedIn = roomResidents.filter(r => r.team_member_id || r.guest_name);
+            const bookedPlaceholders = roomResidents.filter(r => r.booking_id && !r.team_member_id && !r.guest_name);
 
             const modalHtml = `
                 <dialog id="roomModal" class="modal modal-open">
@@ -1097,15 +1389,19 @@
                                     <div class="opacity-60">${t('room_floor')}</div>
                                     <div class="font-medium">${room.floor}</div>
                                     <div class="opacity-60">${t('stat_occupied')}</div>
-                                    <div class="font-medium">${room.occupied} / ${room.capacity}</div>
+                                    <div class="font-medium">${room.occupied || 0} / ${room.capacity}</div>
+                                    ${(room.booked || 0) > 0 ? `
+                                        <div class="opacity-60">${t('floor_plan_booked') || 'Забронировано'}</div>
+                                        <div class="font-medium text-warning">${room.booked}</div>
+                                    ` : ''}
                                 </div>
                             </div>
 
-                            ${roomResidents.length > 0 ? `
+                            ${checkedIn.length > 0 ? `
                                 <div>
                                     <h4 class="font-medium mb-2">${t('room_residents') || 'Проживающие'}</h4>
                                     <div class="space-y-2">
-                                        ${roomResidents.map(r => `
+                                        ${checkedIn.map(r => `
                                             <div class="flex items-center justify-between p-2 bg-base-200 rounded">
                                                 <div class="font-medium">${getDisplayName(r)}</div>
                                                 <div class="text-xs opacity-60">до ${r.check_out ? new Date(r.check_out).toLocaleDateString() : '∞'}</div>
@@ -1113,9 +1409,28 @@
                                         `).join('')}
                                     </div>
                                 </div>
-                            ` : `
+                            ` : ''}
+
+                            ${bookedPlaceholders.length > 0 ? `
+                                <div>
+                                    <h4 class="font-medium mb-2 text-warning">${t('floor_plan_booked') || 'Забронировано'}</h4>
+                                    <div class="space-y-2">
+                                        ${bookedPlaceholders.map(r => `
+                                            <div class="flex items-center justify-between p-2 bg-warning/20 rounded border border-warning/30 cursor-pointer hover:bg-warning/30 transition-colors" onclick="closeRoomModal(); openCheckinBookingModal('${r.id}')">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="badge badge-warning badge-sm">${t('booking_placeholder') || 'Бронь'}</span>
+                                                    <span class="text-sm opacity-70">до ${r.check_out ? new Date(r.check_out).toLocaleDateString() : '∞'}</span>
+                                                </div>
+                                                <div class="text-xs text-primary font-medium">${t('booking_checkin_title') || 'Заселить'} →</div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+
+                            ${checkedIn.length === 0 && bookedPlaceholders.length === 0 ? `
                                 <div class="text-center py-4 opacity-50">${t('room_no_residents') || 'Комната свободна'}</div>
-                            `}
+                            ` : ''}
                         </div>
 
                         <div class="modal-action">
@@ -1305,16 +1620,483 @@
             }
         }
 
+        // ==================== BOOKING MODAL ====================
+        function openBookingModal(bookingId = null) {
+            editingBookingId = bookingId;
+            bookingStep = 1;
+            bookingSelectedBeds.clear();
+
+            const form = Layout.$('#bookingForm');
+            const title = Layout.$('#bookingModalTitle');
+
+            form.reset();
+            form.check_in.value = today;
+            form.check_out.value = '';
+
+            // Populate retreat select
+            const retreatSelect = Layout.$('#bookingRetreatSelect');
+            retreatSelect.innerHTML = `<option value="">—</option>` +
+                retreats.map(r => `<option value="${r.id}">${Layout.getName(r)}</option>`).join('');
+
+            // Populate building select for step 2
+            const buildingSelect = Layout.$('#bookingBuildingSelect');
+            buildingSelect.innerHTML = buildings.map(b =>
+                `<option value="${b.id}">${Layout.getName(b)}</option>`
+            ).join('');
+            bookingBuildingId = buildings[0]?.id;
+
+            if (bookingId) {
+                title.textContent = t('booking_edit');
+                // TODO: Load existing booking data
+            } else {
+                title.textContent = t('booking_title');
+            }
+
+            updateBookingStepIndicators();
+            Layout.$('#bookingStep1').classList.remove('hidden');
+            Layout.$('#bookingStep2').classList.add('hidden');
+
+            Layout.$('#bookingModal').showModal();
+        }
+
+        function closeBookingModal() {
+            Layout.$('#bookingModal').close();
+            editingBookingId = null;
+            bookingSelectedBeds.clear();
+        }
+
+        function updateBookingStepIndicators() {
+            const step1 = Layout.$('#bookingStep1Indicator');
+            const step2 = Layout.$('#bookingStep2Indicator');
+
+            if (bookingStep === 1) {
+                step1.classList.remove('opacity-40');
+                step1.querySelector('span:first-child').classList.add('bg-primary', 'text-primary-content');
+                step1.querySelector('span:first-child').classList.remove('bg-base-300');
+                step2.classList.add('opacity-40');
+                step2.querySelector('span:first-child').classList.remove('bg-primary', 'text-primary-content');
+                step2.querySelector('span:first-child').classList.add('bg-base-300');
+            } else {
+                step1.classList.add('opacity-40');
+                step1.querySelector('span:first-child').classList.remove('bg-primary', 'text-primary-content');
+                step1.querySelector('span:first-child').classList.add('bg-base-300');
+                step2.classList.remove('opacity-40');
+                step2.querySelector('span:first-child').classList.add('bg-primary', 'text-primary-content');
+                step2.querySelector('span:first-child').classList.remove('bg-base-300');
+            }
+        }
+
+        function goToBookingStep2() {
+            const form = Layout.$('#bookingForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            bookingStep = 2;
+            updateBookingStepIndicators();
+            Layout.$('#bookingStep1').classList.add('hidden');
+            Layout.$('#bookingStep2').classList.remove('hidden');
+
+            // Update total count
+            const bedsCount = parseInt(form.beds_count.value) || 1;
+            Layout.$('#bookingTotalCount').textContent = bedsCount;
+            Layout.$('#bookingSelectedCount').textContent = bookingSelectedBeds.size;
+
+            renderBookingPlan();
+        }
+
+        function goToBookingStep1() {
+            bookingStep = 1;
+            updateBookingStepIndicators();
+            Layout.$('#bookingStep1').classList.remove('hidden');
+            Layout.$('#bookingStep2').classList.add('hidden');
+        }
+
+        async function renderBookingPlan() {
+            const container = Layout.$('#bookingPlanContainer');
+            const buildingSelect = Layout.$('#bookingBuildingSelect');
+            bookingBuildingId = buildingSelect.value;
+
+            const form = Layout.$('#bookingForm');
+            const checkIn = form.check_in.value;
+            const checkOut = form.check_out.value;
+
+            // Load occupancy for the booking dates
+            const { data: bookingOccupancy } = await Layout.db.rpc('get_room_occupancy_with_bookings', { target_date: checkIn });
+
+            // Get floor plans for selected building
+            const buildingPlans = floorPlans.filter(p => p.building_id === bookingBuildingId).sort((a, b) => a.floor - b.floor);
+            const buildingRooms = rooms.filter(r => r.building_id === bookingBuildingId);
+
+            if (buildingPlans.length === 0) {
+                container.innerHTML = `<div class="col-span-2 text-center py-8 opacity-50">${t('floor_plan_no_plan') || 'Планы этажей не загружены'}</div>`;
+                return;
+            }
+
+            container.innerHTML = buildingPlans.map(plan => `
+                <div class="bg-base-200 rounded-lg p-2">
+                    <div class="text-xs font-medium mb-1 opacity-60">${t('floor_plan_floor') || 'Этаж'} ${plan.floor}</div>
+                    <div class="floor-plan-container relative">
+                        <img src="${plan.image_url}" alt="Этаж ${plan.floor}" class="w-full" />
+                        <svg class="floor-plan-svg absolute top-0 left-0 w-full h-full" id="bookingPlanSvg_${plan.floor}" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+                    </div>
+                </div>
+            `).join('');
+
+            // Render markers for each floor
+            buildingPlans.forEach(plan => {
+                renderBookingPlanMarkers(plan.floor, buildingRooms, bookingOccupancy || []);
+            });
+        }
+
+        function renderBookingPlanMarkers(floor, buildingRooms, bookingOccupancy) {
+            const svg = Layout.$(`#bookingPlanSvg_${floor}`);
+            if (!svg) return;
+
+            svg.innerHTML = '';
+
+            const floorRooms = buildingRooms.filter(r =>
+                r.floor === floor &&
+                r.plan_x != null &&
+                r.plan_y != null &&
+                r.status !== 'maintenance' &&
+                r.status !== 'mothballed'
+            );
+
+            floorRooms.forEach(room => {
+                const roomOcc = bookingOccupancy.find(o => o.room_id === room.id);
+                const occupied = roomOcc?.occupied || 0;
+                const booked = roomOcc?.booked || 0;
+                const capacity = roomOcc?.capacity || room.capacity || 1;
+
+                const x = parseFloat(room.plan_x);
+                const y = parseFloat(room.plan_y);
+                const w = parseFloat(room.plan_width) || 8;
+                const h = parseFloat(room.plan_height) || 8;
+
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.setAttribute('data-room-id', room.id);
+
+                // Render beds based on capacity
+                if (capacity === 2) {
+                    const halfW = w / 2;
+                    for (let i = 0; i < 2; i++) {
+                        const bedKey = `${room.id}_${i}`;
+                        const isOccupied = i < occupied;
+                        const isBooked = i >= occupied && i < occupied + booked;
+                        const isSelected = bookingSelectedBeds.has(bedKey);
+                        const isAvailable = !isOccupied && !isBooked;
+
+                        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                        rect.setAttribute('x', x + i * halfW);
+                        rect.setAttribute('y', y);
+                        rect.setAttribute('width', halfW);
+                        rect.setAttribute('height', h);
+
+                        if (isSelected) {
+                            rect.setAttribute('fill', statusColors.available);
+                            rect.setAttribute('stroke', '#6366f1');
+                            rect.setAttribute('stroke-width', '0.5');
+                        } else if (isOccupied) {
+                            rect.setAttribute('fill', statusColors.occupied);
+                        } else if (isBooked) {
+                            rect.setAttribute('fill', statusColors.booked);
+                        } else {
+                            rect.setAttribute('fill', statusColors.available);
+                        }
+
+                        if (isAvailable || isSelected) {
+                            rect.style.cursor = 'pointer';
+                            rect.onclick = () => toggleBookingBed(room.id, i, capacity);
+                        }
+
+                        g.appendChild(rect);
+                    }
+                } else if (capacity === 4) {
+                    const halfW = w / 2;
+                    const halfH = h / 2;
+                    const positions = [[0, 0], [1, 0], [0, 1], [1, 1]];
+                    for (let i = 0; i < 4; i++) {
+                        const [px, py] = positions[i];
+                        const bedKey = `${room.id}_${i}`;
+                        const isOccupied = i < occupied;
+                        const isBooked = i >= occupied && i < occupied + booked;
+                        const isSelected = bookingSelectedBeds.has(bedKey);
+                        const isAvailable = !isOccupied && !isBooked;
+
+                        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                        rect.setAttribute('x', x + px * halfW);
+                        rect.setAttribute('y', y + py * halfH);
+                        rect.setAttribute('width', halfW);
+                        rect.setAttribute('height', halfH);
+
+                        if (isSelected) {
+                            rect.setAttribute('fill', statusColors.available);
+                            rect.setAttribute('stroke', '#6366f1');
+                            rect.setAttribute('stroke-width', '0.5');
+                        } else if (isOccupied) {
+                            rect.setAttribute('fill', statusColors.occupied);
+                        } else if (isBooked) {
+                            rect.setAttribute('fill', statusColors.booked);
+                        } else {
+                            rect.setAttribute('fill', statusColors.available);
+                        }
+
+                        if (isAvailable || isSelected) {
+                            rect.style.cursor = 'pointer';
+                            rect.onclick = () => toggleBookingBed(room.id, i, capacity);
+                        }
+
+                        g.appendChild(rect);
+                    }
+                } else {
+                    // Single bed room
+                    const bedKey = `${room.id}_0`;
+                    const isOccupied = occupied > 0;
+                    const isBooked = booked > 0;
+                    const isSelected = bookingSelectedBeds.has(bedKey);
+                    const isAvailable = !isOccupied && !isBooked;
+
+                    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    rect.setAttribute('x', x);
+                    rect.setAttribute('y', y);
+                    rect.setAttribute('width', w);
+                    rect.setAttribute('height', h);
+
+                    if (isSelected) {
+                        rect.setAttribute('fill', statusColors.available);
+                        rect.setAttribute('stroke', '#6366f1');
+                        rect.setAttribute('stroke-width', '0.5');
+                    } else if (isOccupied) {
+                        rect.setAttribute('fill', statusColors.occupied);
+                    } else if (isBooked) {
+                        rect.setAttribute('fill', statusColors.booked);
+                    } else {
+                        rect.setAttribute('fill', statusColors.available);
+                    }
+
+                    if (isAvailable || isSelected) {
+                        rect.style.cursor = 'pointer';
+                        rect.onclick = () => toggleBookingBed(room.id, 0, capacity);
+                    }
+
+                    g.appendChild(rect);
+                }
+
+                // Room number label
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', x + w / 2);
+                text.setAttribute('y', y + h / 2);
+                text.classList.add('room-label');
+                text.textContent = room.number;
+                text.style.pointerEvents = 'none';
+
+                g.appendChild(text);
+                svg.appendChild(g);
+            });
+        }
+
+        function toggleBookingBed(roomId, bedIndex, capacity) {
+            const bedKey = `${roomId}_${bedIndex}`;
+            const form = Layout.$('#bookingForm');
+            const maxBeds = parseInt(form.beds_count.value) || 1;
+
+            if (bookingSelectedBeds.has(bedKey)) {
+                bookingSelectedBeds.delete(bedKey);
+            } else {
+                if (bookingSelectedBeds.size >= maxBeds) {
+                    // Already selected max beds
+                    return;
+                }
+                bookingSelectedBeds.add(bedKey);
+            }
+
+            // Update counter
+            Layout.$('#bookingSelectedCount').textContent = bookingSelectedBeds.size;
+
+            // Enable/disable save button
+            const saveBtn = Layout.$('#bookingSaveBtn');
+            saveBtn.disabled = bookingSelectedBeds.size !== maxBeds;
+
+            // Re-render plan to show selection
+            renderBookingPlan();
+        }
+
+        async function saveBooking() {
+            const form = Layout.$('#bookingForm');
+            const bedsCount = parseInt(form.beds_count.value) || 1;
+
+            if (bookingSelectedBeds.size !== bedsCount) {
+                alert(`Выберите ${bedsCount} мест на плане`);
+                return;
+            }
+
+            try {
+                // Create booking
+                const bookingData = {
+                    name: form.name.value.trim() || null,
+                    contact_name: form.contact_name.value.trim(),
+                    contact_phone: form.contact_phone.value.trim() || null,
+                    contact_email: form.contact_email.value.trim() || null,
+                    contact_country: form.contact_country.value.trim() || null,
+                    beds_count: bedsCount,
+                    check_in: form.check_in.value,
+                    check_out: form.check_out.value,
+                    retreat_id: form.retreat_id.value || null,
+                    notes: form.notes.value.trim() || null,
+                    status: 'active'
+                };
+
+                const { data: booking, error: bookingError } = await Layout.db
+                    .from('bookings')
+                    .insert(bookingData)
+                    .select()
+                    .single();
+
+                if (bookingError) throw bookingError;
+
+                // Create placeholder residents for each selected bed
+                const residentsData = [];
+                bookingSelectedBeds.forEach(bedKey => {
+                    const [roomId] = bedKey.split('_');
+                    residentsData.push({
+                        room_id: roomId,
+                        booking_id: booking.id,
+                        check_in: form.check_in.value,
+                        check_out: form.check_out.value,
+                        status: 'active'
+                    });
+                });
+
+                const { error: residentsError } = await Layout.db
+                    .from('residents')
+                    .insert(residentsData);
+
+                if (residentsError) throw residentsError;
+
+                closeBookingModal();
+                await refreshData();
+
+            } catch (err) {
+                console.error('Error saving booking:', err);
+                alert('Ошибка сохранения: ' + err.message);
+            }
+        }
+
+        // ==================== CHECKIN FROM BOOKING ====================
+        let checkinResidentId = null;
+
+        async function openCheckinBookingModal(residentId) {
+            checkinResidentId = residentId;
+
+            // Load resident with booking info
+            const { data: resident } = await Layout.db
+                .from('residents')
+                .select('*, bookings(*), rooms(number, buildings(name_ru, name_en))')
+                .eq('id', residentId)
+                .single();
+
+            if (!resident || !resident.bookings) return;
+
+            const booking = resident.bookings;
+            const room = resident.rooms;
+
+            // Show booking info
+            Layout.$('#checkinBookingInfo').innerHTML = `
+                <strong>${booking.name || booking.contact_name}</strong> — ${room?.buildings ? Layout.getName(room.buildings) : ''} / ${room?.number || ''}
+                <br>${new Date(booking.check_in).toLocaleDateString()} — ${new Date(booking.check_out).toLocaleDateString()}
+            `;
+
+            // Populate team member select
+            const teamMemberSelect = Layout.$('#checkinTeamMemberSelect');
+            teamMemberSelect.innerHTML = `<option value="">— ${t('or_enter_guest')} —</option>` +
+                teamMembers.map(m => {
+                    const name = m.spiritual_name || `${m.first_name} ${m.last_name || ''}`.trim();
+                    return `<option value="${m.id}">${Layout.currentLang === 'ru' ? name : Layout.transliterate(name)}</option>`;
+                }).join('');
+
+            const form = Layout.$('#checkinBookingForm');
+            form.reset();
+            form.resident_id.value = residentId;
+
+            // Pre-fill from booking contact
+            form.guest_name.value = booking.contact_name || '';
+            form.guest_phone.value = booking.contact_phone || '';
+            form.guest_country.value = booking.contact_country || '';
+
+            // Toggle guest data based on team member selection
+            teamMemberSelect.onchange = () => {
+                const guestSection = Layout.$('#checkinGuestDataSection');
+                if (teamMemberSelect.value) {
+                    guestSection.classList.add('opacity-50');
+                    guestSection.querySelectorAll('input').forEach(i => i.disabled = true);
+                } else {
+                    guestSection.classList.remove('opacity-50');
+                    guestSection.querySelectorAll('input').forEach(i => i.disabled = false);
+                }
+            };
+
+            Layout.$('#checkinBookingModal').showModal();
+        }
+
+        function closeCheckinBookingModal() {
+            Layout.$('#checkinBookingModal').close();
+            checkinResidentId = null;
+        }
+
+        async function saveCheckinFromBooking(e) {
+            e.preventDefault();
+            if (!checkinResidentId) return;
+
+            const form = Layout.$('#checkinBookingForm');
+            const teamMemberId = form.team_member_id.value;
+            const guestName = form.guest_name.value.trim();
+
+            if (!teamMemberId && !guestName) {
+                alert('Выберите члена команды или введите имя гостя');
+                return;
+            }
+
+            try {
+                const updateData = {
+                    team_member_id: teamMemberId || null,
+                    guest_name: teamMemberId ? null : guestName,
+                    guest_phone: teamMemberId ? null : form.guest_phone.value.trim() || null,
+                    guest_email: teamMemberId ? null : form.guest_email?.value?.trim() || null,
+                    guest_country: teamMemberId ? null : form.guest_country.value.trim() || null
+                };
+
+                const { error } = await Layout.db
+                    .from('residents')
+                    .update(updateData)
+                    .eq('id', checkinResidentId);
+
+                if (error) throw error;
+
+                closeCheckinBookingModal();
+                await refreshData();
+
+            } catch (err) {
+                console.error('Error saving checkin:', err);
+                alert('Ошибка сохранения: ' + err.message);
+            }
+        }
+
         async function refreshData() {
-            const [occ, res, evToday, evTomorrow, weekRes] = await Promise.all([
+            const [occ, occWithBookings, res, evToday, evTomorrow, weekRes, rets] = await Promise.all([
                 loadOccupancy(),
+                loadOccupancyWithBookings(),
                 loadResidents(),
                 loadEvents(today),
                 loadEvents(tomorrow),
-                loadWeekResidents()
+                loadWeekResidents(),
+                loadRetreats()
             ]);
             occupancy = occ;
+            occupancyWithBookings = occWithBookings;
             residents = res;
+            retreats = rets;
             [arrivals, departures] = evToday;
             [tomorrowArrivals, tomorrowDepartures] = evTomorrow;
             occupancyByType = calcOccupancyByType();
@@ -1345,17 +2127,19 @@
             await Layout.init({ module: 'housing', menuId: 'housing', itemId: 'occupancy' });
 
             // Загружаем базовые данные
-            [buildingTypes, buildings, rooms, categories, teamMembers] = await Promise.all([
+            [buildingTypes, buildings, rooms, categories, teamMembers, retreats] = await Promise.all([
                 loadBuildingTypes(),
                 loadBuildings(),
                 loadRooms(),
                 loadCategories(),
-                loadTeamMembers()
+                loadTeamMembers(),
+                loadRetreats()
             ]);
 
             // Загружаем данные, зависящие от buildings
-            const [occ, res, plans, evToday, evTomorrow, weekRes] = await Promise.all([
+            const [occ, occWithBookings, res, plans, evToday, evTomorrow, weekRes] = await Promise.all([
                 loadOccupancy(),
+                loadOccupancyWithBookings(),
                 loadResidents(),
                 loadFloorPlans(),
                 loadEvents(today),
@@ -1363,6 +2147,7 @@
                 loadWeekResidents()
             ]);
             occupancy = occ;
+            occupancyWithBookings = occWithBookings;
             residents = res;
             floorPlans = plans;
             [arrivals, departures] = evToday;
@@ -1380,6 +2165,7 @@
 
             // Forms
             Layout.$('#residentForm').addEventListener('submit', saveResident);
+            Layout.$('#checkinBookingForm').addEventListener('submit', saveCheckinFromBooking);
 
             updateUI();
 
