@@ -57,25 +57,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Основные:
 - `locations` — кухни (main, cafe, guest) с цветами
-- `recipes`, `recipe_categories` — рецепты и категории
+- `recipes`, `recipe_categories`, `recipe_ingredients` — рецепты
 - `products`, `product_categories` — продукты
 - `units` — единицы измерения (справочник)
 - `translations` — переводы интерфейса
-- `menu_days`, `menu_items` — меню на дни
-- `stock`, `stock_requests` — склад и заявки
+- `menu_days`, `menu_items`, `menu_templates` — меню
+- `stock`, `stock_requests`, `inventory` — склад и инвентаризация
 - `team_members`, `retreats`, `holidays` — команда и события
 
 ### SQL Migrations
 
-Файлы в `supabase/` выполняются последовательно:
-```
-001_schema.sql      — основная схема
-002_seed_recipes.sql — тестовые рецепты
-003_translations.sql — таблица переводов + базовые данные
-004_translations_pages.sql — доп. переводы
-005_missing_translations.sql — недостающие переводы
-006_units_table.sql — справочник единиц измерения
-```
+Файлы в `supabase/` выполняются последовательно по номерам (001-045):
+- `001-010` — основная схема, seed-данные, рецепты
+- `011-030` — переводы, RLS-политики, склад, команда
+- `031-045` — инвентаризация, меню-шаблоны, справочники
+
+Применять через Supabase SQL Editor последовательно.
 
 ## Key Patterns
 

@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Редактор плана — ШРСК</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>tailwind.config = { theme: { extend: { screens: { 'desktop': '1200px' } } } }</script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/common.css">
+    <style>
+        .floor-plan-wrapper {
+            background: repeating-linear-gradient(
+                45deg,
+                #f3f4f6,
+                #f3f4f6 10px,
+                #e5e7eb 10px,
+                #e5e7eb 20px
+            );
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        .floor-plan-container {
+            position: relative;
+            display: block;
+            width: 100%;
+            touch-action: none;
+        }
+        .floor-plan-container img {
+            width: 100%;
+            height: auto;
+            display: block;
+            pointer-events: none;
+            user-select: none;
+        }
+        .floor-plan-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .room-marker {
+            cursor: move;
+            transition: filter 0.2s ease;
+            stroke: none;
+            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+            fill: #8b5cf6;
+        }
+        .room-marker:hover {
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4));
+        }
+        .room-marker.dragging {
+            opacity: 0.7;
+            filter: drop-shadow(0 6px 12px rgba(0,0,0,0.5));
+        }
+        .room-marker.selected {
+            fill: #a78bfa;
+            filter: drop-shadow(0 0 6px rgba(139, 92, 246, 0.8));
+        }
+        .room-label {
+            fill: white;
+            font-weight: 600;
+            font-size: 3px;
+            text-anchor: middle;
+            dominant-baseline: central;
+            pointer-events: none;
+        }
+        .unplaced-room {
+            cursor: grab;
+            transition: all 0.2s ease;
+        }
+        .unplaced-room:hover {
+            background-color: oklch(var(--p) / 0.1);
+        }
+        .unplaced-room.dragging {
+            opacity: 0.5;
+        }
+        .drop-zone {
+            border: 2px dashed transparent;
+            transition: border-color 0.2s ease;
+        }
+        .drop-zone.drag-over {
+            border-color: oklch(var(--p));
+            background: oklch(var(--p) / 0.05);
+        }
+        .floor-tabs .tab-active {
+            background: oklch(var(--p));
+            color: oklch(var(--pc));
+        }
+        .resize-handle {
+            fill: white;
+            stroke: #6366f1;
+            stroke-width: 1;
+            cursor: nwse-resize;
+        }
+    </style>
+</head>
+<body class="bg-base-200 min-h-screen flex flex-col">
+
+    <div id="header-placeholder"></div>
+
+    <main class="container mx-auto px-4 py-6 flex-1">
+
+        <!-- Page Header -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div class="flex items-center gap-3">
+                <a href="floor-plan.html" class="btn btn-ghost btn-sm btn-circle">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </a>
+                <h1 class="text-2xl font-bold" data-i18n="floor_plan_editor_title">Редактор плана этажа</h1>
+            </div>
+            <div class="flex gap-2">
+                <button class="btn btn-ghost gap-2" onclick="resetPositions()">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span data-i18n="floor_plan_reset_positions">Сбросить</span>
+                </button>
+                <button class="btn btn-primary gap-2" onclick="savePositions()" id="saveBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span data-i18n="floor_plan_save_positions">Сохранить позиции</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Building & Floor Info -->
+        <div class="flex flex-wrap items-center gap-4 mb-4">
+            <div class="text-lg font-medium" id="buildingName">—</div>
+            <div id="floorTabsContainer" class="hidden">
+                <div class="tabs tabs-boxed floor-tabs bg-base-100 p-1 inline-flex" id="floorTabs">
+                    <!-- Generated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+            <!-- Floor Plan (3/4 width) -->
+            <div class="lg:col-span-3">
+                <div class="bg-base-100 rounded-lg shadow-sm overflow-hidden">
+                    <div class="floor-plan-wrapper drop-zone" id="floorPlanContainer">
+                        <div class="floor-plan-container">
+                            <img id="floorPlanImage" src="" alt="Floor plan" />
+                            <svg id="floorPlanSvg" class="floor-plan-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                <!-- Room markers will be added here -->
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Hint -->
+                    <div class="p-3 border-t border-base-200 text-sm opacity-60 text-center" data-i18n="floor_plan_drag_hint">
+                        Перетащите комнату на план
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar (1/4 width) -->
+            <div class="lg:col-span-1">
+                <!-- Unplaced Rooms -->
+                <div class="bg-base-100 rounded-lg shadow-sm overflow-hidden mb-4">
+                    <div class="p-3 border-b border-base-200 font-medium flex items-center justify-between">
+                        <span data-i18n="floor_plan_unplaced_rooms">Нераспределённые комнаты</span>
+                        <span class="badge badge-primary badge-sm" id="unplacedCount">0</span>
+                    </div>
+                    <div class="p-2 max-h-64 overflow-y-auto" id="unplacedRoomsList">
+                        <!-- Generated by JS -->
+                    </div>
+                    <div id="allPlacedMessage" class="hidden p-4 text-center text-sm opacity-60" data-i18n="floor_plan_all_rooms_placed">
+                        Все комнаты размещены
+                    </div>
+                </div>
+
+                <!-- Selected Room Settings -->
+                <div id="selectedRoomSettings" class="bg-base-100 rounded-lg shadow-sm overflow-hidden hidden">
+                    <div class="p-3 border-b border-base-200 font-medium">
+                        <span data-i18n="room_details">Информация о комнате</span>
+                    </div>
+                    <div class="p-4 space-y-4">
+                        <div class="text-lg font-bold" id="selectedRoomNumber">—</div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="label py-1"><span class="label-text text-sm">Ширина, %</span></label>
+                                <input type="number" id="markerWidth" min="1" max="50" value="8" step="0.5" class="input input-bordered input-sm w-full" />
+                            </div>
+                            <div>
+                                <label class="label py-1"><span class="label-text text-sm">Высота, %</span></label>
+                                <input type="number" id="markerHeight" min="1" max="50" value="8" step="0.5" class="input input-bordered input-sm w-full" />
+                            </div>
+                        </div>
+
+                        <button class="btn btn-ghost btn-sm btn-error w-full" onclick="removeFromPlan()">
+                            Убрать с плана
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <div id="footer-placeholder"></div>
+
+    <script src="../js/layout.js"></script>
+    <script>
+        // ==================== STATE ====================
+        let building = null;
+        let floorPlans = [];
+        let rooms = [];
+        let currentFloor = 1;
+        let selectedRoom = null;
+        let isDragging = false;
+        let dragData = null;
+        let hasChanges = false;
+
+        const t = key => Layout.t(key);
+
+        // ==================== DATA ====================
+        async function loadBuilding(buildingId) {
+            const { data } = await Layout.db
+                .from('buildings')
+                .select('*')
+                .eq('id', buildingId)
+                .single();
+            return data;
+        }
+
+        async function loadFloorPlans(buildingId) {
+            const { data } = await Layout.db
+                .from('floor_plans')
+                .select('*')
+                .eq('building_id', buildingId)
+                .order('floor');
+            return data || [];
+        }
+
+        // Натуральная сортировка (1, 2, 10, 11 вместо 1, 10, 11, 2)
+        function naturalSort(a, b) {
+            return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+        }
+
+        async function loadRooms(buildingId) {
+            const { data } = await Layout.db
+                .from('rooms')
+                .select('*')
+                .eq('building_id', buildingId)
+                .eq('is_active', true)
+                .order('floor');
+            // Сортируем номера комнат натурально
+            return (data || []).sort((a, b) => a.floor - b.floor || naturalSort(a.number, b.number));
+        }
+
+        // ==================== RENDER ====================
+        function renderFloorTabs() {
+            if (!building) return;
+
+            const container = Layout.$('#floorTabsContainer');
+            const tabs = Layout.$('#floorTabs');
+            const floors = building.floors || 1;
+
+            if (floors <= 1) {
+                container.classList.add('hidden');
+                return;
+            }
+
+            container.classList.remove('hidden');
+
+            tabs.innerHTML = '';
+            for (let i = 1; i <= floors; i++) {
+                const hasPlan = floorPlans.some(p => p.floor === i);
+                const tab = document.createElement('button');
+                tab.className = `tab ${currentFloor === i ? 'tab-active' : ''} ${!hasPlan ? 'opacity-50' : ''}`;
+                tab.textContent = `${t('floor_plan_floor')} ${i}`;
+                tab.disabled = !hasPlan;
+                tab.onclick = () => {
+                    if (hasPlan) selectFloor(i);
+                };
+                tabs.appendChild(tab);
+            }
+        }
+
+        function renderFloorPlan() {
+            const plan = floorPlans.find(p => p.floor === currentFloor);
+
+            if (!plan) {
+                Layout.$('#floorPlanImage').src = '';
+                return;
+            }
+
+            const img = Layout.$('#floorPlanImage');
+            img.src = plan.image_url;
+            img.onload = () => renderRoomMarkers();
+        }
+
+        function renderRoomMarkers() {
+            const svg = Layout.$('#floorPlanSvg');
+            svg.innerHTML = '';
+
+            const floorRooms = rooms.filter(r => r.floor === currentFloor && r.plan_x != null && r.plan_y != null);
+
+            floorRooms.forEach(room => {
+                const x = parseFloat(room.plan_x);
+                const y = parseFloat(room.plan_y);
+                const w = parseFloat(room.plan_width) || 8;
+                const h = parseFloat(room.plan_height) || 8;
+
+                // Create group
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.setAttribute('data-room-id', room.id);
+                g.classList.add('room-group');
+
+                // Rectangle
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('x', x);
+                rect.setAttribute('y', y);
+                rect.setAttribute('width', w);
+                rect.setAttribute('height', h);
+                rect.setAttribute('rx', '0');
+                rect.classList.add('room-marker');
+                if (selectedRoom && selectedRoom.id === room.id) {
+                    rect.classList.add('selected');
+                }
+
+                // Label
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', x + w / 2);
+                text.setAttribute('y', y + h / 2);
+                text.classList.add('room-label');
+                text.textContent = room.number;
+
+                g.appendChild(rect);
+                g.appendChild(text);
+
+                // Mouse events
+                rect.addEventListener('mousedown', e => startDragMarker(e, room));
+                rect.addEventListener('touchstart', e => startDragMarker(e, room), { passive: false });
+                rect.addEventListener('click', e => {
+                    e.stopPropagation();
+                    selectRoom(room);
+                });
+
+                svg.appendChild(g);
+            });
+        }
+
+        function renderUnplacedRooms() {
+            const list = Layout.$('#unplacedRoomsList');
+            const message = Layout.$('#allPlacedMessage');
+            const count = Layout.$('#unplacedCount');
+
+            const floorRooms = rooms.filter(r => r.floor === currentFloor);
+            const unplaced = floorRooms.filter(r => r.plan_x == null || r.plan_y == null);
+
+            count.textContent = unplaced.length;
+
+            if (unplaced.length === 0) {
+                list.innerHTML = '';
+                message.classList.remove('hidden');
+                return;
+            }
+
+            message.classList.add('hidden');
+
+            list.innerHTML = unplaced.map(room => `
+                <div class="unplaced-room flex items-center justify-between p-2 rounded cursor-grab"
+                     draggable="true"
+                     data-room-id="${room.id}"
+                     onmousedown="startDragUnplaced(event, '${room.id}')"
+                     ontouchstart="startDragUnplaced(event, '${room.id}')">
+                    <div class="font-medium">${room.number}</div>
+                    <div class="text-xs opacity-60">${room.capacity || 1} ${t('beds')}</div>
+                </div>
+            `).join('');
+        }
+
+        function updateSelectedRoomUI() {
+            const settings = Layout.$('#selectedRoomSettings');
+
+            if (!selectedRoom) {
+                settings.classList.add('hidden');
+                return;
+            }
+
+            settings.classList.remove('hidden');
+            Layout.$('#selectedRoomNumber').textContent = `${t('room_number')} ${selectedRoom.number}`;
+
+            const w = parseFloat(selectedRoom.plan_width) || 8;
+            const h = parseFloat(selectedRoom.plan_height) || 8;
+
+            Layout.$('#markerWidth').value = w;
+            Layout.$('#markerHeight').value = h;
+
+            renderRoomMarkers();
+        }
+
+        // ==================== FLOOR SELECTION ====================
+        function selectFloor(floor) {
+            currentFloor = floor;
+            selectedRoom = null;
+            renderFloorTabs();
+            renderFloorPlan();
+            renderUnplacedRooms();
+            updateSelectedRoomUI();
+        }
+
+        // ==================== ROOM SELECTION ====================
+        function selectRoom(room) {
+            selectedRoom = room;
+            updateSelectedRoomUI();
+        }
+
+        function deselectRoom() {
+            selectedRoom = null;
+            updateSelectedRoomUI();
+        }
+
+        // ==================== DRAG AND DROP ====================
+        function startDragMarker(e, room) {
+            e.preventDefault();
+            isDragging = true;
+            selectedRoom = room;
+            dragData = { type: 'marker', room };
+
+            const rect = e.target;
+            rect.classList.add('dragging');
+
+            document.addEventListener('mousemove', onDrag);
+            document.addEventListener('mouseup', endDrag);
+            document.addEventListener('touchmove', onDrag, { passive: false });
+            document.addEventListener('touchend', endDrag);
+        }
+
+        function startDragUnplaced(e, roomId) {
+            e.preventDefault();
+            const room = rooms.find(r => r.id === roomId);
+            if (!room) return;
+
+            isDragging = true;
+            dragData = { type: 'unplaced', room };
+
+            const el = e.target.closest('.unplaced-room');
+            if (el) el.classList.add('dragging');
+
+            document.addEventListener('mousemove', onDrag);
+            document.addEventListener('mouseup', endDrag);
+            document.addEventListener('touchmove', onDrag, { passive: false });
+            document.addEventListener('touchend', endDrag);
+        }
+
+        function onDrag(e) {
+            if (!isDragging || !dragData) return;
+            e.preventDefault();
+
+            const container = Layout.$('#floorPlanContainer');
+            const rect = container.getBoundingClientRect();
+
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            // Check if over the drop zone
+            if (clientX >= rect.left && clientX <= rect.right &&
+                clientY >= rect.top && clientY <= rect.bottom) {
+
+                container.classList.add('drag-over');
+
+                // Calculate percentage position
+                const x = ((clientX - rect.left) / rect.width) * 100;
+                const y = ((clientY - rect.top) / rect.height) * 100;
+
+                // Center the marker
+                const w = parseFloat(dragData.room.plan_width) || 8;
+                const h = parseFloat(dragData.room.plan_height) || 8;
+
+                const newX = Math.max(0, Math.min(100 - w, x - w / 2));
+                const newY = Math.max(0, Math.min(100 - h, y - h / 2));
+
+                // Update room position
+                dragData.room.plan_x = newX;
+                dragData.room.plan_y = newY;
+
+                renderRoomMarkers();
+                renderUnplacedRooms();
+            } else {
+                container.classList.remove('drag-over');
+            }
+        }
+
+        function endDrag(e) {
+            if (!isDragging) return;
+
+            isDragging = false;
+            const container = Layout.$('#floorPlanContainer');
+            container.classList.remove('drag-over');
+
+            // Remove dragging class
+            document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+
+            if (dragData && dragData.room.plan_x != null) {
+                hasChanges = true;
+                selectRoom(dragData.room);
+            }
+
+            dragData = null;
+
+            document.removeEventListener('mousemove', onDrag);
+            document.removeEventListener('mouseup', endDrag);
+            document.removeEventListener('touchmove', onDrag);
+            document.removeEventListener('touchend', endDrag);
+
+            renderRoomMarkers();
+            renderUnplacedRooms();
+        }
+
+        // ==================== MARKER SIZE ====================
+        Layout.$('#markerWidth')?.addEventListener('input', function() {
+            if (!selectedRoom) return;
+            const value = parseFloat(this.value) || 8;
+            selectedRoom.plan_width = value;
+            hasChanges = true;
+            renderRoomMarkers();
+        });
+
+        Layout.$('#markerHeight')?.addEventListener('input', function() {
+            if (!selectedRoom) return;
+            const value = parseFloat(this.value) || 8;
+            selectedRoom.plan_height = value;
+            hasChanges = true;
+            renderRoomMarkers();
+        });
+
+        // ==================== ACTIONS ====================
+        function removeFromPlan() {
+            if (!selectedRoom) return;
+
+            selectedRoom.plan_x = null;
+            selectedRoom.plan_y = null;
+            hasChanges = true;
+
+            deselectRoom();
+            renderRoomMarkers();
+            renderUnplacedRooms();
+        }
+
+        async function savePositions() {
+            const saveBtn = Layout.$('#saveBtn');
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = `<span class="loading loading-spinner loading-sm"></span>`;
+
+            try {
+                const floorRooms = rooms.filter(r => r.floor === currentFloor);
+
+                for (const room of floorRooms) {
+                    const { error } = await Layout.db
+                        .from('rooms')
+                        .update({
+                            plan_x: room.plan_x,
+                            plan_y: room.plan_y,
+                            plan_width: room.plan_width || 8,
+                            plan_height: room.plan_height || 8
+                        })
+                        .eq('id', room.id);
+
+                    if (error) throw error;
+                }
+
+                hasChanges = false;
+
+                // Show success toast
+                const toast = document.createElement('div');
+                toast.className = 'toast toast-top toast-end';
+                toast.innerHTML = `
+                    <div class="alert alert-success">
+                        <span data-i18n="floor_plan_positions_saved">${t('floor_plan_positions_saved')}</span>
+                    </div>
+                `;
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 3000);
+
+            } catch (err) {
+                console.error('Save error:', err);
+                alert('Ошибка сохранения: ' + err.message);
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span data-i18n="floor_plan_save_positions">${t('floor_plan_save_positions')}</span>
+                `;
+            }
+        }
+
+        async function resetPositions() {
+            if (!confirm('Сбросить все позиции комнат на этом этаже?')) return;
+
+            const floorRooms = rooms.filter(r => r.floor === currentFloor);
+            floorRooms.forEach(room => {
+                room.plan_x = null;
+                room.plan_y = null;
+            });
+
+            hasChanges = true;
+            deselectRoom();
+            renderRoomMarkers();
+            renderUnplacedRooms();
+        }
+
+        // Click on SVG background to deselect
+        Layout.$('#floorPlanSvg')?.addEventListener('click', e => {
+            if (e.target === Layout.$('#floorPlanSvg')) {
+                deselectRoom();
+            }
+        });
+
+        // Warn before leaving with unsaved changes
+        window.addEventListener('beforeunload', e => {
+            if (hasChanges) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+
+        // ==================== INIT ====================
+        function updateUI() {
+            Layout.updateAllTranslations();
+            if (building) {
+                Layout.$('#buildingName').textContent = Layout.getName(building);
+            }
+        }
+
+        window.onLanguageChange = () => updateUI();
+
+        async function init() {
+            await Layout.init({ module: 'housing', menuId: 'housing', itemId: 'occupancy' });
+
+            // Get building ID from URL
+            const params = new URLSearchParams(window.location.search);
+            const buildingId = params.get('building');
+            const floor = params.get('floor');
+
+            if (!buildingId) {
+                window.location.href = 'floor-plan.html';
+                return;
+            }
+
+            [building, floorPlans, rooms] = await Promise.all([
+                loadBuilding(buildingId),
+                loadFloorPlans(buildingId),
+                loadRooms(buildingId)
+            ]);
+
+            if (!building) {
+                window.location.href = 'floor-plan.html';
+                return;
+            }
+
+            // Set initial floor
+            if (floor) currentFloor = parseInt(floor);
+            else if (floorPlans.length > 0) currentFloor = floorPlans[0].floor;
+
+            // Update back link
+            Layout.$('a[href="floor-plan.html"]').href = `floor-plan.html?building=${buildingId}`;
+
+            updateUI();
+            renderFloorTabs();
+            renderFloorPlan();
+            renderUnplacedRooms();
+        }
+
+        init();
+    </script>
+</body>
+</html>

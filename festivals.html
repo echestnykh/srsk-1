@@ -354,6 +354,7 @@
             // Устанавливаем дату по умолчанию - сегодня
             form.date.value = new Date().toISOString().split('T')[0];
 
+            Layout.setupAutoTranslate('#holidayForm', ['name']);
             holidayModal.showModal();
         }
 
@@ -373,6 +374,7 @@
             form.name_en.value = holiday.name_en || '';
             form.name_hi.value = holiday.name_hi || '';
 
+            Layout.setupAutoTranslate('#holidayForm', ['name']);
             holidayModal.showModal();
         }
 

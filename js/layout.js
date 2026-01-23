@@ -1,5 +1,5 @@
 // ==================== LAYOUT.JS ====================
-// Общие компоненты: хедер, футер, меню, локации
+// Общие компоненты: хедер, футер, меню, локации, модули
 
 (function() {
 'use strict';
@@ -11,34 +11,67 @@ const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const DESKTOP_BP = 1200;
 
-// Структура меню (переводы берутся из БД по ключам nav_kitchen, nav_menu и т.д.)
-const menuConfig = [
-    { id: 'kitchen', items: [
-        { id: 'menu', href: 'menu.html' },
-        { id: 'menu_templates', href: 'menu-templates.html' },
-        { id: 'recipes', href: 'recipes.html' },
-        { id: 'products', href: 'products.html' }
-    ]},
-    { id: 'stock', items: [
-        { id: 'stock_balance', href: 'stock.html' },
-        { id: 'requests', href: 'requests.html' },
-        { id: 'receive', href: 'receive.html' },
-        { id: 'issue', href: 'issue.html' },
-        { id: 'inventory', href: 'inventory.html' },
-        { id: 'stock_settings', href: 'stock-settings.html' }
-    ]},
-    { id: 'ashram', items: [
-        { id: 'retreats', href: 'retreats.html' },
-        { id: 'team', href: 'team.html' }
-    ]},
-    { id: 'settings', items: [
-        { id: 'dictionaries', href: 'dictionaries.html' },
-        { id: 'translations', href: 'translations.html' },
-        { id: 'festivals', href: 'festivals.html' }
-    ]}
-];
+// ==================== MODULES ====================
+const modules = {
+    kitchen: {
+        id: 'kitchen',
+        nameKey: 'module_kitchen',
+        icon: '🍳',
+        hasLocations: true,
+        defaultLocation: 'main',
+        defaultPage: 'menu.html',
+        menuConfig: [
+            { id: 'kitchen', items: [
+                { id: 'menu', href: 'menu.html' },
+                { id: 'menu_templates', href: 'menu-templates.html' },
+                { id: 'recipes', href: 'recipes.html' },
+                { id: 'products', href: 'products.html' }
+            ]},
+            { id: 'stock', items: [
+                { id: 'stock_balance', href: 'stock.html' },
+                { id: 'requests', href: 'requests.html' },
+                { id: 'receive', href: 'receive.html' },
+                { id: 'issue', href: 'issue.html' },
+                { id: 'inventory', href: 'inventory.html' },
+                { id: 'stock_settings', href: 'stock-settings.html' }
+            ]},
+            { id: 'ashram', items: [
+                { id: 'retreats', href: 'retreats.html' },
+                { id: 'team', href: 'team.html' }
+            ]},
+            { id: 'settings', items: [
+                { id: 'dictionaries', href: 'dictionaries.html' },
+                { id: 'translations', href: 'translations.html' },
+                { id: 'festivals', href: 'festivals.html' }
+            ]}
+        ]
+    },
+    housing: {
+        id: 'housing',
+        nameKey: 'module_housing',
+        icon: '🏠',
+        hasLocations: false,
+        defaultPage: 'housing/occupancy.html',
+        menuConfig: [
+            { id: 'housing', items: [
+                { id: 'occupancy', href: 'housing/occupancy.html' },
+                { id: 'buildings', href: 'housing/buildings.html' },
+                { id: 'rooms', href: 'housing/rooms.html' },
+                { id: 'guests', href: 'housing/guests.html' }
+            ]},
+            { id: 'ashram', items: [
+                { id: 'retreats', href: 'retreats.html' },
+                { id: 'team', href: 'team.html' }
+            ]},
+            { id: 'settings', items: [
+                { id: 'housing_dictionaries', href: 'housing/dictionaries.html' }
+            ]}
+        ]
+    }
+};
 
 // ==================== STATE ====================
+let currentModule = localStorage.getItem('srsk_module') || 'kitchen';
 let currentLang = localStorage.getItem('srsk_lang') || 'ru';
 let currentLocation = localStorage.getItem('srsk_location') || 'main';
 let locations = [];
@@ -46,6 +79,33 @@ let translations = {}; // { key: { ru: '...', en: '...', hi: '...' } }
 
 // Текущая страница (задаётся при инициализации)
 let currentPage = { menuId: 'kitchen', itemId: null };
+
+// Получить текущий menuConfig
+function getMenuConfig() {
+    return modules[currentModule]?.menuConfig || modules.kitchen.menuConfig;
+}
+
+// Определить базовый путь (находимся ли в подпапке)
+function getBasePath() {
+    const path = window.location.pathname;
+    // Если находимся в подпапке (например, housing/)
+    if (path.includes('/housing/')) return '../';
+    return '';
+}
+
+// Корректировать href с учётом текущего расположения
+function adjustHref(href) {
+    const basePath = getBasePath();
+    // Если мы в подпапке и href ведёт в ту же подпапку - убираем дублирование
+    if (basePath && href.startsWith('housing/')) {
+        return href.replace('housing/', '');
+    }
+    // Если мы в подпапке и href ведёт в корень - добавляем ../
+    if (basePath && !href.startsWith('housing/') && !href.startsWith('../') && !href.startsWith('http')) {
+        return basePath + href;
+    }
+    return href;
+}
 
 // ==================== HELPERS ====================
 const $ = (sel, ctx = document) => ctx.querySelector(sel);
@@ -251,6 +311,89 @@ async function translate(text, from = 'ru', to = 'en') {
     }
 }
 
+/**
+ * Настройка автоперевода для полей формы
+ * При вводе текста в поле _ru автоматически переводит в _en и _hi
+ * @param {string} formSelector - селектор формы или контейнера
+ * @param {string[]} fieldPrefixes - массив префиксов полей (например: ['name', 'description'])
+ */
+function setupAutoTranslate(formSelector, fieldPrefixes = ['name']) {
+    const form = $(formSelector);
+    if (!form) return;
+
+    // Храним информацию о том, какие поля были автозаполнены
+    const autoFilledFields = new Set();
+
+    fieldPrefixes.forEach(prefix => {
+        const ruField = form.querySelector(`[name="${prefix}_ru"]`);
+        if (!ruField) return;
+
+        const enField = form.querySelector(`[name="${prefix}_en"]`);
+        const hiField = form.querySelector(`[name="${prefix}_hi"]`);
+
+        // Отмечаем поля как вручную заполненные при фокусе и изменении
+        [enField, hiField].forEach(field => {
+            if (!field) return;
+            field.addEventListener('input', () => {
+                if (field.value.trim()) {
+                    autoFilledFields.delete(field.name);
+                }
+            });
+        });
+
+        // Debounced автоперевод при вводе в русское поле
+        const debouncedTranslate = debounce(async () => {
+            const ruText = ruField.value.trim();
+            if (!ruText) return;
+
+            // Показываем индикатор загрузки
+            const showLoading = (field) => {
+                if (field && !field.value.trim()) {
+                    field.classList.add('opacity-50');
+                    field.placeholder = '...';
+                }
+            };
+            const hideLoading = (field, placeholder = '') => {
+                if (field) {
+                    field.classList.remove('opacity-50');
+                    field.placeholder = placeholder;
+                }
+            };
+
+            // Переводим на английский если поле пустое или было автозаполнено
+            if (enField && (!enField.value.trim() || autoFilledFields.has(enField.name))) {
+                showLoading(enField);
+                const enText = await translate(ruText, 'ru', 'en');
+                if (enText && enText !== ruText) {
+                    enField.value = enText;
+                    autoFilledFields.add(enField.name);
+                }
+                hideLoading(enField);
+            }
+
+            // Переводим на хинди если поле пустое или было автозаполнено
+            if (hiField && (!hiField.value.trim() || autoFilledFields.has(hiField.name))) {
+                showLoading(hiField);
+                const hiText = await translate(ruText, 'ru', 'hi');
+                if (hiText && hiText !== ruText) {
+                    hiField.value = hiText;
+                    autoFilledFields.add(hiField.name);
+                }
+                hideLoading(hiField);
+            }
+        }, 800);
+
+        ruField.addEventListener('input', debouncedTranslate);
+    });
+}
+
+/**
+ * Сбрасывает состояние автоперевода (вызывать при открытии модалки)
+ */
+function resetAutoTranslate() {
+    // Метод для внешнего вызова - сброс происходит автоматически при setupAutoTranslate
+}
+
 // ==================== TRANSLATIONS ====================
 async function loadTranslations() {
     const { data, error } = await db.from('translations').select('key, ru, en, hi');
@@ -293,14 +436,16 @@ function updateAllTranslations() {
 
 // ==================== HEADER HTML ====================
 function getHeaderHTML() {
+    const menuConfig = getMenuConfig();
+
     return `
     <header class="bg-base-100 shadow-sm sticky top-0 z-50">
         <div class="container mx-auto px-4">
             <div class="flex items-center justify-between h-20">
 
-                <!-- Logo + Location Selector -->
+                <!-- Logo + Location/Module Selector -->
                 <div class="flex items-center gap-3 flex-shrink-0">
-                    <a href="index.html" class="hover:opacity-80 transition-opacity">
+                    <a href="${adjustHref('index.html')}" class="hover:opacity-80 transition-opacity">
                         <svg class="h-14 w-auto logo-svg" viewBox="0 0 122.03 312.54" xmlns="http://www.w3.org/2000/svg">
                             <path fill="var(--current-color)" d="M102,15.99h-15.18v81.89c0,6.21.12,11.58-.88,15.98-1.01,4.45-2.6,7.98-4.77,10.58-2.02,2.81-4.85,4.83-8.51,6.05-2.38,1-5.08,1.62-8.1,1.83-1.01.21-2.02.32-3.02.32h-.64c-3.81-.21-7.23-.83-10.25-1.83-3.81-1.22-7.02-3.13-9.62-5.73-2.65-2.81-4.56-6.44-5.73-10.89-1.22-4.4-1.83-9.83-1.83-16.3V15.99h-15.1v89.12c0,13.68,3.81,23.94,11.45,30.77,3.81,3.44,8.56,5.96,14.23,7.55,1.17.42,2.57.74,4.21.96-13.89,5.03-23.35,11.87-28.38,20.51-7.05,10.65-7.26,24.14-.64,40.46l41.34,100.45,39.91-100.45c6.41-16.32,6.2-29.82-.64-40.46-4.82-8.48-13.97-15.21-27.43-20.2,1.59-.43,3.18-.85,4.77-1.27,5.25-1.59,9.67-4.19,13.27-7.79,3.82-3.66,6.65-8.18,8.51-13.59,2.02-5.62,3.02-12.27,3.02-19.95V15.99M87.45,172.46c4.03,7.26,3.84,16.4-.56,27.43l-26.31,68.13-27.75-68.13c-4.61-11.03-4.8-20.17-.55-27.43,4.61-7.47,13.76-13.01,27.43-16.62,13.67,3.61,22.93,9.15,27.75,16.62"/>
                         </svg>
@@ -308,10 +453,10 @@ function getHeaderHTML() {
 
                     <!-- Desktop: full name + selector -->
                     <div class="hidden md:flex flex-col">
-                        <a href="index.html" class="text-xl font-semibold whitespace-nowrap hover:opacity-80 transition-opacity" data-i18n="app_name">Шри Рупа Сева Кунджа</a>
+                        <a href="${adjustHref('index.html')}" class="text-xl font-semibold whitespace-nowrap hover:opacity-80 transition-opacity" data-i18n="app_name">Шри Рупа Сева Кунджа</a>
                         <div class="relative location-selector" id="locationDesktop">
                             <button class="flex items-center justify-between gap-2 w-full text-xl opacity-70 hover:opacity-100 transition-opacity" data-toggle="location">
-                                <span class="location-name">Основная кухня</span>
+                                <span class="location-name">${currentModule === 'housing' ? t('module_housing') : ''}</span>
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform location-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
                                 </svg>
@@ -326,7 +471,7 @@ function getHeaderHTML() {
                         <span class="text-xl opacity-50">·</span>
                         <div class="relative location-selector" id="locationMobile">
                             <button class="flex items-center gap-1 text-xl opacity-70" data-toggle="location">
-                                <span class="location-name">Основная кухня</span>
+                                <span class="location-name">${currentModule === 'housing' ? t('module_housing') : ''}</span>
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform location-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
                                 </svg>
@@ -395,6 +540,7 @@ function getHeaderHTML() {
 
 // ==================== FOOTER HTML ====================
 function getFooterHTML() {
+    const menuConfig = getMenuConfig();
     // Собираем ссылки из текущего раздела меню (второй уровень)
     const currentMenu = menuConfig.find(m => m.id === currentPage.menuId);
     const footerLinks = currentMenu ? currentMenu.items : menuConfig[0].items;
@@ -405,14 +551,14 @@ function getFooterHTML() {
             <!-- Первый уровень меню -->
             <nav class="flex flex-wrap justify-center gap-4 sm:gap-6 mb-3" id="footerMainNav">
                 ${menuConfig.map(menu => `
-                    <a href="${menu.items[0].href}" class="text-sm font-bold uppercase tracking-wide ${menu.id === currentPage.menuId ? 'text-primary' : 'opacity-60 hover:opacity-100'}" data-menu-id="${menu.id}">${t('nav_' + menu.id)}</a>
+                    <a href="${adjustHref(menu.items[0].href)}" class="text-sm font-bold uppercase tracking-wide ${menu.id === currentPage.menuId ? 'text-primary' : 'opacity-60 hover:opacity-100'}" data-menu-id="${menu.id}">${t('nav_' + menu.id)}</a>
                 `).join('')}
             </nav>
 
             <!-- Второй уровень меню -->
             <nav class="flex flex-wrap justify-center gap-4 sm:gap-6 mb-4" id="footerNav">
                 ${footerLinks.map(item => `
-                    <a href="${item.href}" class="text-sm font-medium uppercase tracking-wide ${item.id === currentPage.itemId ? 'text-primary' : 'opacity-60 hover:opacity-100'}">${t('nav_' + item.id)}</a>
+                    <a href="${adjustHref(item.href)}" class="text-sm font-medium uppercase tracking-wide ${item.id === currentPage.itemId ? 'text-primary' : 'opacity-60 hover:opacity-100'}">${t('nav_' + item.id)}</a>
                 `).join('')}
             </nav>
 
@@ -433,15 +579,26 @@ function getFooterHTML() {
 
 // ==================== HEADER FUNCTIONS ====================
 function buildLocationOptions() {
-    const html = locations.map(loc =>
-        `<button class="w-full text-left px-4 py-2 hover:bg-base-200 text-base-content ${loc.slug === currentLocation ? 'font-medium' : ''}" data-loc="${loc.slug}">${getName(loc)}</button>`
+    const isHousing = currentModule === 'housing';
+
+    // Локации (кухни)
+    const locationsHtml = locations.map(loc =>
+        `<button class="w-full text-left px-4 py-2 hover:bg-base-200 text-base-content ${!isHousing && loc.slug === currentLocation ? 'font-medium' : ''}" data-loc="${loc.slug}">${getName(loc)}</button>`
     ).join('');
-    $$('.location-dropdown').forEach(el => el.innerHTML = html);
+
+    // Разделитель и Проживание
+    const housingHtml = `
+        <div class="border-t border-base-200 my-1"></div>
+        <button class="w-full text-left px-4 py-2 hover:bg-base-200 text-base-content ${isHousing ? 'font-medium' : ''}" data-module="housing">${t('module_housing')}</button>
+    `;
+
+    $$('.location-dropdown').forEach(el => el.innerHTML = locationsHtml + housingHtml);
 }
 
 function buildMobileMenu() {
     const nav = $('#mobileNav');
     if (!nav) return;
+    const menuConfig = getMenuConfig();
 
     nav.innerHTML = menuConfig.map(({ id, items }) => `
         <div class="mobile-nav-item ${id === currentPage.menuId ? 'open' : ''}" data-has-submenu>
@@ -452,7 +609,7 @@ function buildMobileMenu() {
                 </svg>
             </button>
             <div class="submenu pl-4">
-                ${items.map(item => `<a href="${item.href}" class="block px-4 py-3 text-base font-medium rounded-lg hover:bg-base-200 ${item.id === currentPage.itemId ? 'text-primary' : ''}">${t('nav_' + item.id)}</a>`).join('')}
+                ${items.map(item => `<a href="${adjustHref(item.href)}" class="block px-4 py-3 text-base font-medium rounded-lg hover:bg-base-200 ${item.id === currentPage.itemId ? 'text-primary' : ''}">${t('nav_' + item.id)}</a>`).join('')}
             </div>
         </div>
     `).join('');
@@ -470,10 +627,11 @@ function buildMobileMenu() {
 function buildSubmenuBar() {
     const bar = $('#submenuBar');
     if (!bar) return;
+    const menuConfig = getMenuConfig();
 
     bar.innerHTML = menuConfig.map(({ id, items }) => `
         <nav class="container mx-auto px-4 flex items-center submenu-group ${id !== currentPage.menuId ? 'hidden' : ''}" data-group="${id}">
-            ${items.map(item => `<a href="${item.href}" class="submenu-link px-5 py-2 text-base font-semibold tracking-wide uppercase ${item.id === currentPage.itemId ? 'active' : 'text-white/70 hover:text-white'}">${t('nav_' + item.id)}</a>`).join('')}
+            ${items.map(item => `<a href="${adjustHref(item.href)}" class="submenu-link px-5 py-2 text-base font-semibold tracking-wide uppercase ${item.id === currentPage.itemId ? 'active' : 'text-white/70 hover:text-white'}">${t('nav_' + item.id)}</a>`).join('')}
         </nav>
     `).join('');
 
@@ -492,10 +650,14 @@ function updateHeaderLanguage() {
         link.textContent = t(key);
     });
 
-    // Обновляем название локации
-    const loc = locations.find(l => l.slug === currentLocation);
-    if (loc) {
-        $$('.location-name').forEach(el => el.textContent = getName(loc));
+    // Обновляем название в селекторе
+    if (currentModule === 'housing') {
+        $$('.location-name').forEach(el => el.textContent = t('module_housing'));
+    } else {
+        const loc = locations.find(l => l.slug === currentLocation);
+        if (loc) {
+            $$('.location-name').forEach(el => el.textContent = getName(loc));
+        }
     }
 
     // Обновляем выпадашку локаций
@@ -503,11 +665,13 @@ function updateHeaderLanguage() {
 }
 
 function updateFooterLanguage() {
+    const menuConfig = getMenuConfig();
+
     // Обновляем первый уровень меню
     const footerMainNav = $('#footerMainNav');
     if (footerMainNav) {
         footerMainNav.innerHTML = menuConfig.map(menu => `
-            <a href="${menu.items[0].href}" class="text-sm font-bold uppercase tracking-wide ${menu.id === currentPage.menuId ? 'text-primary' : 'opacity-60 hover:opacity-100'}" data-menu-id="${menu.id}">${t('nav_' + menu.id)}</a>
+            <a href="${adjustHref(menu.items[0].href)}" class="text-sm font-bold uppercase tracking-wide ${menu.id === currentPage.menuId ? 'text-primary' : 'opacity-60 hover:opacity-100'}" data-menu-id="${menu.id}">${t('nav_' + menu.id)}</a>
         `).join('');
     }
 
@@ -520,7 +684,7 @@ function updateFooterLanguage() {
         // Используем ключи переводов nav_menu, nav_recipes, etc.
         footerNav.innerHTML = footerLinks.map(item => {
             const key = `nav_${item.id}`;
-            return `<a href="${item.href}" class="text-sm font-medium uppercase tracking-wide ${item.id === currentPage.itemId ? 'text-primary' : 'opacity-60 hover:opacity-100'}">${t(key)}</a>`;
+            return `<a href="${adjustHref(item.href)}" class="text-sm font-medium uppercase tracking-wide ${item.id === currentPage.itemId ? 'text-primary' : 'opacity-60 hover:opacity-100'}">${t(key)}</a>`;
         }).join('');
     }
 
@@ -537,10 +701,13 @@ function updateFooterLanguage() {
 const submenuMargins = {};
 
 function calcSubmenuMargin(groupId) {
-    const kitchenLink = $('.nav-link[data-submenu="kitchen"]');
+    // Берём первый пункт меню текущего модуля для выравнивания
+    const menuConfig = getMenuConfig();
+    const firstMenuId = menuConfig[0]?.id || 'kitchen';
+    const firstNavLink = $(`.nav-link[data-submenu="${firstMenuId}"]`);
     const submenuBar = $('#submenuBar');
     const group = $(`.submenu-group[data-group="${groupId}"]`);
-    if (!kitchenLink || !submenuBar || !group) return 0;
+    if (!firstNavLink || !submenuBar || !group) return 0;
 
     const firstLink = group.querySelector('.submenu-link');
     if (!firstLink) return 0;
@@ -552,7 +719,7 @@ function calcSubmenuMargin(groupId) {
     // Force reflow — нужно чтобы браузер применил стили до измерения позиции
     void firstLink.offsetWidth;
 
-    const navRect = kitchenLink.getBoundingClientRect();
+    const navRect = firstNavLink.getBoundingClientRect();
     const barRect = submenuBar.getBoundingClientRect();
     const linkRect = firstLink.getBoundingClientRect();
 
@@ -569,6 +736,7 @@ function calcSubmenuMargin(groupId) {
 }
 
 function initSubmenuMargins() {
+    const menuConfig = getMenuConfig();
     menuConfig.forEach(({ id }) => {
         submenuMargins[id] = calcSubmenuMargin(id);
     });
@@ -595,11 +763,17 @@ function selectLocation(slug, isInitial = false) {
     const loc = locations.find(l => l.slug === slug);
     if (!loc) return;
 
-    $$('.location-name').forEach(el => el.textContent = getName(loc));
+    // Обновляем название в селекторе (для housing показываем "Проживание")
+    if (currentModule === 'housing') {
+        $$('.location-name').forEach(el => el.textContent = t('module_housing'));
+    } else {
+        $$('.location-name').forEach(el => el.textContent = getName(loc));
+        setColor(loc.color);
+    }
+
     $$('.location-dropdown').forEach(d => d.classList.add('hidden'));
     $$('.location-arrow').forEach(a => a.classList.remove('rotate-180'));
     buildLocationOptions();
-    setColor(loc.color);
 
     // Вызываем колбэк страницы при смене локации (но не при инициализации)
     if (changed && !isInitial && typeof window.onLocationChange === 'function') {
@@ -640,8 +814,20 @@ function initHeaderEvents() {
 
     // Global click handler
     document.addEventListener('click', e => {
-        if (e.target.dataset.loc) {
-            selectLocation(e.target.dataset.loc);
+        if (e.target.dataset.module === 'housing') {
+            // Клик на "Проживание" - переключаемся на модуль housing
+            switchModule('housing');
+        } else if (e.target.dataset.loc) {
+            // Клик на локацию (кухню) - если в housing, сначала переключаемся на kitchen
+            if (currentModule === 'housing') {
+                currentModule = 'kitchen';
+                localStorage.setItem('srsk_module', 'kitchen');
+                // Выбираем локацию и переходим на страницу кухни
+                localStorage.setItem('srsk_location', e.target.dataset.loc);
+                window.location.href = adjustHref(modules.kitchen.defaultPage);
+            } else {
+                selectLocation(e.target.dataset.loc);
+            }
         } else if (!e.target.closest('.location-selector')) {
             $$('.location-dropdown').forEach(d => d.classList.add('hidden'));
             $$('.location-arrow').forEach(a => a.classList.remove('rotate-180'));
@@ -698,8 +884,26 @@ function initHeaderEvents() {
     });
 }
 
+// ==================== MODULE SWITCHING ====================
+function switchModule(moduleId) {
+    if (!modules[moduleId]) return;
+
+    currentModule = moduleId;
+    localStorage.setItem('srsk_module', moduleId);
+
+    // Переходим на главную страницу модуля
+    const module = modules[moduleId];
+    window.location.href = adjustHref(module.defaultPage);
+}
+
 // ==================== INIT LAYOUT ====================
-async function initLayout(page = { menuId: 'kitchen', itemId: null }) {
+async function initLayout(page = { module: null, menuId: 'kitchen', itemId: null }) {
+    // Устанавливаем модуль (из параметра или из localStorage)
+    if (page.module) {
+        currentModule = page.module;
+        localStorage.setItem('srsk_module', currentModule);
+    }
+
     currentPage = page;
 
     // Сначала загружаем переводы из БД
@@ -717,8 +921,16 @@ async function initLayout(page = { menuId: 'kitchen', itemId: null }) {
         footerPlaceholder.outerHTML = getFooterHTML();
     }
 
-    // Загружаем локации и инициализируем
+    // Загружаем локации всегда (для выпадающего списка)
     await loadLocations();
+
+    // Для модуля housing устанавливаем фиолетовый цвет
+    if (currentModule === 'housing') {
+        setColor('#8b5cf6');
+        // Обновляем название в селекторе
+        $$('.location-name').forEach(el => el.textContent = t('module_housing'));
+    }
+
     buildMobileMenu();
     buildSubmenuBar();
     initHeaderEvents();
@@ -727,7 +939,7 @@ async function initLayout(page = { menuId: 'kitchen', itemId: null }) {
     const submenuBar = $('#submenuBar');
     if (submenuBar) submenuBar.classList.remove('hidden');
 
-    return { db, currentLang, currentLocation, locations };
+    return { db, currentLang, currentLocation, currentModule, locations };
 }
 
 // Экспортируем в глобальную область
@@ -741,15 +953,19 @@ window.Layout = {
     transliterate,
     transliterateHindi,
     translate,
+    setupAutoTranslate,
     setColor,
     t,
     pluralize,
     debounce,
     updateAllTranslations,
+    switchModule,
     get currentLang() { return currentLang; },
     get currentLocation() { return currentLocation; },
+    get currentModule() { return currentModule; },
     get locations() { return locations; },
-    get translations() { return translations; }
+    get translations() { return translations; },
+    get modules() { return modules; }
 };
 
 })();

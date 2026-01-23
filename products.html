@@ -509,6 +509,7 @@
             } else {
                 Layout.$('#wastePercentField')?.classList.add('hidden');
             }
+            Layout.setupAutoTranslate('#editForm', ['name']);
             editModal.showModal();
         }
 
@@ -530,6 +531,7 @@
             Layout.$('input[name="waste_percent"]').value = product.waste_percent || '';
             Layout.$('input[name="purchase_url"]').value = product.purchase_url || '';
 
+            Layout.setupAutoTranslate('#editForm', ['name']);
             editModal.showModal();
         }
 

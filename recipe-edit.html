@@ -1078,6 +1078,9 @@
             document.getElementById('loadingSkeleton').classList.add('hidden');
             document.getElementById('recipeForm').classList.remove('hidden');
 
+            // Auto-translate при вводе
+            Layout.setupAutoTranslate('#recipeForm', ['name', 'description']);
+
             updateUI();
         }
 

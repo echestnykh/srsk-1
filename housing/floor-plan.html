@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>План этажа — ШРСК</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>tailwind.config = { theme: { extend: { screens: { 'desktop': '1200px' } } } }</script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/common.css">
+    <style>
+        .floor-plan-wrapper {
+            background: repeating-linear-gradient(
+                45deg,
+                #f3f4f6,
+                #f3f4f6 10px,
+                #e5e7eb 10px,
+                #e5e7eb 20px
+            );
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        .floor-plan-container {
+            position: relative;
+            display: block;
+            width: 100%;
+        }
+        .floor-plan-container img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .floor-plan-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .room-marker {
+            cursor: pointer;
+            stroke: none;
+        }
+        /* Статусы комнат */
+        .room-marker.maintenance { fill: #ef4444; }   /* На ремонте - красный */
+        .room-marker.mothballed { fill: #9ca3af; }    /* Законсервирована - серый */
+        .room-marker.available { fill: #10b981; }     /* Свободна - зелёный */
+        .room-marker.occupied { fill: #8b5cf6; }      /* Заселена - фиолетовый */
+        .room-marker.departing { fill: #f97316; }     /* Освобождается сегодня - оранжевый */
+        .room-label {
+            fill: white;
+            font-weight: 600;
+            font-size: 3px;
+            text-anchor: middle;
+            dominant-baseline: central;
+            pointer-events: none;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+        .floor-tabs .tab-active {
+            background: oklch(var(--p));
+            color: oklch(var(--pc));
+        }
+    </style>
+</head>
+<body class="bg-base-200 min-h-screen flex flex-col">
+
+    <div id="header-placeholder"></div>
+
+    <main class="container mx-auto px-4 py-6 flex-1">
+
+        <!-- Page Header -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <h1 class="text-2xl font-bold" data-i18n="floor_plan_title">План этажа</h1>
+            <div class="flex gap-2">
+                <a href="occupancy.html" class="btn btn-ghost gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                    </svg>
+                    <span data-i18n="occupancy_list">Список</span>
+                </a>
+                <button id="editPositionsBtn" class="btn btn-outline btn-primary gap-2 hidden" onclick="goToEditor()">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    <span data-i18n="floor_plan_edit_positions">Расставить комнаты</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Building & Floor Selection -->
+        <div class="flex flex-col sm:flex-row gap-4 mb-6">
+            <div class="flex-1 max-w-xs">
+                <select id="buildingSelect" class="select select-bordered w-full">
+                    <option value="" data-i18n="floor_plan_select_building">Выберите здание</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Floor Tabs -->
+        <div id="floorTabsContainer" class="hidden mb-4">
+            <div class="tabs tabs-boxed floor-tabs bg-base-100 p-1 inline-flex" id="floorTabs">
+                <!-- Generated by JS -->
+            </div>
+        </div>
+
+        <!-- Floor Plan Container -->
+        <div class="bg-base-100 rounded-lg shadow-sm overflow-hidden">
+            <!-- No plan state -->
+            <div id="noPlanState" class="hidden p-8 text-center">
+                <div class="text-6xl mb-4 opacity-30">🏗️</div>
+                <p class="text-lg opacity-60 mb-4" data-i18n="floor_plan_no_plan">План этажа не загружен</p>
+                <button class="btn btn-primary gap-2" onclick="openUploadModal()">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    <span data-i18n="floor_plan_upload">Загрузить план</span>
+                </button>
+            </div>
+
+            <!-- Select building state -->
+            <div id="selectBuildingState" class="p-8 text-center">
+                <div class="text-6xl mb-4 opacity-30">🏢</div>
+                <p class="text-lg opacity-60" data-i18n="floor_plan_select_building">Выберите здание</p>
+            </div>
+
+            <!-- Floor Plan -->
+            <div id="floorPlanWrapper" class="hidden floor-plan-wrapper">
+                <div class="floor-plan-container" id="floorPlanContainer">
+                    <img id="floorPlanImage" src="" alt="Floor plan" />
+                    <svg id="floorPlanSvg" class="floor-plan-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <!-- Room markers will be added here -->
+                    </svg>
+                </div>
+
+                <!-- Legend & Actions -->
+                <div class="p-4 border-t border-base-200 flex flex-wrap gap-4 items-center justify-between">
+                    <div class="flex flex-wrap gap-3 items-center">
+                        <div class="flex items-center gap-1">
+                            <span class="w-3 h-3 bg-green-500"></span>
+                            <span class="text-xs" data-i18n="floor_plan_available">Свободно</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <span class="w-3 h-3 bg-violet-500"></span>
+                            <span class="text-xs" data-i18n="floor_plan_occupied">Заселена</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <span class="w-3 h-3 bg-orange-500"></span>
+                            <span class="text-xs" data-i18n="floor_plan_departing">Освобождается</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <span class="w-3 h-3 bg-red-500"></span>
+                            <span class="text-xs" data-i18n="floor_plan_maintenance">Ремонт</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <span class="w-3 h-3 bg-gray-400"></span>
+                            <span class="text-xs" data-i18n="floor_plan_mothballed">Консервация</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="btn btn-ghost btn-sm gap-1" onclick="openUploadModal()">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                            <span>Заменить</span>
+                        </button>
+                        <button class="btn btn-ghost btn-sm btn-error gap-1" onclick="deleteFloorPlan()">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            <span>Удалить</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <div id="footer-placeholder"></div>
+
+    <!-- Room Details Modal -->
+    <dialog id="roomModal" class="modal">
+        <div class="modal-box max-w-md relative">
+            <button type="button" class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" onclick="closeRoomModal()">✕</button>
+            <h3 class="font-bold text-lg mb-4" id="roomModalTitle">Комната</h3>
+
+            <div class="space-y-4">
+                <!-- Room Info -->
+                <div class="bg-base-200 rounded-lg p-4">
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <div class="opacity-60" data-i18n="room_type">Тип комнаты</div>
+                        <div id="roomType" class="font-medium">—</div>
+                        <div class="opacity-60" data-i18n="room_capacity">Мест</div>
+                        <div id="roomCapacity" class="font-medium">—</div>
+                        <div class="opacity-60" data-i18n="room_floor">Этаж</div>
+                        <div id="roomFloor" class="font-medium">—</div>
+                    </div>
+                </div>
+
+                <!-- Occupancy Bar -->
+                <div>
+                    <div class="flex justify-between text-sm mb-1">
+                        <span data-i18n="stat_occupied">Занято</span>
+                        <span id="roomOccupancyText">0/0</span>
+                    </div>
+                    <progress id="roomOccupancyBar" class="progress w-full" value="0" max="100"></progress>
+                </div>
+
+                <!-- Residents List -->
+                <div>
+                    <h4 class="font-medium mb-2" data-i18n="room_residents">Проживающие</h4>
+                    <div id="roomResidentsList" class="space-y-2">
+                        <!-- Generated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-action">
+                <button type="button" class="btn btn-primary gap-2" onclick="addResidentToRoom()">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span data-i18n="room_add_resident">Заселить</span>
+                </button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+
+    <!-- Upload Plan Modal -->
+    <dialog id="uploadModal" class="modal">
+        <div class="modal-box max-w-md relative">
+            <button type="button" class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" onclick="closeUploadModal()">✕</button>
+            <h3 class="font-bold text-lg mb-4" data-i18n="upload_floor_plan">Загрузить план этажа</h3>
+
+            <form id="uploadForm" class="space-y-4">
+                <div>
+                    <label class="label"><span class="label-text font-medium" data-i18n="upload_floor_plan_select_floor">Выберите этаж</span></label>
+                    <select id="uploadFloorSelect" class="select select-bordered w-full" required>
+                        <!-- Generated by JS -->
+                    </select>
+                </div>
+
+                <div>
+                    <label class="label"><span class="label-text font-medium" data-i18n="upload_floor_plan_select_file">Выберите изображение</span></label>
+                    <input type="file" id="uploadFileInput" accept="image/jpeg,image/png,image/webp" class="file-input file-input-bordered w-full" required />
+                    <div class="text-xs opacity-60 mt-1" data-i18n="upload_floor_plan_hint">JPG, PNG до 5 МБ</div>
+                </div>
+
+                <!-- Preview -->
+                <div id="uploadPreview" class="hidden">
+                    <img id="uploadPreviewImage" src="" alt="Preview" class="w-full rounded-lg" />
+                </div>
+
+                <div class="modal-action">
+                    <button type="button" class="btn btn-ghost" onclick="closeUploadModal()" data-i18n="cancel">Отмена</button>
+                    <button type="submit" class="btn btn-primary" id="uploadBtn" data-i18n="save">Сохранить</button>
+                </div>
+            </form>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+
+    <script src="../js/layout.js"></script>
+    <script>
+        // ==================== STATE ====================
+        let buildings = [];
+        let floorPlans = [];
+        let rooms = [];
+        let occupancy = [];
+        let departures = [];  // Выезды сегодня
+        let currentBuilding = null;
+        let currentFloor = 1;
+        let selectedRoomId = null;
+
+        const t = key => Layout.t(key);
+        const today = new Date().toISOString().split('T')[0];
+
+        // ==================== DATA ====================
+        async function loadBuildings() {
+            const { data } = await Layout.db
+                .from('buildings')
+                .select('*, building_types(color)')
+                .eq('is_active', true)
+                .order('sort_order');
+            return data || [];
+        }
+
+        async function loadFloorPlans(buildingId) {
+            const { data } = await Layout.db
+                .from('floor_plans')
+                .select('*')
+                .eq('building_id', buildingId)
+                .order('floor');
+            return data || [];
+        }
+
+        // Натуральная сортировка (1, 2, 10, 11 вместо 1, 10, 11, 2)
+        function naturalSort(a, b) {
+            return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+        }
+
+        async function loadRooms(buildingId) {
+            const { data } = await Layout.db
+                .from('rooms')
+                .select('*, room_types(id, name_ru, name_en, name_hi)')
+                .eq('building_id', buildingId)
+                .eq('is_active', true)
+                .order('floor');
+            return (data || []).sort((a, b) => a.floor - b.floor || naturalSort(a.number, b.number));
+        }
+
+        async function loadOccupancy() {
+            const { data } = await Layout.db.rpc('get_room_occupancy', { target_date: today });
+            return data || [];
+        }
+
+        async function loadRoomResidents(roomId) {
+            const { data } = await Layout.db.rpc('get_room_residents', {
+                target_room_id: roomId,
+                target_date: today
+            });
+            return data || [];
+        }
+
+        async function loadDepartures() {
+            const { data } = await Layout.db.rpc('get_arrivals_departures', { target_date: today });
+            return (data || []).filter(d => d.event_type === 'departure');
+        }
+
+        // ==================== RENDER ====================
+        function populateBuildingSelect() {
+            const select = Layout.$('#buildingSelect');
+            select.innerHTML = `<option value="">${t('floor_plan_select_building')}</option>` +
+                buildings.map(b => `<option value="${b.id}">${Layout.getName(b)}</option>`).join('');
+
+            // Check URL params
+            const params = new URLSearchParams(window.location.search);
+            const buildingId = params.get('building');
+            if (buildingId) {
+                select.value = buildingId;
+                onBuildingChange(buildingId);
+            }
+        }
+
+        function renderFloorTabs() {
+            if (!currentBuilding) return;
+
+            const container = Layout.$('#floorTabsContainer');
+            const tabs = Layout.$('#floorTabs');
+            const floors = currentBuilding.floors || 1;
+
+            if (floors <= 1 && floorPlans.length <= 1) {
+                container.classList.add('hidden');
+                return;
+            }
+
+            container.classList.remove('hidden');
+
+            tabs.innerHTML = '';
+            for (let i = 1; i <= floors; i++) {
+                const hasPlan = floorPlans.some(p => p.floor === i);
+                const tab = document.createElement('button');
+                tab.className = `tab ${currentFloor === i ? 'tab-active' : ''} ${!hasPlan ? 'opacity-50' : ''}`;
+                tab.textContent = `${t('floor_plan_floor')} ${i}`;
+                tab.onclick = () => selectFloor(i);
+                tabs.appendChild(tab);
+            }
+        }
+
+        function renderFloorPlan() {
+            const noPlanState = Layout.$('#noPlanState');
+            const selectBuildingState = Layout.$('#selectBuildingState');
+            const floorPlanWrapper = Layout.$('#floorPlanWrapper');
+            const editBtn = Layout.$('#editPositionsBtn');
+
+            if (!currentBuilding) {
+                selectBuildingState.classList.remove('hidden');
+                noPlanState.classList.add('hidden');
+                floorPlanWrapper.classList.add('hidden');
+                editBtn.classList.add('hidden');
+                return;
+            }
+
+            selectBuildingState.classList.add('hidden');
+
+            const plan = floorPlans.find(p => p.floor === currentFloor);
+
+            if (!plan) {
+                noPlanState.classList.remove('hidden');
+                floorPlanWrapper.classList.add('hidden');
+                editBtn.classList.add('hidden');
+                return;
+            }
+
+            noPlanState.classList.add('hidden');
+            floorPlanWrapper.classList.remove('hidden');
+            editBtn.classList.remove('hidden');
+
+            // Set image
+            const img = Layout.$('#floorPlanImage');
+            img.src = plan.image_url;
+            img.onload = () => renderRoomMarkers();
+        }
+
+        // Цвета статусов
+        const statusColors = {
+            available: '#10b981',   // Зелёный
+            occupied: '#8b5cf6',    // Фиолетовый
+            departing: '#f97316',   // Оранжевый
+            maintenance: '#ef4444', // Красный
+            mothballed: '#9ca3af'   // Серый
+        };
+
+        function getBaseStatus(room) {
+            if (room.status === 'maintenance') return 'maintenance';
+            if (room.status === 'mothballed') return 'mothballed';
+            const isDeparting = departures.some(d => d.room_id === room.id);
+            if (isDeparting) return 'departing';
+            return null; // Нужно определять по занятости
+        }
+
+        function renderRoomMarkers() {
+            const svg = Layout.$('#floorPlanSvg');
+            svg.innerHTML = '';
+
+            const floorRooms = rooms.filter(r => r.floor === currentFloor && r.plan_x != null && r.plan_y != null);
+
+            floorRooms.forEach(room => {
+                const roomOccupancy = occupancy.find(o => o.room_id === room.id);
+                const occupied = roomOccupancy?.occupied || 0;
+                const capacity = roomOccupancy?.capacity || room.capacity || 1;
+
+                const x = parseFloat(room.plan_x);
+                const y = parseFloat(room.plan_y);
+                const w = parseFloat(room.plan_width) || 8;
+                const h = parseFloat(room.plan_height) || 8;
+
+                // Create group
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.setAttribute('data-room-id', room.id);
+                g.style.cursor = 'pointer';
+                g.onclick = () => openRoomModal(room.id);
+
+                // Проверяем особые статусы (ремонт, консервация, выезд сегодня)
+                const baseStatus = getBaseStatus(room);
+
+                if (baseStatus) {
+                    // Особый статус - один цвет на всю комнату
+                    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    rect.setAttribute('x', x);
+                    rect.setAttribute('y', y);
+                    rect.setAttribute('width', w);
+                    rect.setAttribute('height', h);
+                    rect.setAttribute('fill', statusColors[baseStatus]);
+                    g.appendChild(rect);
+                } else if (capacity === 2) {
+                    // Двухместная - делим на 2 половины (лево-право)
+                    const halfW = w / 2;
+                    for (let i = 0; i < 2; i++) {
+                        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                        rect.setAttribute('x', x + i * halfW);
+                        rect.setAttribute('y', y);
+                        rect.setAttribute('width', halfW);
+                        rect.setAttribute('height', h);
+                        rect.setAttribute('fill', i < occupied ? statusColors.occupied : statusColors.available);
+                        rect.setAttribute('stroke', '#e5e7eb');
+                        rect.setAttribute('stroke-width', '0.15');
+                        g.appendChild(rect);
+                    }
+                } else if (capacity === 4) {
+                    // Четырёхместная - делим на 4 четверти (2x2)
+                    const halfW = w / 2;
+                    const halfH = h / 2;
+                    const positions = [
+                        [0, 0], [1, 0],  // Верхний ряд
+                        [0, 1], [1, 1]   // Нижний ряд
+                    ];
+                    for (let i = 0; i < 4; i++) {
+                        const [px, py] = positions[i];
+                        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                        rect.setAttribute('x', x + px * halfW);
+                        rect.setAttribute('y', y + py * halfH);
+                        rect.setAttribute('width', halfW);
+                        rect.setAttribute('height', halfH);
+                        rect.setAttribute('fill', i < occupied ? statusColors.occupied : statusColors.available);
+                        rect.setAttribute('stroke', '#e5e7eb');
+                        rect.setAttribute('stroke-width', '0.15');
+                        g.appendChild(rect);
+                    }
+                } else {
+                    // Остальные (1, 3, 5+ мест) - один цвет
+                    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    rect.setAttribute('x', x);
+                    rect.setAttribute('y', y);
+                    rect.setAttribute('width', w);
+                    rect.setAttribute('height', h);
+                    rect.setAttribute('fill', occupied > 0 ? statusColors.occupied : statusColors.available);
+                    g.appendChild(rect);
+                }
+
+                // Label
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', x + w / 2);
+                text.setAttribute('y', y + h / 2);
+                text.classList.add('room-label');
+                text.textContent = room.number;
+
+                g.appendChild(text);
+                svg.appendChild(g);
+            });
+        }
+
+        // ==================== BUILDING / FLOOR SELECTION ====================
+        async function onBuildingChange(buildingId) {
+            if (!buildingId) {
+                currentBuilding = null;
+                floorPlans = [];
+                rooms = [];
+                currentFloor = 1;
+                renderFloorTabs();
+                renderFloorPlan();
+                return;
+            }
+
+            currentBuilding = buildings.find(b => b.id === buildingId);
+            currentFloor = 1;
+
+            [floorPlans, rooms] = await Promise.all([
+                loadFloorPlans(buildingId),
+                loadRooms(buildingId)
+            ]);
+
+            // If no plan for floor 1, find first floor with plan
+            if (!floorPlans.find(p => p.floor === 1) && floorPlans.length > 0) {
+                currentFloor = floorPlans[0].floor;
+            }
+
+            renderFloorTabs();
+            renderFloorPlan();
+        }
+
+        function selectFloor(floor) {
+            currentFloor = floor;
+            renderFloorTabs();
+            renderFloorPlan();
+        }
+
+        // ==================== ROOM MODAL ====================
+        async function openRoomModal(roomId) {
+            selectedRoomId = roomId;
+            const room = rooms.find(r => r.id === roomId);
+            if (!room) return;
+
+            const roomOccupancy = occupancy.find(o => o.room_id === roomId);
+            const occupied = roomOccupancy?.occupied || 0;
+            const capacity = roomOccupancy?.capacity || room.capacity || 1;
+
+            // Set title
+            Layout.$('#roomModalTitle').textContent = `${t('room_number')} ${room.number}`;
+
+            // Set info
+            Layout.$('#roomType').textContent = room.room_types ? Layout.getName(room.room_types) : '—';
+            Layout.$('#roomCapacity').textContent = capacity;
+            Layout.$('#roomFloor').textContent = room.floor;
+
+            // Occupancy bar
+            const percentage = capacity > 0 ? Math.round((occupied / capacity) * 100) : 0;
+            Layout.$('#roomOccupancyText').textContent = `${occupied}/${capacity}`;
+            Layout.$('#roomOccupancyBar').value = percentage;
+            Layout.$('#roomOccupancyBar').className = `progress w-full ${
+                percentage >= 100 ? 'progress-error' : percentage > 0 ? 'progress-warning' : 'progress-success'
+            }`;
+
+            // Load residents
+            const residents = await loadRoomResidents(roomId);
+            const list = Layout.$('#roomResidentsList');
+
+            if (residents.length === 0) {
+                list.innerHTML = `<div class="text-center py-4 opacity-50" data-i18n="room_no_residents">${t('room_no_residents')}</div>`;
+            } else {
+                list.innerHTML = residents.map(r => `
+                    <div class="flex items-center justify-between p-2 bg-base-200 rounded">
+                        <div>
+                            <div class="font-medium">${r.display_name}</div>
+                            ${r.category_name_ru ? `<div class="text-xs opacity-60">${Layout.currentLang === 'ru' ? r.category_name_ru : r.category_name_en || r.category_name_ru}</div>` : ''}
+                        </div>
+                        <div class="text-xs opacity-60">
+                            ${r.check_in ? new Date(r.check_in).toLocaleDateString() : ''}
+                            ${r.check_out ? ` — ${new Date(r.check_out).toLocaleDateString()}` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            Layout.$('#roomModal').showModal();
+        }
+
+        function closeRoomModal() {
+            Layout.$('#roomModal').close();
+            selectedRoomId = null;
+        }
+
+        function addResidentToRoom() {
+            closeRoomModal();
+            // Redirect to occupancy page with pre-selected room
+            window.location.href = `occupancy.html?room=${selectedRoomId}`;
+        }
+
+        // ==================== UPLOAD MODAL ====================
+        function openUploadModal() {
+            if (!currentBuilding) return;
+
+            const select = Layout.$('#uploadFloorSelect');
+            const floors = currentBuilding.floors || 1;
+
+            select.innerHTML = '';
+            for (let i = 1; i <= floors; i++) {
+                const hasPlan = floorPlans.some(p => p.floor === i);
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = `${t('floor_plan_floor')} ${i}${hasPlan ? ' ✓' : ''}`;
+                select.appendChild(opt);
+            }
+            select.value = currentFloor;
+
+            Layout.$('#uploadFileInput').value = '';
+            Layout.$('#uploadPreview').classList.add('hidden');
+
+            Layout.$('#uploadModal').showModal();
+        }
+
+        function closeUploadModal() {
+            Layout.$('#uploadModal').close();
+        }
+
+        async function uploadFloorPlan(e) {
+            e.preventDefault();
+
+            const floor = parseInt(Layout.$('#uploadFloorSelect').value);
+            const fileInput = Layout.$('#uploadFileInput');
+            const file = fileInput.files[0];
+
+            if (!file) return;
+
+            const uploadBtn = Layout.$('#uploadBtn');
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = t('uploading');
+
+            try {
+                // Generate file path
+                const ext = file.name.split('.').pop().toLowerCase();
+                const filePath = `floor-plans/${currentBuilding.id}/floor_${floor}.${ext}`;
+
+                // Upload to storage
+                const { data: uploadData, error: uploadError } = await Layout.db.storage
+                    .from('floor-plans')
+                    .upload(filePath, file, { upsert: true });
+
+                if (uploadError) throw uploadError;
+
+                // Get public URL
+                const { data: urlData } = Layout.db.storage
+                    .from('floor-plans')
+                    .getPublicUrl(filePath);
+
+                const imageUrl = urlData.publicUrl + '?t=' + Date.now(); // Cache bust
+
+                // Get image dimensions
+                const img = new Image();
+                await new Promise((resolve, reject) => {
+                    img.onload = resolve;
+                    img.onerror = reject;
+                    img.src = URL.createObjectURL(file);
+                });
+
+                // Upsert to database
+                const { error: dbError } = await Layout.db
+                    .from('floor_plans')
+                    .upsert({
+                        building_id: currentBuilding.id,
+                        floor: floor,
+                        image_url: imageUrl,
+                        width: img.width,
+                        height: img.height
+                    }, { onConflict: 'building_id,floor' });
+
+                if (dbError) throw dbError;
+
+                closeUploadModal();
+
+                // Reload data
+                floorPlans = await loadFloorPlans(currentBuilding.id);
+                currentFloor = floor;
+                renderFloorTabs();
+                renderFloorPlan();
+
+            } catch (err) {
+                console.error('Upload error:', err);
+                alert('Ошибка загрузки: ' + err.message);
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = t('save');
+            }
+        }
+
+        async function deleteFloorPlan() {
+            if (!currentBuilding) return;
+
+            const plan = floorPlans.find(p => p.floor === currentFloor);
+            if (!plan) return;
+
+            if (!confirm(t('delete_floor_plan_confirm') || 'Удалить план этого этажа?')) return;
+
+            try {
+                // Удаляем файл из storage
+                const ext = plan.image_url.split('.').pop().split('?')[0];
+                const filePath = `floor-plans/${currentBuilding.id}/floor_${currentFloor}.${ext}`;
+                await Layout.db.storage.from('floor-plans').remove([filePath]);
+
+                // Удаляем запись из БД
+                const { error } = await Layout.db
+                    .from('floor_plans')
+                    .delete()
+                    .eq('id', plan.id);
+
+                if (error) throw error;
+
+                // Обновляем данные
+                floorPlans = await loadFloorPlans(currentBuilding.id);
+                renderFloorTabs();
+                renderFloorPlan();
+
+            } catch (err) {
+                console.error('Delete error:', err);
+                alert('Ошибка удаления: ' + err.message);
+            }
+        }
+
+        // Preview on file select
+        Layout.$('#uploadFileInput')?.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    Layout.$('#uploadPreviewImage').src = e.target.result;
+                    Layout.$('#uploadPreview').classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // ==================== NAVIGATION ====================
+        function goToEditor() {
+            if (currentBuilding) {
+                window.location.href = `floor-plan-editor.html?building=${currentBuilding.id}&floor=${currentFloor}`;
+            }
+        }
+
+        // ==================== INIT ====================
+        function updateUI() {
+            Layout.updateAllTranslations();
+            populateBuildingSelect();
+        }
+
+        window.onLanguageChange = () => updateUI();
+
+        async function init() {
+            await Layout.init({ module: 'housing', menuId: 'housing', itemId: 'occupancy' });
+
+            [buildings, occupancy, departures] = await Promise.all([
+                loadBuildings(),
+                loadOccupancy(),
+                loadDepartures()
+            ]);
+
+            // Event listeners
+            Layout.$('#buildingSelect').addEventListener('change', e => onBuildingChange(e.target.value));
+            Layout.$('#uploadForm').addEventListener('submit', uploadFloorPlan);
+
+            updateUI();
+        }
+
+        init();
+    </script>
+</body>
+</html>
