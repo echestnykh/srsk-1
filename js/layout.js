@@ -935,6 +935,11 @@ async function initLayout(page = { module: null, menuId: 'kitchen', itemId: null
     buildSubmenuBar();
     initHeaderEvents();
 
+    // На главной странице (без menuId) скрываем селектор локаций
+    if (!page.menuId) {
+        $$('.location-selector').forEach(el => el.classList.add('hidden'));
+    }
+
     // Показываем submenu bar
     const submenuBar = $('#submenuBar');
     if (submenuBar) submenuBar.classList.remove('hidden');
