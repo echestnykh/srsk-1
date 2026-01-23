@@ -1058,6 +1058,9 @@
                 const buildingObj = buildings.find(b => b.id === buildingId);
                 const color = buildingObj?.building_types?.color || '#6366f1';
 
+                // Сортируем комнаты по номеру (натуральная сортировка: 1, 2, 3, ..., 10, 11)
+                building.rooms.sort((a, b) => naturalSort(a.room_number, b.room_number));
+
                 return `
                     <div class="bg-base-100 rounded-lg shadow-sm overflow-hidden" style="border-left: 4px solid ${color}">
                         <div class="p-4 border-b border-base-200">
