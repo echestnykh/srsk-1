@@ -17,6 +17,34 @@
         .room-available { border-left: 4px solid #10b981; }
         .room-partial { border-left: 4px solid #f59e0b; }
         .room-full { border-left: 4px solid #ef4444; }
+
+        /* План этажа */
+        .floor-plan-container {
+            position: relative;
+            display: block;
+            width: 100%;
+        }
+        .floor-plan-container img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .floor-plan-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .room-label {
+            fill: white;
+            font-weight: 600;
+            font-size: 3px;
+            text-anchor: middle;
+            dominant-baseline: central;
+            pointer-events: none;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
     </style>
 </head>
 <body class="bg-base-200 min-h-screen flex flex-col">
@@ -79,7 +107,7 @@
             </button>
         </div>
 
-        <!-- Search + Tabs -->
+        <!-- Search + Date + Tabs -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <!-- Search -->
             <div class="flex-1 max-w-md relative">
@@ -87,6 +115,21 @@
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
+            </div>
+
+            <!-- Date Selector -->
+            <div class="flex items-center gap-1 bg-base-100 rounded-lg px-1 h-10">
+                <button type="button" onclick="shiftDate(-1)" class="btn btn-ghost btn-xs btn-circle">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </button>
+                <button type="button" onclick="goToToday()" class="text-sm font-medium px-2 hover:text-primary transition-colors" id="currentDateLabel"></button>
+                <button type="button" onclick="shiftDate(1)" class="btn btn-ghost btn-xs btn-circle">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </button>
             </div>
 
             <!-- View Tabs -->
@@ -263,6 +306,7 @@
         const t = key => Layout.t(key);
         const today = new Date().toISOString().split('T')[0];
         const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+        let selectedDate = today;
 
         // ==================== DATA ====================
         async function loadBuildingTypes() {
@@ -283,7 +327,7 @@
         async function loadRooms() {
             const { data } = await Layout.db
                 .from('rooms')
-                .select('*, buildings(id, name_ru, name_en, name_hi)')
+                .select('*, buildings(id, name_ru, name_en, name_hi), room_types(id, name_ru, name_en, name_hi)')
                 .eq('is_active', true)
                 .order('building_id')
                 .order('floor');
@@ -313,8 +357,8 @@
             return data || [];
         }
 
-        async function loadOccupancy() {
-            const { data } = await Layout.db.rpc('get_room_occupancy', { target_date: today });
+        async function loadOccupancy(date = selectedDate) {
+            const { data } = await Layout.db.rpc('get_room_occupancy', { target_date: date });
             return data || [];
         }
 
@@ -329,15 +373,15 @@
             return [arr, dep];
         }
 
-        async function loadResidents() {
+        async function loadResidents(date = selectedDate) {
             const { data } = await Layout.db
                 .from('residents')
                 .select(`*, rooms(id, number, floor, buildings(id, name_ru, name_en, name_hi)),
                          resident_categories(id, name_ru, name_en, name_hi, color),
                          team_members(id, first_name, last_name, spiritual_name)`)
                 .eq('status', 'active')
-                .lte('check_in', today)
-                .or(`check_out.is.null,check_out.gte.${today}`)
+                .lte('check_in', date)
+                .or(`check_out.is.null,check_out.gte.${date}`)
                 .order('check_in', { ascending: false });
             return data || [];
         }
@@ -437,6 +481,61 @@
             weekOffset = Math.max(-4, Math.min(8, weekOffset));
             weekForecast = calcWeekForecast(weekResidentsCache, weekOffset);
             renderChart();
+        }
+
+        // ==================== DATE NAVIGATION ====================
+        function formatSelectedDate() {
+            const date = new Date(selectedDate);
+            const isToday = selectedDate === today;
+            const isTomorrow = selectedDate === tomorrow;
+            const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+            const isYesterday = selectedDate === yesterday;
+
+            let prefix = '';
+            if (isToday) prefix = (t('today') || 'Сегодня') + ', ';
+            else if (isTomorrow) prefix = (t('tomorrow') || 'Завтра') + ', ';
+            else if (isYesterday) prefix = (t('yesterday') || 'Вчера') + ', ';
+
+            const formatted = date.toLocaleDateString(Layout.currentLang === 'en' ? 'en-US' : 'ru-RU', {
+                day: 'numeric',
+                month: 'long'
+            });
+
+            return prefix + formatted;
+        }
+
+        function updateDateLabel() {
+            const label = Layout.$('#currentDateLabel');
+            if (label) {
+                label.textContent = formatSelectedDate();
+                // Подсветим если не сегодня
+                label.classList.toggle('text-primary', selectedDate !== today);
+            }
+        }
+
+        async function shiftDate(direction) {
+            const date = new Date(selectedDate);
+            date.setDate(date.getDate() + direction);
+            selectedDate = date.toISOString().split('T')[0];
+            updateDateLabel();
+            await refreshDateData();
+        }
+
+        async function goToToday() {
+            if (selectedDate === today) return;
+            selectedDate = today;
+            updateDateLabel();
+            await refreshDateData();
+        }
+
+        async function refreshDateData() {
+            // Перезагружаем данные для выбранной даты
+            [occupancy, residents] = await Promise.all([
+                loadOccupancy(selectedDate),
+                loadResidents(selectedDate)
+            ]);
+            occupancyByType = calcOccupancyByType();
+            renderCurrentView();
         }
 
         function toggleStats() {
@@ -806,6 +905,15 @@
             }).join('');
         }
 
+        // Цвета статусов для плана
+        const statusColors = {
+            available: '#10b981',
+            occupied: '#8b5cf6',
+            departing: '#f97316',
+            maintenance: '#ef4444',
+            mothballed: '#9ca3af'
+        };
+
         function renderPlanView() {
             const container = Layout.$('#viewPlan');
 
@@ -828,7 +936,7 @@
 
             container.innerHTML = visibleBuildings.map(building => {
                 const color = building.building_types?.color || '#6366f1';
-                const plans = plansByBuilding[building.id] || [];
+                const plans = (plansByBuilding[building.id] || []).sort((a, b) => a.floor - b.floor);
 
                 if (plans.length === 0) {
                     return `
@@ -844,35 +952,126 @@
                     `;
                 }
 
-                // Сортируем по этажу
-                plans.sort((a, b) => a.floor - b.floor);
-
+                // Сетка на 3 колонки
                 return `
                     <div class="bg-base-100 rounded-lg shadow-sm overflow-hidden" style="border-left: 4px solid ${color}">
-                        <div class="p-4 border-b border-base-200 flex items-center justify-between">
-                            <h2 class="font-semibold text-lg">${Layout.getName(building)}</h2>
-                            <a href="floor-plan.html?building=${building.id}" class="btn btn-ghost btn-sm gap-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <div class="p-3 border-b border-base-200 flex items-center justify-between">
+                            <h2 class="font-semibold">${Layout.getName(building)}</h2>
+                            <a href="floor-plan.html?building=${building.id}" class="btn btn-ghost btn-xs gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                                 </svg>
-                                ${t('open') || 'Открыть'}
+                                ${t('edit') || 'Ред.'}
                             </a>
                         </div>
-                        <div class="p-4">
-                            <div class="flex flex-wrap gap-4">
-                                ${plans.map(plan => `
-                                    <a href="floor-plan.html?building=${building.id}&floor=${plan.floor}" class="block flex-shrink-0 w-48 hover:opacity-80 transition-opacity">
-                                        <div class="text-sm font-medium mb-1">${t('floor_plan_floor') || 'Этаж'} ${plan.floor}</div>
-                                        <div class="bg-base-200 rounded overflow-hidden aspect-[4/3]">
-                                            <img src="${plan.image_url}" alt="Этаж ${plan.floor}" class="w-full h-full object-cover" />
-                                        </div>
-                                    </a>
-                                `).join('')}
-                            </div>
+                        <div class="grid grid-cols-3 gap-px bg-base-200">
+                            ${plans.map(plan => `
+                                <div class="bg-base-100 p-2">
+                                    <div class="text-xs font-medium mb-1 opacity-60">${t('floor_plan_floor') || 'Этаж'} ${plan.floor}</div>
+                                    <div class="floor-plan-container" data-building="${building.id}" data-floor="${plan.floor}">
+                                        <img src="${plan.image_url}" alt="Этаж ${plan.floor}" onload="renderPlanMarkers('${building.id}', ${plan.floor})" />
+                                        <svg class="floor-plan-svg" id="planSvg_${building.id}_${plan.floor}" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+                                    </div>
+                                </div>
+                            `).join('')}
+                            ${plans.length < 3 ? `<div class="bg-base-100"></div>`.repeat(3 - plans.length) : ''}
                         </div>
                     </div>
                 `;
             }).join('');
+        }
+
+        function renderPlanMarkers(buildingId, floor) {
+            const svg = Layout.$(`#planSvg_${buildingId}_${floor}`);
+            if (!svg) return;
+
+            svg.innerHTML = '';
+
+            // Находим комнаты этого этажа
+            const floorRooms = rooms.filter(r =>
+                r.building_id === buildingId &&
+                r.floor === floor &&
+                r.plan_x != null &&
+                r.plan_y != null
+            );
+
+            floorRooms.forEach(room => {
+                const roomOccupancy = occupancy.find(o => o.room_id === room.id);
+                const occupied = roomOccupancy?.occupied || 0;
+                const capacity = roomOccupancy?.capacity || room.capacity || 1;
+
+                const x = parseFloat(room.plan_x);
+                const y = parseFloat(room.plan_y);
+                const w = parseFloat(room.plan_width) || 8;
+                const h = parseFloat(room.plan_height) || 8;
+
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.setAttribute('data-room-id', room.id);
+                g.style.cursor = 'pointer';
+                g.onclick = () => openRoomModal(room.id);
+
+                // Проверяем особые статусы
+                const baseStatus = room.status === 'maintenance' ? 'maintenance' :
+                                   room.status === 'mothballed' ? 'mothballed' :
+                                   departures.some(d => d.room_id === room.id) ? 'departing' : null;
+
+                if (baseStatus) {
+                    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    rect.setAttribute('x', x);
+                    rect.setAttribute('y', y);
+                    rect.setAttribute('width', w);
+                    rect.setAttribute('height', h);
+                    rect.setAttribute('fill', statusColors[baseStatus]);
+                    g.appendChild(rect);
+                } else if (capacity === 2) {
+                    const halfW = w / 2;
+                    for (let i = 0; i < 2; i++) {
+                        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                        rect.setAttribute('x', x + i * halfW);
+                        rect.setAttribute('y', y);
+                        rect.setAttribute('width', halfW);
+                        rect.setAttribute('height', h);
+                        rect.setAttribute('fill', i < occupied ? statusColors.occupied : statusColors.available);
+                        rect.setAttribute('stroke', '#e5e7eb');
+                        rect.setAttribute('stroke-width', '0.15');
+                        g.appendChild(rect);
+                    }
+                } else if (capacity === 4) {
+                    const halfW = w / 2;
+                    const halfH = h / 2;
+                    const positions = [[0, 0], [1, 0], [0, 1], [1, 1]];
+                    for (let i = 0; i < 4; i++) {
+                        const [px, py] = positions[i];
+                        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                        rect.setAttribute('x', x + px * halfW);
+                        rect.setAttribute('y', y + py * halfH);
+                        rect.setAttribute('width', halfW);
+                        rect.setAttribute('height', halfH);
+                        rect.setAttribute('fill', i < occupied ? statusColors.occupied : statusColors.available);
+                        rect.setAttribute('stroke', '#e5e7eb');
+                        rect.setAttribute('stroke-width', '0.15');
+                        g.appendChild(rect);
+                    }
+                } else {
+                    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    rect.setAttribute('x', x);
+                    rect.setAttribute('y', y);
+                    rect.setAttribute('width', w);
+                    rect.setAttribute('height', h);
+                    rect.setAttribute('fill', occupied > 0 ? statusColors.occupied : statusColors.available);
+                    g.appendChild(rect);
+                }
+
+                // Номер комнаты
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', x + w / 2);
+                text.setAttribute('y', y + h / 2);
+                text.classList.add('room-label');
+                text.textContent = room.number;
+
+                g.appendChild(text);
+                svg.appendChild(g);
+            });
         }
 
         // ==================== ROOM MODAL ====================
@@ -1126,6 +1325,7 @@
 
         // ==================== RENDER ====================
         function render() {
+            updateDateLabel();
             renderStats();
             renderChart();
             applyStatsCollapsed();
