@@ -414,7 +414,7 @@
 
         // ==================== INIT ====================
         async function init() {
-            await Layout.init({ module: 'housing', menuId: 'housing', itemId: 'buildings' });
+            await Layout.init({ module: 'housing', menuId: 'settings', itemId: 'buildings' });
 
             // Сначала загружаем базовые данные
             [buildingTypes, buildings, roomCounts] = await Promise.all([
