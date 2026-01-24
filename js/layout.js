@@ -51,15 +51,12 @@ const modules = {
         nameKey: 'module_housing',
         icon: '🏠',
         hasLocations: false,
-        defaultPage: 'housing/occupancy.html',
+        defaultPage: 'housing/timeline.html',
         menuConfig: [
             { id: 'housing', items: [
+                { id: 'timeline', href: 'housing/timeline.html' },
                 { id: 'occupancy', href: 'housing/occupancy.html' },
                 { id: 'bookings', href: 'housing/bookings.html' },
-                { id: 'timeline', href: 'housing/timeline.html' },
-                { id: 'guests', href: 'housing/guests.html' }
-            ]},
-            { id: 'cleaning', items: [
                 { id: 'cleaning', href: 'housing/cleaning.html' }
             ]},
             { id: 'ashram', items: [

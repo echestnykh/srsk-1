@@ -146,12 +146,14 @@
             background: #d1d5db !important;
             font-weight: 600;
             font-size: 14px;
+            border-top: 4px solid #6b7280 !important;
         }
 
         .row-building .sticky-col {
             background: #d1d5db !important;
             cursor: pointer;
             user-select: none;
+            border-top: 4px solid #6b7280 !important;
         }
 
         .row-building .sticky-col:hover {
@@ -234,6 +236,14 @@
             justify-content: center;
             z-index: 4;
             color: white;
+        }
+
+        .cleaning-bar.clickable {
+            cursor: pointer;
+        }
+
+        .cleaning-bar.clickable:hover {
+            filter: brightness(0.9);
         }
 
         .cleaning-bar svg {
@@ -588,6 +598,61 @@
         </form>
     </dialog>
 
+    <!-- Модалка уборки -->
+    <dialog id="cleaningModal" class="modal">
+        <div class="modal-box max-w-sm">
+            <h3 class="font-bold text-lg mb-2 flex items-center gap-2">
+                <svg class="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+                </svg>
+                Уборка
+            </h3>
+
+            <div class="text-sm text-gray-500 mb-4" id="cleaningModalLocation"></div>
+
+            <!-- Даты уборки -->
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="form-control">
+                    <label class="label py-1">
+                        <span class="label-text font-medium">Начало</span>
+                    </label>
+                    <input type="date" id="cleaningStartDate" class="input input-bordered input-sm" disabled />
+                </div>
+                <div class="form-control">
+                    <label class="label py-1">
+                        <span class="label-text font-medium">Окончание</span>
+                    </label>
+                    <input type="date" id="cleaningEndDate" class="input input-bordered input-sm" />
+                </div>
+            </div>
+
+            <!-- Кнопки действий -->
+            <div class="grid grid-cols-2 gap-3">
+                <button class="btn btn-success" onclick="completeCleaning()">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Выполнена
+                </button>
+                <button class="btn btn-info" onclick="extendCleaning()">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
+                    </svg>
+                    Продлить
+                </button>
+            </div>
+
+            <div class="modal-action">
+                <form method="dialog">
+                    <button class="btn">Закрыть</button>
+                </form>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
+
     <!-- Модалка резидента/брони -->
     <dialog id="residentModal" class="modal">
         <div class="modal-box max-w-lg">
@@ -656,6 +721,9 @@
         // Хранилище гостей для кликов
         let guestsMap = new Map();
 
+        // Хранилище уборок для кликов
+        let cleaningsMap = new Map();
+
         // Базовая дата (сегодня минус 2 дня)
         const baseDate = new Date();
         baseDate.setHours(0, 0, 0, 0);
@@ -716,8 +784,9 @@
             const retreats = retreatsRes.data || [];
             const cleanings = cleaningsRes.data || [];
 
-            // Очищаем хранилище гостей
+            // Очищаем хранилища
             guestsMap.clear();
+            cleaningsMap.clear();
 
             // Преобразуем ретриты
             timelineData.retreats = retreats.map(r => {
@@ -872,16 +941,25 @@
                                     cleaningEndHalf = 1;
                                 }
 
-                                // Если уборка попадает в диапазон отображения
-                                if (cleaningStartDay < DAYS_TO_SHOW) {
+                                // Если уборка попадает в диапазон отображения и не выполнена
+                                if (cleaningStartDay < DAYS_TO_SHOW && !res.cleaning_done) {
+                                    const autoCleaningId = 'cleaning-' + res.id;
                                     cleaningEntry = {
-                                        id: 'cleaning-' + res.id,
+                                        id: autoCleaningId,
+                                        cleaningId: autoCleaningId,
+                                        residentId: res.id, // для обновления cleaning_done
                                         name: '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>',
                                         startDay: cleaningStartDay,
                                         startHalf: cleaningStartHalf,
                                         endDay: Math.min(cleaningEndDay, DAYS_TO_SHOW - 1),
                                         endHalf: cleaningEndDay >= DAYS_TO_SHOW ? 1 : cleaningEndHalf,
-                                        isCleaning: true
+                                        isCleaning: true,
+                                        isAutoCleaning: true,
+                                        rawData: {
+                                            room_id: room.id,
+                                            start_date: getDateForDay(cleaningStartDay).toISOString().split('T')[0],
+                                            end_date: getDateForDay(cleaningEndDay).toISOString().split('T')[0]
+                                        }
                                     };
                                 }
                             }
@@ -916,8 +994,17 @@
                                 placedBed = beds[0];
                             }
 
-                            // Добавляем уборку на то же место
+                            // Добавляем уборку на то же место и в хранилище
                             if (cleaningEntry && placedBed) {
+                                // Сохраняем в хранилище
+                                cleaningsMap.set(cleaningEntry.id, {
+                                    ...cleaningEntry,
+                                    roomId: room.id,
+                                    buildingName: Layout.getName(building),
+                                    roomName: room.number,
+                                    isAuto: true,
+                                    residentId: res.id
+                                });
                                 placedBed.guests.push(cleaningEntry);
                             }
                         });
@@ -932,13 +1019,23 @@
 
                             const cleaningEntry = {
                                 id: 'manual-cleaning-' + c.id,
+                                cleaningId: c.id,
                                 name: '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>',
                                 startDay,
                                 startHalf: 0,
                                 endDay,
                                 endHalf: 1,
-                                isCleaning: true
+                                isCleaning: true,
+                                isManualCleaning: true,
+                                rawData: c
                             };
+
+                            // Сохраняем в хранилище с контекстом
+                            cleaningsMap.set(c.id, {
+                                ...cleaningEntry,
+                                buildingName: Layout.getName(building),
+                                roomName: room.number
+                            });
 
                             if (beds.length > 0) {
                                 beds[0].guests.push(cleaningEntry);
@@ -1643,6 +1740,112 @@
             renderTable();
         }
 
+        // === Модалка управления уборкой ===
+        let currentCleaning = null;
+
+        function openCleaningModal(cleaningId) {
+            const cleaningData = cleaningsMap.get(cleaningId);
+            if (!cleaningData) {
+                console.error('Cleaning not found:', cleaningId);
+                return;
+            }
+
+            currentCleaning = cleaningData;
+            const raw = cleaningData.rawData;
+
+            // Локация
+            document.getElementById('cleaningModalLocation').textContent =
+                `${cleaningData.buildingName} → Номер ${cleaningData.roomName}`;
+
+            // Даты
+            document.getElementById('cleaningStartDate').value = raw.start_date;
+            document.getElementById('cleaningEndDate').value = raw.end_date;
+
+            document.getElementById('cleaningModal').showModal();
+        }
+
+        // Уборка выполнена — удаляем запись (для ручных) или ставим флаг (для авто)
+        async function completeCleaning() {
+            if (!currentCleaning) return;
+
+            // Для автоуборки — ставим флаг cleaning_done в residents
+            if (currentCleaning.isAuto || currentCleaning.isAutoCleaning) {
+                const { error } = await Layout.db
+                    .from('residents')
+                    .update({ cleaning_done: true })
+                    .eq('id', currentCleaning.residentId);
+
+                if (error) {
+                    alert('Ошибка: ' + error.message);
+                    return;
+                }
+
+                document.getElementById('cleaningModal').close();
+                await loadTimelineData();
+                renderTable();
+                return;
+            }
+
+            // Для ручной уборки — удаляем из БД
+            const { error } = await Layout.db
+                .from('room_cleanings')
+                .delete()
+                .eq('id', currentCleaning.cleaningId);
+
+            if (error) {
+                alert('Ошибка: ' + error.message);
+                return;
+            }
+
+            document.getElementById('cleaningModal').close();
+            await loadTimelineData();
+            renderTable();
+        }
+
+        // Продлить уборку — обновляем дату окончания (ручная) или создаём новую запись (авто)
+        async function extendCleaning() {
+            if (!currentCleaning) return;
+
+            const newEndDate = document.getElementById('cleaningEndDate').value;
+            if (!newEndDate) {
+                alert('Выберите новую дату окончания');
+                return;
+            }
+
+            const raw = currentCleaning.rawData;
+
+            // Для автоуборки — создаём новую запись в room_cleanings
+            if (currentCleaning.isAuto || currentCleaning.isAutoCleaning) {
+                const { error } = await Layout.db
+                    .from('room_cleanings')
+                    .insert({
+                        room_id: raw.room_id,
+                        start_date: raw.start_date,
+                        end_date: newEndDate
+                    });
+
+                if (error) {
+                    alert('Ошибка: ' + error.message);
+                    return;
+                }
+            } else {
+                // Для ручной уборки — обновляем существующую запись
+                const { error } = await Layout.db
+                    .from('room_cleanings')
+                    .update({ end_date: newEndDate })
+                    .eq('id', currentCleaning.cleaningId);
+
+                if (error) {
+                    alert('Ошибка: ' + error.message);
+                    return;
+                }
+            }
+
+            document.getElementById('cleaningModal').close();
+            await loadTimelineData();
+            renderTable();
+        }
+
         // Превратить бронирование в заселение
         async function convertToCheckin() {
             if (!currentResident) return;
@@ -1894,8 +2097,8 @@
                                 const width = spanCells * CELL_WIDTH - 2; // минус отступы
 
                                 if (guest.isCleaning) {
-                                    // Уборка — без клика
-                                    html += `<div class="cleaning-bar" style="width: ${width}px;">${guest.name}</div>`;
+                                    // Все уборки кликабельные
+                                    html += `<div class="cleaning-bar clickable" style="width: ${width}px;" onclick="event.stopPropagation(); openCleaningModal('${guest.cleaningId}')">${guest.name}</div>`;
                                 } else if (guest.isBooking) {
                                     // Бронирование — штриховка
                                     const bgColor = guest.color || '#fef08a';
