@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Шахматка — ШРСК</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/common.css">
+    <style>
+        /* Основная таблица */
+        .timeline-table {
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .timeline-table th,
+        .timeline-table td {
+            padding: 0;
+            height: 32px;
+            vertical-align: middle;
+        }
+
+        /* Границы: светлые внутри дня, тёмные между днями */
+        .timeline-table th,
+        .timeline-table td {
+            border: 1px solid #e5e7eb; /* светлая по умолчанию */
+        }
+
+        /* Тёмная граница слева у первой половины дня (начало дня) */
+        .day-start {
+            border-left: 2px solid #9ca3af !important;
+        }
+
+        /* Ширина ячейки = половина дня */
+        .half-day {
+            width: 24px;
+            min-width: 24px;
+            max-width: 24px;
+        }
+
+        /* Левая колонка - закреплена */
+        .sticky-col {
+            position: sticky;
+            left: 0;
+            background: white;
+            z-index: 10;
+            width: 160px;
+            min-width: 160px;
+            padding: 0 12px;
+            text-align: left;
+            white-space: nowrap;
+            border-right: 2px solid #9ca3af !important;
+        }
+
+        /* Заголовок таблицы - закреплён сверху */
+        .timeline-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 15;
+        }
+
+        .timeline-table thead th {
+            background: #f3f4f6;
+        }
+
+        .timeline-table thead th.sticky-col {
+            z-index: 20;
+            background: #f3f4f6;
+        }
+
+        /* Строка с числами */
+        .row-dates th {
+            font-weight: 600;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        /* Строка с днями недели */
+        .row-weekdays th {
+            font-weight: 400;
+            font-size: 10px;
+            color: #6b7280;
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        /* Строка ретритов */
+        .row-retreats th {
+            background: #f9fafb;
+            height: 24px;
+            overflow: hidden;
+        }
+
+        .retreat-bar {
+            background: #10b981;
+            color: white;
+            font-size: 11px;
+            font-weight: 500;
+            padding: 2px 8px;
+            border-radius: 3px;
+            white-space: nowrap;
+        }
+
+        /* Заголовок здания */
+        .row-building td {
+            background: #d1d5db !important;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .row-building .sticky-col {
+            background: #d1d5db !important;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .row-building .sticky-col:hover {
+            background: #c0c5cc !important;
+        }
+
+        /* Заголовок номера */
+        .row-room td {
+            background: #e5e7eb !important;
+            font-weight: 500;
+            font-size: 13px;
+        }
+
+        .row-room .sticky-col {
+            background: #e5e7eb !important;
+            cursor: pointer;
+            user-select: none;
+            padding-left: 20px;
+        }
+
+        .row-room .sticky-col:hover {
+            background: #d6d9dc !important;
+        }
+
+        /* Строка места */
+        .row-bed .sticky-col {
+            padding-left: 36px;
+            font-size: 13px;
+            color: #374151;
+        }
+
+        /* Полоска гостя */
+        .guest-bar {
+            background: #fef08a;
+            border: 1px solid #facc15;
+            height: 24px;
+            margin: 3px 2px;
+            border-radius: 4px;
+            font-size: 11px;
+            padding: 0 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: flex;
+            align-items: center;
+        }
+
+        /* Выходные дни */
+        .weekend {
+            background: #fef2f2 !important;
+        }
+
+        /* Сегодня */
+        .today {
+            background: #dbeafe !important;
+        }
+
+        /* Скрытые строки (свёрнутые) */
+        .collapsed {
+            display: none;
+        }
+
+        /* Калибровочная строка - всегда видима, но без высоты */
+        .row-calibration {
+            height: 0 !important;
+            visibility: collapse;
+        }
+        .row-calibration td {
+            height: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+        }
+
+        /* Стрелка сворачивания */
+        .toggle-arrow {
+            display: inline-block;
+            width: 16px;
+            transition: transform 0.2s;
+        }
+
+        .toggle-arrow.collapsed {
+            transform: rotate(-90deg);
+        }
+
+        /* Пустые ячейки кликабельны */
+        .row-bed td.clickable {
+            cursor: pointer;
+        }
+        .row-bed td.clickable:hover {
+            background: #e0f2fe !important;
+        }
+    </style>
+</head>
+<body class="bg-base-200 min-h-screen">
+
+    <div id="header-placeholder"></div>
+
+    <main class="px-4 py-6">
+        <!-- Заголовок страницы -->
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-2xl font-bold">Шахматка</h1>
+        </div>
+
+        <!-- Контейнер таблицы -->
+        <div class="overflow-x-auto bg-white rounded-lg shadow">
+            <table class="timeline-table" id="timelineTable">
+                <!-- Генерируется через JS -->
+            </table>
+        </div>
+    </main>
+
+    <div id="footer-placeholder"></div>
+
+    <!-- Модалка действий -->
+    <dialog id="actionModal" class="modal">
+        <div class="modal-box">
+            <h3 class="font-bold text-lg mb-4" id="modalTitle">Действие</h3>
+
+            <!-- Информация о месте -->
+            <div class="text-sm text-gray-500 mb-4" id="modalLocation"></div>
+
+            <!-- Даты -->
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-medium">Заезд</span>
+                    </label>
+                    <input type="date" id="modalCheckIn" class="input input-bordered" />
+                </div>
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-medium">Выезд</span>
+                    </label>
+                    <input type="date" id="modalCheckOut" class="input input-bordered" />
+                </div>
+            </div>
+
+            <!-- Кнопки действий -->
+            <div class="grid grid-cols-2 gap-3">
+                <button class="btn btn-primary" onclick="handleAction('checkin')">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    </svg>
+                    Заселить
+                </button>
+                <button class="btn btn-info" onclick="handleAction('booking')">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Забронировать
+                </button>
+                <button class="btn btn-warning" onclick="handleAction('cleaning')">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                    </svg>
+                    Уборка
+                </button>
+                <button class="btn btn-error" onclick="handleAction('repair')">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                    </svg>
+                    Закрыть на ремонт
+                </button>
+            </div>
+
+            <div class="modal-action">
+                <form method="dialog">
+                    <button class="btn">Отмена</button>
+                </form>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
+
+    <script src="../js/layout.js"></script>
+    <script>
+        // Конфигурация
+        const DAYS_TO_SHOW = 90; // 3 месяца
+        const CELL_WIDTH = 24;   // ширина половины дня
+
+        // Состояние сворачивания
+        const collapsedBuildings = new Set();
+        const collapsedRooms = new Set();
+
+        // Тестовые данные
+        const testData = {
+            retreats: [
+                { name: 'Зимний ретрит', startDay: 5, endDay: 15 },
+                { name: 'Весенний ретрит', startDay: 45, endDay: 60 }
+            ],
+            buildings: [
+                {
+                    id: 'b1',
+                    name: 'Гостевой дом',
+                    rooms: [
+                        {
+                            id: 'r1',
+                            name: 'Номер 1',
+                            beds: [
+                                { name: 'Место 1', guests: [{ name: 'Иван Петров', startDay: 3, startHalf: 1, endDay: 8, endHalf: 0 }] },
+                                { name: 'Место 2', guests: [{ name: 'Мария Сидорова', startDay: 1, startHalf: 1, endDay: 6, endHalf: 1 }] }
+                            ]
+                        },
+                        {
+                            id: 'r2',
+                            name: 'Номер 2',
+                            beds: [
+                                { name: 'Место 1', guests: [{ name: 'Алексей Козлов', startDay: 10, startHalf: 0, endDay: 20, endHalf: 0 }] },
+                                { name: 'Место 2', guests: [] }
+                            ]
+                        },
+                        {
+                            id: 'r3',
+                            name: 'Номер 3',
+                            beds: [
+                                { name: 'Место 1', guests: [{ name: 'Ольга Новикова', startDay: 5, startHalf: 1, endDay: 12, endHalf: 0 }] },
+                                { name: 'Место 2', guests: [{ name: 'Дмитрий Волков', startDay: 7, startHalf: 0, endDay: 15, endHalf: 1 }] },
+                                { name: 'Место 3', guests: [{ name: 'Анна Морозова', startDay: 2, startHalf: 0, endDay: 25, endHalf: 0 }] },
+                                { name: 'Место 4', guests: [{ name: 'Сергей Лебедев', startDay: 30, startHalf: 1, endDay: 45, endHalf: 0 }] }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    id: 'b2',
+                    name: 'Дом команды',
+                    rooms: [
+                        {
+                            id: 'r4',
+                            name: 'Комната А',
+                            beds: [
+                                { name: 'Место 1', guests: [{ name: 'Постоянный резидент', startDay: 0, startHalf: 0, endDay: 89, endHalf: 1, color: '#bbf7d0', border: '#22c55e' }] }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        };
+
+        // Получить дату для дня
+        function getDateForDay(dayIndex) {
+            const today = new Date();
+            const date = new Date(today);
+            date.setDate(today.getDate() + dayIndex);
+            return date;
+        }
+
+        // Проверка выходного
+        function isWeekend(dayIndex) {
+            const date = getDateForDay(dayIndex);
+            const day = date.getDay();
+            return day === 0 || day === 6;
+        }
+
+        // Получить день недели
+        function getWeekdayName(dayIndex) {
+            const days = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+            const date = getDateForDay(dayIndex);
+            return days[date.getDay()];
+        }
+
+        // Переключить сворачивание здания
+        function toggleBuilding(buildingId) {
+            if (collapsedBuildings.has(buildingId)) {
+                collapsedBuildings.delete(buildingId);
+            } else {
+                collapsedBuildings.add(buildingId);
+            }
+            renderTable();
+        }
+
+        // Переключить сворачивание номера
+        function toggleRoom(roomId) {
+            if (collapsedRooms.has(roomId)) {
+                collapsedRooms.delete(roomId);
+            } else {
+                collapsedRooms.add(roomId);
+            }
+            renderTable();
+        }
+
+        // Текущий контекст модалки
+        let modalContext = null;
+
+        // Форматировать дату для input[type="date"]
+        function formatDateForInput(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // Открыть модалку действий
+        function openActionModal(dayIndex, buildingName, roomName, bedName) {
+            const checkInDate = getDateForDay(dayIndex);
+            const checkOutDate = getDateForDay(dayIndex + 1);
+
+            // Сохраняем контекст
+            modalContext = { dayIndex, buildingName, roomName, bedName };
+
+            // Заполняем поля
+            document.getElementById('modalLocation').textContent =
+                `${buildingName} → ${roomName} → ${bedName}`;
+            document.getElementById('modalCheckIn').value = formatDateForInput(checkInDate);
+            document.getElementById('modalCheckOut').value = formatDateForInput(checkOutDate);
+
+            // Открываем модалку
+            document.getElementById('actionModal').showModal();
+        }
+
+        // Обработчик действия
+        function handleAction(action) {
+            const checkIn = document.getElementById('modalCheckIn').value;
+            const checkOut = document.getElementById('modalCheckOut').value;
+
+            console.log('Action:', action);
+            console.log('Context:', modalContext);
+            console.log('Check-in:', checkIn);
+            console.log('Check-out:', checkOut);
+
+            // Закрываем модалку
+            document.getElementById('actionModal').close();
+
+            // TODO: Здесь будет логика для каждого действия
+            // switch (action) {
+            //     case 'checkin': ...
+            //     case 'booking': ...
+            //     case 'cleaning': ...
+            //     case 'repair': ...
+            // }
+        }
+
+        // Рендер таблицы
+        function renderTable() {
+            const table = document.getElementById('timelineTable');
+
+            // Colgroup для фиксированной ширины колонок
+            let html = '<colgroup>';
+            html += '<col style="width: 160px;">'; // sticky column
+            for (let col = 0; col < DAYS_TO_SHOW * 2; col++) {
+                html += `<col style="width: ${CELL_WIDTH}px;">`;
+            }
+            html += '</colgroup>';
+
+            html += '<thead>';
+
+            // Строка ретритов
+            html += '<tr class="row-retreats"><th class="sticky-col"></th>';
+            let col = 0;
+            while (col < DAYS_TO_SHOW * 2) {
+                const dayIndex = Math.floor(col / 2);
+                const isFirstHalf = col % 2 === 0;
+                const dayStart = isFirstHalf ? 'day-start' : '';
+
+                const retreat = testData.retreats.find(r => r.startDay === dayIndex && isFirstHalf);
+                if (retreat) {
+                    const span = (retreat.endDay - retreat.startDay + 1) * 2;
+                    html += `<th colspan="${span}" class="text-left ${dayStart}"><span class="retreat-bar">${retreat.name}</span></th>`;
+                    col += span;
+                } else {
+                    const insideRetreat = testData.retreats.some(r => {
+                        const startCol = r.startDay * 2;
+                        const endCol = (r.endDay + 1) * 2 - 1;
+                        return col > startCol && col <= endCol;
+                    });
+                    if (!insideRetreat) {
+                        html += `<th class="${dayStart}"></th>`;
+                    }
+                    col++;
+                }
+            }
+            html += '</tr>';
+
+            // Строка с числами
+            html += '<tr class="row-dates"><th class="sticky-col"></th>';
+            for (let day = 0; day < DAYS_TO_SHOW; day++) {
+                const date = getDateForDay(day);
+                const weekend = isWeekend(day) ? 'weekend' : '';
+                const today = day === 0 ? 'today' : '';
+                html += `<th colspan="2" class="day-start ${weekend} ${today}">${date.getDate()}</th>`;
+            }
+            html += '</tr>';
+
+            // Строка с днями недели
+            html += '<tr class="row-weekdays"><th class="sticky-col"></th>';
+            for (let day = 0; day < DAYS_TO_SHOW; day++) {
+                const weekend = isWeekend(day) ? 'weekend' : '';
+                const today = day === 0 ? 'today' : '';
+                html += `<th colspan="2" class="day-start ${weekend} ${today}">${getWeekdayName(day)}</th>`;
+            }
+            html += '</tr>';
+
+            html += '</thead><tbody>';
+
+            // Калибровочная строка для фиксации ширины колонок
+            html += '<tr class="row-calibration"><td class="sticky-col"></td>';
+            for (let col = 0; col < DAYS_TO_SHOW * 2; col++) {
+                html += '<td class="half-day"></td>';
+            }
+            html += '</tr>';
+
+            // Здания
+            testData.buildings.forEach(building => {
+                const buildingCollapsed = collapsedBuildings.has(building.id);
+                const arrowClass = buildingCollapsed ? 'collapsed' : '';
+
+                // Заголовок здания
+                html += `<tr class="row-building">`;
+                html += `<td class="sticky-col" onclick="toggleBuilding('${building.id}')">`;
+                html += `<span class="toggle-arrow ${arrowClass}">▼</span> ${building.name}</td>`;
+                for (let col = 0; col < DAYS_TO_SHOW * 2; col++) {
+                    const dayIndex = Math.floor(col / 2);
+                    const isFirstHalf = col % 2 === 0;
+                    const dayStart = isFirstHalf ? 'day-start' : '';
+                    html += `<td class="${dayStart}"></td>`;
+                }
+                html += '</tr>';
+
+                // Номера (скрыты если здание свёрнуто)
+                building.rooms.forEach(room => {
+                    const roomCollapsed = collapsedRooms.has(room.id);
+                    const roomArrowClass = roomCollapsed ? 'collapsed' : '';
+                    const hiddenClass = buildingCollapsed ? 'collapsed' : '';
+
+                    // Заголовок номера
+                    html += `<tr class="row-room ${hiddenClass}">`;
+                    html += `<td class="sticky-col" onclick="toggleRoom('${room.id}')">`;
+                    html += `<span class="toggle-arrow ${roomArrowClass}">▼</span> ${room.name}</td>`;
+                    for (let col = 0; col < DAYS_TO_SHOW * 2; col++) {
+                        const dayIndex = Math.floor(col / 2);
+                        const isFirstHalf = col % 2 === 0;
+                        const dayStart = isFirstHalf ? 'day-start' : '';
+                        html += `<td class="${dayStart}"></td>`;
+                    }
+                    html += '</tr>';
+
+                    // Места (скрыты если здание или номер свёрнуты)
+                    const bedsHiddenClass = (buildingCollapsed || roomCollapsed) ? 'collapsed' : '';
+
+                    room.beds.forEach(bed => {
+                        html += `<tr class="row-bed ${bedsHiddenClass}"><td class="sticky-col">${bed.name}</td>`;
+
+                        // Ячейки для каждой половины дня
+                        let col = 0;
+                        while (col < DAYS_TO_SHOW * 2) {
+                            const dayIndex = Math.floor(col / 2);
+                            const halfIndex = col % 2;
+                            const isFirstHalf = halfIndex === 0;
+                            const dayStart = isFirstHalf ? 'day-start' : '';
+
+                            // Проверяем есть ли гость начинающийся здесь
+                            const guest = bed.guests.find(g =>
+                                g.startDay === dayIndex && g.startHalf === halfIndex
+                            );
+
+                            if (guest) {
+                                const startCol = guest.startDay * 2 + guest.startHalf;
+                                const endCol = guest.endDay * 2 + guest.endHalf;
+                                const span = endCol - startCol + 1;
+
+                                const bgColor = guest.color || '#fef08a';
+                                const borderColor = guest.border || '#facc15';
+
+                                html += `<td colspan="${span}" class="${dayStart}" style="padding: 0;">`;
+                                html += `<div class="guest-bar" style="background: ${bgColor}; border-color: ${borderColor};">${guest.name}</div>`;
+                                html += '</td>';
+                                col += span;
+                            } else {
+                                const insideGuest = bed.guests.some(g => {
+                                    const startCol = g.startDay * 2 + g.startHalf;
+                                    const endCol = g.endDay * 2 + g.endHalf;
+                                    return col > startCol && col <= endCol;
+                                });
+
+                                if (!insideGuest) {
+                                    const weekend = isWeekend(dayIndex) ? 'weekend' : '';
+                                    const today = dayIndex === 0 ? 'today' : '';
+                                    // Экранируем кавычки в именах
+                                    const bName = building.name.replace(/'/g, "\\'");
+                                    const rName = room.name.replace(/'/g, "\\'");
+                                    const bedName = bed.name.replace(/'/g, "\\'");
+                                    html += `<td class="half-day clickable ${dayStart} ${weekend} ${today}" onclick="openActionModal(${dayIndex}, '${bName}', '${rName}', '${bedName}')"></td>`;
+                                }
+                                col++;
+                            }
+                        }
+
+                        html += '</tr>';
+                    });
+                });
+            });
+
+            html += '</tbody>';
+            table.innerHTML = html;
+        }
+
+        // Инициализация
+        async function init() {
+            await Layout.init({ module: 'housing', menuId: 'housing', itemId: 'timeline' });
+            renderTable();
+        }
+
+        init();
+    </script>
+</body>
+</html>

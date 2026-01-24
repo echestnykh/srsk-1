@@ -56,6 +56,7 @@ const modules = {
             { id: 'housing', items: [
                 { id: 'occupancy', href: 'housing/occupancy.html' },
                 { id: 'bookings', href: 'housing/bookings.html' },
+                { id: 'timeline', href: 'housing/timeline.html' },
                 { id: 'guests', href: 'housing/guests.html' }
             ]},
             { id: 'cleaning', items: [
