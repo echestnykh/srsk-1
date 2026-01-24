@@ -271,6 +271,10 @@
             height: 16px;
         }
 
+        .cleaning-bar.completed {
+            background: #22c55e;
+        }
+
         /* Сводная плашка в строке номера */
         .room-summary-bar {
             position: absolute;
@@ -656,8 +660,16 @@
                 </div>
             </div>
 
+            <!-- Статус выполнено -->
+            <div id="cleaningCompletedStatus" class="hidden alert alert-success mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <span>Уборка выполнена</span>
+            </div>
+
             <!-- Кнопки действий -->
-            <div class="grid grid-cols-2 gap-3">
+            <div id="cleaningActions" class="grid grid-cols-2 gap-3">
                 <button class="btn btn-success" onclick="completeCleaning()">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -971,8 +983,8 @@
                                     cleaningEndHalf = 1;
                                 }
 
-                                // Если уборка попадает в диапазон отображения и не выполнена
-                                if (cleaningStartDay < DAYS_TO_SHOW && !res.cleaning_done) {
+                                // Если уборка попадает в диапазон отображения — показываем (выполненные тоже)
+                                if (cleaningStartDay < DAYS_TO_SHOW) {
                                     const autoCleaningId = 'cleaning-' + res.id;
                                     cleaningEntry = {
                                         id: autoCleaningId,
@@ -985,6 +997,7 @@
                                         endHalf: cleaningEndDay >= DAYS_TO_SHOW ? 1 : cleaningEndHalf,
                                         isCleaning: true,
                                         isAutoCleaning: true,
+                                        isCompleted: res.cleaning_done || false,
                                         rawData: {
                                             room_id: room.id,
                                             start_date: getDateForDay(cleaningStartDay).toISOString().split('T')[0],
@@ -1057,6 +1070,7 @@
                                 endHalf: 1,
                                 isCleaning: true,
                                 isManualCleaning: true,
+                                isCompleted: c.completed || false,
                                 rawData: c
                             };
 
@@ -1205,6 +1219,10 @@
             const cleaningHtml = `<div class="flex items-center gap-1.5">
                 <span class="w-4 h-4 rounded" style="background: #9ca3af;"></span>
                 <span class="text-sm text-gray-600">Уборка</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <span class="w-4 h-4 rounded" style="background: #22c55e;"></span>
+                <span class="text-sm text-gray-600">Убрано</span>
             </div>`;
 
             legend.innerHTML = categoriesHtml + bookingHtml + cleaningHtml;
@@ -1791,10 +1809,15 @@
             document.getElementById('cleaningStartDate').value = raw.start_date;
             document.getElementById('cleaningEndDate').value = raw.end_date;
 
+            // Показываем/скрываем элементы в зависимости от статуса
+            const isCompleted = cleaningData.isCompleted;
+            document.getElementById('cleaningCompletedStatus').classList.toggle('hidden', !isCompleted);
+            document.getElementById('cleaningActions').classList.toggle('hidden', isCompleted);
+
             document.getElementById('cleaningModal').showModal();
         }
 
-        // Уборка выполнена — удаляем запись (для ручных) или ставим флаг (для авто)
+        // Уборка выполнена — помечаем как выполненную (перекрашивается в зелёный)
         async function completeCleaning() {
             if (!currentCleaning) return;
 
@@ -1816,10 +1839,10 @@
                 return;
             }
 
-            // Для ручной уборки — удаляем из БД
+            // Для ручной уборки — помечаем как выполненную
             const { error } = await Layout.db
                 .from('room_cleanings')
-                .delete()
+                .update({ completed: true, completed_at: new Date().toISOString() })
                 .eq('id', currentCleaning.cleaningId);
 
             if (error) {
@@ -2141,8 +2164,9 @@
                                 const width = spanCells * CELL_WIDTH - 2; // минус отступы
 
                                 if (guest.isCleaning) {
-                                    // Все уборки кликабельные
-                                    html += `<div class="cleaning-bar clickable" style="width: ${width}px;" onclick="event.stopPropagation(); openCleaningModal('${guest.cleaningId}')">${guest.name}</div>`;
+                                    // Все уборки кликабельные, выполненные — зелёные
+                                    const completedClass = guest.isCompleted ? ' completed' : '';
+                                    html += `<div class="cleaning-bar clickable${completedClass}" style="width: ${width}px;" onclick="event.stopPropagation(); openCleaningModal('${guest.cleaningId}')">${guest.name}</div>`;
                                 } else if (guest.isBooking) {
                                     // Бронирование — штриховка
                                     const bgColor = guest.color || '#fef08a';
