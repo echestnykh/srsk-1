@@ -191,48 +191,48 @@
         <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
 
-    <!-- Add Cleaning Modal -->
+    <!-- Add Cleaning Modal (Multi-select) -->
     <dialog id="cleaningModal" class="modal">
-        <div class="modal-box max-w-md relative">
+        <div class="modal-box max-w-lg relative">
             <button type="button" class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" onclick="closeCleaningModal()">✕</button>
-            <h3 class="font-bold text-lg mb-4" id="cleaningModalTitle">Назначить уборку</h3>
+            <h3 class="font-bold text-lg mb-2 flex items-center gap-2" id="cleaningModalTitle">
+                <svg class="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+                </svg>
+                Назначить уборку
+            </h3>
 
-            <form id="cleaningForm" class="space-y-4">
-                <input type="hidden" name="type" id="cleaningTypeInput" value="cleaning" />
+            <input type="hidden" id="cleaningTypeInput" value="cleaning" />
 
-                <!-- Building -->
-                <div>
-                    <label class="label"><span class="label-text font-medium" data-i18n="room_building">Здание</span></label>
-                    <select name="building_id" id="cleaningBuildingSelect" class="select select-bordered w-full" required onchange="loadCleaningRooms()">
-                        <option value="">—</option>
-                    </select>
-                </div>
+            <!-- Date -->
+            <div class="form-control mb-4">
+                <label class="label py-1">
+                    <span class="label-text font-medium" id="cleaningDateLabel">Дата уборки</span>
+                </label>
+                <input type="date" id="cleaningDateInput" class="input input-bordered input-sm" />
+            </div>
 
-                <!-- Room -->
-                <div>
-                    <label class="label"><span class="label-text font-medium" data-i18n="room_number">Комната</span></label>
-                    <select name="room_id" id="cleaningRoomSelect" class="select select-bordered w-full" required>
-                        <option value="">—</option>
-                    </select>
-                </div>
+            <!-- Room selection -->
+            <div class="text-sm text-gray-500 mb-2" data-i18n="select_rooms">Выберите номера:</div>
+            <div class="max-h-64 overflow-y-auto space-y-2 mb-4" id="bulkRoomsList"></div>
 
-                <!-- Date -->
-                <div>
-                    <label class="label"><span class="label-text font-medium" id="cleaningDateLabel">Дата</span></label>
-                    <input type="date" name="cleaning_date" class="input input-bordered w-full" required />
-                </div>
+            <!-- Selected count -->
+            <div class="text-sm text-gray-500 mb-4">
+                <span data-i18n="selected">Выбрано</span>: <span id="bulkSelectedCount" class="font-medium">0</span>
+            </div>
 
-                <!-- Notes -->
-                <div>
-                    <label class="label"><span class="label-text font-medium" data-i18n="notes">Примечание</span></label>
-                    <input type="text" name="notes" class="input input-bordered w-full" />
-                </div>
+            <!-- Notes -->
+            <div class="form-control mb-4">
+                <label class="label py-1">
+                    <span class="label-text font-medium" data-i18n="notes">Примечание</span>
+                </label>
+                <input type="text" id="cleaningNotesInput" class="input input-bordered input-sm w-full" />
+            </div>
 
-                <div class="modal-action">
-                    <button type="button" class="btn btn-ghost" onclick="closeCleaningModal()" data-i18n="cancel">Отмена</button>
-                    <button type="submit" class="btn btn-primary" data-i18n="save">Сохранить</button>
-                </div>
-            </form>
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost" onclick="closeCleaningModal()" data-i18n="cancel">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="saveBulkCleaning()" data-i18n="add">Добавить</button>
+            </div>
         </div>
         <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
@@ -243,10 +243,11 @@
         let cleaningData = []; // { date, rooms: [...] }
         let manualCleanings = []; // Manual cleaning tasks
         let buildings = [];
-        let rooms = [];
+        let allRoomsData = []; // All rooms with buildings
         let currentView = 'list';
         let calendarYear = new Date().getFullYear();
         let calendarMonth = new Date().getMonth();
+        let bulkSelectedRooms = new Set();
 
         const t = key => Layout.t(key);
         const today = new Date().toISOString().split('T')[0];
@@ -615,34 +616,56 @@
             Layout.$('#dayModal').close();
         }
 
-        // ==================== CLEANING MODAL ====================
+        // ==================== CLEANING MODAL (MULTI-SELECT) ====================
+        async function loadAllRoomsData() {
+            if (buildings.length > 0) return; // Already loaded
+
+            // Load buildings
+            buildings = await loadBuildings();
+
+            // Load all rooms with building info
+            const { data } = await Layout.db
+                .from('rooms')
+                .select('*, buildings(id, name_ru, name_en)')
+                .eq('is_active', true)
+                .order('floor')
+                .order('number');
+
+            allRoomsData = data || [];
+        }
+
         async function openCleaningModal(type = 'cleaning') {
-            // Загружаем здания если ещё не загружены
-            if (buildings.length === 0) {
-                buildings = await loadBuildings();
-            }
+            bulkSelectedRooms.clear();
 
-            const buildingSelect = Layout.$('#cleaningBuildingSelect');
-            buildingSelect.innerHTML = `<option value="">— ${t('select') || 'Выберите'} —</option>` +
-                buildings.map(b => `<option value="${b.id}">${Layout.getName(b)}</option>`).join('');
+            // Ensure data is loaded
+            await loadAllRoomsData();
 
-            Layout.$('#cleaningRoomSelect').innerHTML = `<option value="">—</option>`;
-
-            const form = Layout.$('#cleaningForm');
-            form.reset();
-            form.cleaning_date.value = today;
-
-            // Set type
             Layout.$('#cleaningTypeInput').value = type;
 
-            // Update modal title and labels based on type
+            // Update title and labels based on type
             if (type === 'linen') {
-                Layout.$('#cleaningModalTitle').textContent = t('add_linen_title') || 'Назначить смену белья';
+                Layout.$('#cleaningModalTitle').innerHTML = `
+                    <svg class="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>
+                    </svg>
+                    ${t('add_linen_title') || 'Смена постельного белья'}`;
                 Layout.$('#cleaningDateLabel').textContent = t('linen_date') || 'Дата смены белья';
             } else {
-                Layout.$('#cleaningModalTitle').textContent = t('add_cleaning_title') || 'Назначить уборку';
+                Layout.$('#cleaningModalTitle').innerHTML = `
+                    <svg class="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+                    </svg>
+                    ${t('add_cleaning_title') || 'Назначить уборку'}`;
                 Layout.$('#cleaningDateLabel').textContent = t('cleaning_date') || 'Дата уборки';
             }
+
+            // Set default date to today
+            Layout.$('#cleaningDateInput').value = today;
+            Layout.$('#cleaningNotesInput').value = '';
+
+            // Render rooms list
+            renderBulkRoomsList();
+            updateBulkSelectedCount();
 
             Layout.$('#cleaningModal').showModal();
         }
@@ -651,41 +674,106 @@
             Layout.$('#cleaningModal').close();
         }
 
-        async function loadCleaningRooms() {
-            const buildingId = Layout.$('#cleaningBuildingSelect').value;
-            const roomSelect = Layout.$('#cleaningRoomSelect');
+        function renderBulkRoomsList() {
+            const roomsList = Layout.$('#bulkRoomsList');
 
-            if (!buildingId) {
-                roomSelect.innerHTML = `<option value="">—</option>`;
+            if (buildings.length === 0) {
+                roomsList.innerHTML = `<div class="text-center py-4 text-gray-500">${t('no_rooms') || 'Нет номеров'}</div>`;
                 return;
             }
 
-            rooms = await loadRooms(buildingId);
-            roomSelect.innerHTML = `<option value="">— ${t('select') || 'Выберите'} —</option>` +
-                rooms.map(r => `<option value="${r.id}">${r.number} (${t('floor_plan_floor') || 'Этаж'} ${r.floor})</option>`).join('');
+            let html = '';
+            buildings.forEach(building => {
+                const buildingRooms = allRoomsData.filter(r => r.building_id === building.id);
+                if (buildingRooms.length === 0) return;
+
+                const allRoomIds = buildingRooms.map(r => r.id);
+                const allSelected = allRoomIds.every(id => bulkSelectedRooms.has(id));
+
+                html += `<div class="collapse collapse-arrow bg-base-200 rounded-lg">
+                    <input type="checkbox" checked />
+                    <div class="collapse-title font-medium py-2 flex items-center justify-between pr-12">
+                        <span>${Layout.getName(building)}</span>
+                        <button type="button" class="btn btn-xs btn-ghost" onclick="event.stopPropagation(); toggleBulkBuilding('${building.id}')">
+                            ${allSelected ? (t('deselect_all') || 'Снять все') : (t('select_all') || 'Выбрать все')}
+                        </button>
+                    </div>
+                    <div class="collapse-content p-0">
+                        <div class="grid grid-cols-4 gap-1 p-2">`;
+
+                buildingRooms.forEach(room => {
+                    const isSelected = bulkSelectedRooms.has(room.id);
+                    const btnClass = isSelected ? 'btn-primary' : 'btn-outline';
+
+                    html += `<button type="button" class="btn btn-sm ${btnClass}"
+                        onclick="toggleBulkRoom('${room.id}')">
+                        ${room.number}
+                    </button>`;
+                });
+
+                html += `</div></div></div>`;
+            });
+
+            roomsList.innerHTML = html;
         }
 
-        async function saveCleaning(e) {
-            e.preventDefault();
+        function toggleBulkRoom(roomId) {
+            if (bulkSelectedRooms.has(roomId)) {
+                bulkSelectedRooms.delete(roomId);
+            } else {
+                bulkSelectedRooms.add(roomId);
+            }
+            renderBulkRoomsList();
+            updateBulkSelectedCount();
+        }
 
-            const form = Layout.$('#cleaningForm');
-            const roomId = form.room_id.value;
-            const cleaningDate = form.cleaning_date.value;
-            const notes = form.notes.value.trim();
+        function toggleBulkBuilding(buildingId) {
+            const buildingRooms = allRoomsData.filter(r => r.building_id === buildingId);
+            const roomIds = buildingRooms.map(r => r.id);
+            const allSelected = roomIds.every(id => bulkSelectedRooms.has(id));
+
+            if (allSelected) {
+                roomIds.forEach(id => bulkSelectedRooms.delete(id));
+            } else {
+                roomIds.forEach(id => bulkSelectedRooms.add(id));
+            }
+
+            renderBulkRoomsList();
+            updateBulkSelectedCount();
+        }
+
+        function updateBulkSelectedCount() {
+            Layout.$('#bulkSelectedCount').textContent = bulkSelectedRooms.size;
+        }
+
+        async function saveBulkCleaning() {
+            const cleaningDate = Layout.$('#cleaningDateInput').value;
             const type = Layout.$('#cleaningTypeInput').value || 'cleaning';
+            const notes = Layout.$('#cleaningNotesInput').value.trim();
 
-            if (!roomId || !cleaningDate) return;
+            if (!cleaningDate) {
+                alert(t('select_date') || 'Выберите дату');
+                return;
+            }
+
+            if (bulkSelectedRooms.size === 0) {
+                alert(t('select_at_least_one') || 'Выберите хотя бы один номер');
+                return;
+            }
 
             try {
+                // Create records for each room
+                const records = Array.from(bulkSelectedRooms).map(roomId => ({
+                    room_id: roomId,
+                    cleaning_date: cleaningDate,
+                    type: type,
+                    notes: notes || null,
+                    status: 'pending'
+                }));
+
                 const { error } = await Layout.db
                     .from('cleaning_tasks')
-                    .insert({
-                        room_id: roomId,
-                        cleaning_date: cleaningDate,
-                        notes: notes || null,
-                        type: type,
-                        status: 'pending'
-                    });
+                    .insert(records);
 
                 if (error) throw error;
 
@@ -694,7 +782,7 @@
 
             } catch (err) {
                 console.error('Error saving cleaning:', err);
-                alert('Ошибка сохранения: ' + err.message);
+                alert((t('error_saving') || 'Ошибка сохранения') + ': ' + err.message);
             }
         }
 
@@ -727,9 +815,6 @@
 
         async function init() {
             await Layout.init({ module: 'housing', menuId: 'housing', itemId: 'cleaning' });
-
-            // Form handler
-            Layout.$('#cleaningForm').addEventListener('submit', saveCleaning);
 
             updateUI();
             await loadCleaningSchedule();
