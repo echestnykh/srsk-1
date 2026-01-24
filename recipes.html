@@ -279,7 +279,7 @@
                         <div class="card-body p-4">
                             <div class="flex justify-between items-start mb-1">
                                 <span class="category-badge badge text-white" style="background-color: ${cat?.color || '#999'}">${Layout.getName(cat) || '—'}</span>
-                                <span class="text-xs opacity-50">${recipe.cooking_time} ${t('minutes')}</span>
+                                ${recipe.cooking_time ? `<span class="text-xs opacity-50">${recipe.cooking_time} ${t('minutes')}</span>` : ''}
                             </div>
                             <h3 class="card-title text-base leading-tight mb-0">${Layout.getName(recipe)}</h3>
                             <p class="sub-text">${recipe[`name_${secondaryLang}`] || ''}</p>
