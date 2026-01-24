@@ -42,6 +42,16 @@
             background: oklch(var(--er) / 0.9);
             color: oklch(var(--erc));
         }
+        .calendar-day.completed-1 {
+            background: oklch(var(--su) / 0.4);
+        }
+        .calendar-day.completed-2 {
+            background: oklch(var(--su) / 0.6);
+        }
+        .calendar-day.completed-3 {
+            background: oklch(var(--su) / 0.85);
+            color: oklch(var(--suc));
+        }
         .cleaning-count {
             font-size: 0.75rem;
             font-weight: 600;
@@ -99,9 +109,18 @@
 
         <!-- Page Header -->
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-4 flex-wrap">
                 <h1 class="text-2xl font-bold" data-i18n="cleaning_title">Уборка</h1>
-                <!-- View toggle -->
+                <!-- Mode toggle: upcoming/completed -->
+                <div class="tabs tabs-boxed bg-base-100">
+                    <button class="tab tab-active" id="modeUpcomingBtn" onclick="setMode('upcoming')">
+                        <span data-i18n="cleaning_upcoming_tab">Предстоящие</span>
+                    </button>
+                    <button class="tab" id="modeCompletedBtn" onclick="setMode('completed')">
+                        <span data-i18n="cleaning_completed_tab">Законченные</span>
+                    </button>
+                </div>
+                <!-- View toggle: list/calendar -->
                 <div class="tabs tabs-boxed bg-base-100">
                     <button class="tab tab-active gap-2" id="viewListBtn" onclick="setView('list')">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -118,7 +137,7 @@
                 </div>
             </div>
             <!-- Add buttons -->
-            <div class="flex gap-2">
+            <div id="addButtons" class="flex gap-2">
                 <button class="btn btn-primary gap-2" onclick="openCleaningModal('cleaning')">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -135,7 +154,7 @@
         </div>
 
         <!-- Stats -->
-        <div class="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
+        <div id="statsSection" class="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
             <div class="bg-error/10 border border-error/30 rounded-lg p-4">
                 <div class="text-3xl font-bold text-error" id="statOverdue">0</div>
                 <div class="text-sm opacity-60" data-i18n="cleaning_overdue">Просрочено</div>
@@ -279,6 +298,86 @@
             </div>
         </div>
 
+        <!-- Completed List View -->
+        <div id="completedListView" class="hidden space-y-4">
+            <div class="bg-base-100 rounded-lg shadow-sm overflow-hidden">
+                <div class="p-4 border-b border-base-200 bg-success/10">
+                    <h2 class="font-semibold text-lg flex items-center gap-2">
+                        <span class="text-success" data-i18n="cleaning_completed_title">Законченные уборки</span>
+                        <span class="badge badge-success" id="countCompleted">0</span>
+                    </h2>
+                </div>
+                <div class="divide-y divide-base-200" id="roomsCompleted">
+                    <!-- Completed rooms will be rendered here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Completed Calendar View -->
+        <div id="completedCalendarView" class="hidden">
+            <!-- Calendar navigation -->
+            <div class="bg-base-100 rounded-lg shadow-sm p-3 mb-4 flex items-center justify-between">
+                <button class="btn btn-ghost btn-sm" onclick="prevMonth()">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </button>
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-3 text-xs">
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-success/50"></span> 1-5</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-success/70"></span> 6-10</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-success"></span> >10</span>
+                    </div>
+                </div>
+                <button class="btn btn-ghost btn-sm" onclick="nextMonth()">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Two calendars side by side -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- First month -->
+                <div class="bg-base-100 rounded-lg shadow-sm overflow-hidden">
+                    <div class="p-3 border-b border-base-200 text-center">
+                        <h3 class="font-semibold" id="completedCalendarTitle1">Январь 2025</h3>
+                    </div>
+                    <div class="p-3">
+                        <div class="grid grid-cols-7 gap-0.5 mb-1 text-xs">
+                            <div class="text-center opacity-60 py-1">Пн</div>
+                            <div class="text-center opacity-60 py-1">Вт</div>
+                            <div class="text-center opacity-60 py-1">Ср</div>
+                            <div class="text-center opacity-60 py-1">Чт</div>
+                            <div class="text-center opacity-60 py-1">Пт</div>
+                            <div class="text-center opacity-60 py-1">Сб</div>
+                            <div class="text-center opacity-60 py-1">Вс</div>
+                        </div>
+                        <div class="grid grid-cols-7 gap-0.5" id="completedCalendarGrid1"></div>
+                    </div>
+                </div>
+
+                <!-- Second month -->
+                <div class="bg-base-100 rounded-lg shadow-sm overflow-hidden">
+                    <div class="p-3 border-b border-base-200 text-center">
+                        <h3 class="font-semibold" id="completedCalendarTitle2">Февраль 2025</h3>
+                    </div>
+                    <div class="p-3">
+                        <div class="grid grid-cols-7 gap-0.5 mb-1 text-xs">
+                            <div class="text-center opacity-60 py-1">Пн</div>
+                            <div class="text-center opacity-60 py-1">Вт</div>
+                            <div class="text-center opacity-60 py-1">Ср</div>
+                            <div class="text-center opacity-60 py-1">Чт</div>
+                            <div class="text-center opacity-60 py-1">Пт</div>
+                            <div class="text-center opacity-60 py-1">Сб</div>
+                            <div class="text-center opacity-60 py-1">Вс</div>
+                        </div>
+                        <div class="grid grid-cols-7 gap-0.5" id="completedCalendarGrid2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </main>
 
     <div id="footer-placeholder"></div>
@@ -372,11 +471,13 @@
     <script src="../js/layout.js"></script>
     <script>
         // ==================== STATE ====================
-        let cleaningData = []; // { date, rooms: [...] }
+        let cleaningData = []; // { date, rooms: [...] } - upcoming
+        let completedData = []; // { date, rooms: [...] } - completed
         let manualCleanings = []; // Manual cleaning tasks
         let buildings = [];
         let allRoomsData = []; // All rooms with buildings
         let currentView = 'list';
+        let currentMode = 'upcoming'; // 'upcoming' | 'completed'
         let calendarYear = new Date().getFullYear();
         let calendarMonth = new Date().getMonth();
         let bulkSelectedRooms = new Set();
@@ -501,6 +602,84 @@
             });
         }
 
+        async function loadCompletedCleanings() {
+            // Загружаем законченные уборки за последние 30 дней
+            const startDate = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+
+            // 1. Авто-уборки (после выезда) с cleaning_done=true
+            const { data: autoData, error: autoError } = await Layout.db
+                .from('residents')
+                .select(`
+                    id, check_out, guest_name, cleaning_done,
+                    rooms(id, number, floor, buildings(id, name_ru, name_en)),
+                    team_members(id, first_name, spiritual_name),
+                    bookings(id, name, contact_name)
+                `)
+                .eq('cleaning_done', true)
+                .gte('check_out', startDate)
+                .order('check_out', { ascending: false });
+
+            // 2. Ручные уборки с completed=true
+            const { data: manualData, error: manualError } = await Layout.db
+                .from('room_cleanings')
+                .select(`
+                    id, start_date, end_date, notes, completed, completed_at, type,
+                    rooms(id, number, floor, buildings(id, name_ru, name_en))
+                `)
+                .eq('completed', true)
+                .gte('start_date', startDate)
+                .order('start_date', { ascending: false });
+
+            // Группируем по дате
+            const byDate = {};
+
+            // Добавляем авто-уборки
+            (autoData || []).forEach(resident => {
+                const date = resident.check_out;
+                if (!byDate[date]) byDate[date] = [];
+                byDate[date].push({
+                    ...resident,
+                    isManual: false,
+                    isCompleted: true
+                });
+            });
+
+            // Добавляем ручные уборки
+            (manualData || []).forEach(task => {
+                const date = task.start_date;
+                if (!byDate[date]) byDate[date] = [];
+                byDate[date].push({
+                    id: task.id,
+                    check_out: date,
+                    rooms: task.rooms,
+                    isManual: true,
+                    isCompleted: true,
+                    cleaningType: task.type || 'cleaning',
+                    notes: task.notes,
+                    completed_at: task.completed_at
+                });
+            });
+
+            // Преобразуем в массив и сортируем по дате (новые сверху)
+            completedData = Object.entries(byDate)
+                .map(([date, rooms]) => ({ date, rooms }))
+                .sort((a, b) => b.date.localeCompare(a.date));
+
+            // Сортируем комнаты внутри каждого дня
+            completedData.forEach(day => {
+                day.rooms.sort((a, b) => {
+                    const buildingA = a.rooms?.buildings?.name_ru || '';
+                    const buildingB = b.rooms?.buildings?.name_ru || '';
+                    if (buildingA !== buildingB) {
+                        return buildingA.localeCompare(buildingB, 'ru');
+                    }
+                    const numA = parseInt(a.rooms?.number) || 0;
+                    const numB = parseInt(b.rooms?.number) || 0;
+                    return numA - numB;
+                });
+            });
+        }
+
         async function loadBuildings() {
             const { data } = await Layout.db
                 .from('buildings')
@@ -549,23 +728,54 @@
         }
 
         // ==================== RENDER ====================
+        async function setMode(mode) {
+            currentMode = mode;
+
+            Layout.$('#modeUpcomingBtn').classList.toggle('tab-active', mode === 'upcoming');
+            Layout.$('#modeCompletedBtn').classList.toggle('tab-active', mode === 'completed');
+
+            // Скрыть/показать статистику и кнопки добавления
+            Layout.$('#statsSection').classList.toggle('hidden', mode === 'completed');
+            Layout.$('#addButtons').classList.toggle('hidden', mode === 'completed');
+
+            // Загружаем законченные уборки при первом переключении
+            if (mode === 'completed' && completedData.length === 0) {
+                await loadCompletedCleanings();
+            }
+
+            render();
+        }
+
         function setView(view) {
             currentView = view;
 
             Layout.$('#viewListBtn').classList.toggle('tab-active', view === 'list');
             Layout.$('#viewCalendarBtn').classList.toggle('tab-active', view === 'calendar');
 
-            Layout.$('#listView').classList.toggle('hidden', view !== 'list');
-            Layout.$('#calendarView').classList.toggle('hidden', view !== 'calendar');
-
             render();
         }
 
         function render() {
+            const isUpcoming = currentMode === 'upcoming';
+
+            // Скрываем/показываем нужные контейнеры
+            Layout.$('#listView').classList.toggle('hidden', currentView !== 'list' || !isUpcoming);
+            Layout.$('#calendarView').classList.toggle('hidden', currentView !== 'calendar' || !isUpcoming);
+            Layout.$('#completedListView').classList.toggle('hidden', currentView !== 'list' || isUpcoming);
+            Layout.$('#completedCalendarView').classList.toggle('hidden', currentView !== 'calendar' || isUpcoming);
+
             if (currentView === 'list') {
-                renderListView();
+                if (isUpcoming) {
+                    renderListView();
+                } else {
+                    renderCompletedListView();
+                }
             } else {
-                renderCalendarView();
+                if (isUpcoming) {
+                    renderCalendarView();
+                } else {
+                    renderCompletedCalendarView();
+                }
             }
         }
 
@@ -770,6 +980,140 @@
                     </div>
                 `;
             }).join('');
+        }
+
+        // ==================== COMPLETED VIEW ====================
+        function renderCompletedListView() {
+            const totalCount = completedData.reduce((sum, d) => sum + d.rooms.length, 0);
+            Layout.$('#countCompleted').textContent = totalCount;
+
+            if (totalCount === 0) {
+                Layout.$('#roomsCompleted').innerHTML = `<div class="text-center py-4 opacity-50">${t('cleaning_no_completed') || 'Нет законченных уборок'}</div>`;
+                return;
+            }
+
+            Layout.$('#roomsCompleted').innerHTML = completedData.map(day => `
+                <div class="border-b border-base-200 last:border-b-0">
+                    <div class="text-sm font-medium px-4 py-2 bg-success/5 text-success flex items-center justify-between">
+                        <span>${formatDate(day.date)}</span>
+                        <span class="badge badge-success badge-sm">${day.rooms.length}</span>
+                    </div>
+                    <div class="divide-y divide-base-200">
+                        ${day.rooms.map(r => renderCompletedRoomCard(r)).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderCompletedRoomCard(resident) {
+            const room = resident.rooms;
+            const building = room?.buildings;
+            const isManual = resident.isManual;
+            const cleaningType = resident.cleaningType || 'cleaning';
+
+            let badge;
+            if (isManual) {
+                if (cleaningType === 'linen') {
+                    badge = `<span class="badge badge-secondary badge-sm">${t('linen_change') || 'Смена белья'}</span>`;
+                } else {
+                    badge = `<span class="badge badge-primary badge-sm">${t('cleaning_manual') || 'Вручную'}</span>`;
+                }
+            } else {
+                badge = `<span class="badge badge-warning badge-sm">${t('cleaning_after_checkout') || 'После выезда'}</span>`;
+            }
+
+            return `
+                <div class="flex items-center justify-between p-4 hover:bg-base-200/50 transition-colors">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span class="font-medium">${building ? Layout.getName(building) : ''} / ${room?.number || '—'}</span>
+                            ${badge}
+                        </div>
+                        <div class="text-sm opacity-60">
+                            ${isManual ? (resident.notes || '') : getResidentName(resident)}
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xs opacity-60">${t('floor_plan_floor') || 'Этаж'} ${room?.floor || '—'}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderCompletedCalendarView() {
+            // Render both months
+            renderCompletedMonthGrid(calendarYear, calendarMonth, '#completedCalendarTitle1', '#completedCalendarGrid1');
+
+            // Second month
+            let month2 = calendarMonth + 1;
+            let year2 = calendarYear;
+            if (month2 > 11) {
+                month2 = 0;
+                year2++;
+            }
+            renderCompletedMonthGrid(year2, month2, '#completedCalendarTitle2', '#completedCalendarGrid2');
+        }
+
+        function renderCompletedMonthGrid(year, month, titleSelector, gridSelector) {
+            const title = new Date(year, month).toLocaleDateString(
+                Layout.currentLang === 'en' ? 'en-US' : 'ru-RU',
+                { month: 'long', year: 'numeric' }
+            );
+            Layout.$(titleSelector).textContent = title.charAt(0).toUpperCase() + title.slice(1);
+
+            const grid = Layout.$(gridSelector);
+            const firstDay = new Date(year, month, 1);
+
+            let startDay = new Date(firstDay);
+            const dayOfWeek = startDay.getDay();
+            const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+            startDay.setDate(startDay.getDate() - diff);
+
+            const days = [];
+            const current = new Date(startDay);
+            for (let i = 0; i < 42; i++) {
+                days.push(new Date(current));
+                current.setDate(current.getDate() + 1);
+            }
+
+            grid.innerHTML = days.map(day => {
+                const dateStr = day.toISOString().split('T')[0];
+                const isOtherMonth = day.getMonth() !== month;
+                const isToday = dateStr === today;
+                const dayData = completedData.find(d => d.date === dateStr);
+                const roomCount = dayData?.rooms.length || 0;
+
+                let levelClass = '';
+                if (roomCount > 0) {
+                    if (roomCount <= 5) levelClass = 'completed-1';
+                    else if (roomCount <= 10) levelClass = 'completed-2';
+                    else levelClass = 'completed-3';
+                }
+
+                return `
+                    <div class="calendar-day ${isOtherMonth ? 'other-month' : ''} ${isToday ? 'today' : ''} ${levelClass} ${roomCount > 0 ? 'cursor-pointer hover:opacity-80' : ''}"
+                         ${roomCount > 0 ? `onclick="openCompletedDayModal('${dateStr}')"` : ''}>
+                        <div class="text-xs font-medium">${day.getDate()}</div>
+                        ${roomCount > 0 ? `<div class="cleaning-count">${roomCount}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function openCompletedDayModal(dateStr) {
+            const dayData = completedData.find(d => d.date === dateStr);
+            if (!dayData) return;
+
+            Layout.$('#dayModalTitle').textContent = `${t('cleaning_completed_title') || 'Законченные'} — ${formatDate(dateStr)}`;
+
+            Layout.$('#dayModalContent').innerHTML = dayData.rooms.length > 0
+                ? dayData.rooms.map(r => renderCompletedRoomCard(r)).join('')
+                : `<div class="text-center py-4 opacity-50">${t('cleaning_no_completed') || 'Нет уборок'}</div>`;
+
+            Layout.$('#dayModal').showModal();
         }
 
         function formatDate(dateStr) {
