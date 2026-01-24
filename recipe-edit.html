@@ -566,9 +566,6 @@
 
         // Получить доступные единицы для продукта
         function getAvailableUnits(productId, baseUnit) {
-            const baseUnits = ['g', 'kg', 'ml', 'l', 'pcs', 'pack'];
-            const volumeUnits = ['tsp', 'tbsp', 'cup'];
-
             // Всегда доступны базовые единицы по типу
             let available = [];
             if (baseUnit === 'g' || baseUnit === 'kg') {
@@ -580,8 +577,13 @@
             }
 
             // Если есть плотность — добавляем объёмные единицы
-            if (densities[productId]) {
-                available = [...available, ...volumeUnits];
+            const density = densities[productId];
+            if (density) {
+                available = [...available, 'tsp', 'tbsp', 'cup'];
+                // Если есть liter_grams — добавляем литр для весовых продуктов
+                if (density.liter_grams && (baseUnit === 'g' || baseUnit === 'kg')) {
+                    available.push('l');
+                }
             }
 
             return available;

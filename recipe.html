@@ -326,6 +326,7 @@
                 case 'tsp': return amount * parseFloat(d.tsp_grams);
                 case 'tbsp': return amount * parseFloat(d.tbsp_grams);
                 case 'cup': return amount * parseFloat(d.cup_grams);
+                case 'l': return d.liter_grams ? amount * parseFloat(d.liter_grams) : null;
                 default: return null;
             }
         }
@@ -487,9 +488,9 @@
                     displayUnit = unit;
                 }
 
-                // Альтернатива в скобках (граммы для ложек/стаканов)
+                // Альтернатива в скобках (граммы для ложек/стаканов/литров)
                 let altText = '';
-                if (['tsp', 'tbsp', 'cup'].includes(unit)) {
+                if (['tsp', 'tbsp', 'cup', 'l'].includes(unit)) {
                     const grams = toGrams(calculatedRaw, unit, product.id);
                     if (grams !== null) {
                         const smart = formatSmart(grams, 'g');
