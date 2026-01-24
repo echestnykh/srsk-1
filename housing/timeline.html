@@ -163,6 +163,7 @@
             background: #e5e7eb !important;
             font-weight: 500;
             font-size: 13px;
+            border-bottom: 2px solid #d1d5db !important;
         }
 
         .row-room .sticky-col {
@@ -203,6 +204,10 @@
             cursor: pointer;
         }
 
+        .guest-bar:hover {
+            filter: brightness(0.95);
+        }
+
         /* Бронирование — штриховка */
         .guest-bar.booking {
             background: repeating-linear-gradient(
@@ -231,6 +236,45 @@
             justify-content: center;
             z-index: 4;
             color: white;
+        }
+
+        /* Сводная плашка в строке номера */
+        .room-summary-bar {
+            position: absolute;
+            top: 3px;
+            left: 1px;
+            height: 24px;
+            border-radius: 4px;
+            font-size: 11px;
+            padding: 0 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: flex;
+            align-items: center;
+            z-index: 5;
+            border: 1px solid rgba(0,0,0,0.15);
+        }
+
+        .room-summary-bar.booking {
+            background: repeating-linear-gradient(
+                45deg,
+                var(--bar-color),
+                var(--bar-color) 4px,
+                rgba(255,255,255,0.5) 4px,
+                rgba(255,255,255,0.5) 8px
+            );
+            border-style: dashed;
+        }
+
+        /* Частичная занятость — показываем дробь */
+        .room-summary-bar .fraction {
+            font-weight: 600;
+            opacity: 0.7;
+        }
+
+        .row-room td {
+            position: relative;
         }
 
         .row-bed td {
@@ -541,6 +585,51 @@
         </form>
     </dialog>
 
+    <!-- Модалка резидента/брони -->
+    <dialog id="residentModal" class="modal">
+        <div class="modal-box max-w-lg">
+            <!-- Экран информации -->
+            <div id="residentInfoScreen">
+                <h3 class="font-bold text-lg mb-2" id="residentModalTitle">Резидент</h3>
+                <div class="text-sm text-gray-500 mb-4" id="residentModalLocation"></div>
+
+                <!-- Информация -->
+                <div class="space-y-2 mb-4" id="residentInfo"></div>
+
+                <!-- Кнопки действий -->
+                <div class="grid grid-cols-3 gap-3" id="residentActions"></div>
+
+                <div class="modal-action">
+                    <form method="dialog">
+                        <button class="btn">Закрыть</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Экран выбора номера для перемещения -->
+            <div id="moveScreen" class="hidden">
+                <div class="flex items-center gap-2 mb-4">
+                    <button class="btn btn-ghost btn-sm btn-circle" onclick="showResidentInfoScreen()">←</button>
+                    <h3 class="font-bold text-lg">Перенос в номер</h3>
+                </div>
+
+                <div class="text-sm text-gray-500 mb-4">
+                    Выберите новый номер для <span id="moveGuestName" class="font-medium"></span>
+                </div>
+
+                <!-- Список зданий и номеров -->
+                <div class="max-h-64 overflow-y-auto space-y-2" id="roomsList"></div>
+
+                <div class="modal-action">
+                    <button class="btn btn-ghost" onclick="showResidentInfoScreen()">Отмена</button>
+                </div>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
+
     <script src="../js/layout.js"></script>
     <script>
         // Конфигурация
@@ -560,6 +649,9 @@
         // Справочники для форм
         let categories = [];
         let teamMembers = [];
+
+        // Хранилище гостей для кликов
+        let guestsMap = new Map();
 
         // Базовая дата (сегодня минус 2 дня)
         const baseDate = new Date();
@@ -616,6 +708,9 @@
             const residents = residentsRes.data || [];
             const retreats = retreatsRes.data || [];
 
+            // Очищаем хранилище гостей
+            guestsMap.clear();
+
             // Преобразуем ретриты
             timelineData.retreats = retreats.map(r => {
                 const rawStartDay = dateToDayIndex(r.start_date);
@@ -636,6 +731,16 @@
                     roomsByBuilding[room.building_id] = [];
                 }
                 roomsByBuilding[room.building_id].push(room);
+            });
+
+            // Сортируем номера числовым способом (1, 2, 3, 10, 11, а не 1, 10, 11, 2, 3)
+            Object.values(roomsByBuilding).forEach(roomList => {
+                roomList.sort((a, b) => {
+                    // Сначала по этажу
+                    if (a.floor !== b.floor) return (a.floor || 0) - (b.floor || 0);
+                    // Потом по номеру (натуральная сортировка)
+                    return a.number.localeCompare(b.number, undefined, { numeric: true });
+                });
             });
 
             // Группируем резидентов по комнатам
@@ -724,7 +829,9 @@
                                 endHalf,
                                 color,
                                 border,
-                                isBooking
+                                isBooking,
+                                // Сырые данные для модалки
+                                rawData: res
                             };
 
                             // Уборка после выезда
@@ -777,6 +884,8 @@
 
                                 if (!hasOverlap) {
                                     bed.guests.push(guest);
+                                    // Сохраняем в хранилище с контекстом
+                                    guestsMap.set(guest.id, { ...guest, buildingName: Layout.getName(building), roomName: room.number });
                                     placedBed = bed;
                                     placed = true;
                                     break;
@@ -786,6 +895,7 @@
                             // Если не нашли место, добавляем в первое (будет визуальное наложение)
                             if (!placed && beds.length > 0) {
                                 beds[0].guests.push(guest);
+                                guestsMap.set(guest.id, { ...guest, buildingName: Layout.getName(building), roomName: room.number });
                                 placedBed = beds[0];
                             }
 
@@ -862,8 +972,8 @@
             const checkInDate = getDateForDay(dayIndex);
             const checkOutDate = getDateForDay(dayIndex + 1);
 
-            // Сохраняем контекст
-            modalContext = { dayIndex, roomId, buildingName, roomName, bedName };
+            // Сохраняем контекст (сбрасываем флаг конвертации)
+            modalContext = { dayIndex, roomId, buildingName, roomName, bedName, isConversion: false };
 
             // Заполняем поля
             const location = bedName
@@ -872,6 +982,9 @@
             document.getElementById('modalLocation').textContent = location;
             document.getElementById('modalCheckIn').value = formatDateForInput(checkInDate);
             document.getElementById('modalCheckOut').value = formatDateForInput(checkOutDate);
+
+            // Показываем экран выбора действия
+            showActionScreen();
 
             // Открываем модалку
             document.getElementById('actionModal').showModal();
@@ -1017,7 +1130,20 @@
                 return;
             }
 
-            const { error } = await Layout.db.from('residents').insert(data);
+            let error;
+
+            if (modalContext.isConversion && modalContext.residentId) {
+                // Конвертация брони в заселение — обновляем существующую запись
+                const result = await Layout.db
+                    .from('residents')
+                    .update(data)
+                    .eq('id', modalContext.residentId);
+                error = result.error;
+            } else {
+                // Новое заселение
+                const result = await Layout.db.from('residents').insert(data);
+                error = result.error;
+            }
 
             if (error) {
                 console.error('Error saving checkin:', error);
@@ -1110,6 +1236,400 @@
             // TODO: Уборка и ремонт
         }
 
+        // Текущий резидент для модалки
+        let currentResident = null;
+
+        // Открыть модалку резидента из хранилища
+        function openResidentFromMap(guestId) {
+            const guestData = guestsMap.get(guestId);
+            if (!guestData) {
+                console.error('Guest not found:', guestId);
+                return;
+            }
+            openResidentModal(guestData, guestData.buildingName, guestData.roomName);
+        }
+
+        // Открыть модалку резидента
+        function openResidentModal(guestData, buildingName, roomName) {
+            currentResident = guestData;
+            const res = guestData.rawData;
+            const isBooking = guestData.isBooking;
+
+            // Заголовок
+            document.getElementById('residentModalTitle').textContent =
+                isBooking ? 'Бронирование' : 'Проживание';
+
+            // Локация
+            document.getElementById('residentModalLocation').textContent =
+                `${buildingName} → Номер ${roomName}`;
+
+            // Информация
+            let infoHtml = '';
+
+            // Имя
+            infoHtml += `<div class="flex justify-between py-1 border-b">
+                <span class="text-gray-500">Гость:</span>
+                <span class="font-medium">${guestData.name}</span>
+            </div>`;
+
+            // Категория
+            if (res.resident_categories) {
+                infoHtml += `<div class="flex justify-between py-1 border-b">
+                    <span class="text-gray-500">Категория:</span>
+                    <span class="font-medium">${Layout.getName(res.resident_categories)}</span>
+                </div>`;
+            }
+
+            // Даты
+            infoHtml += `<div class="flex justify-between py-1 border-b">
+                <span class="text-gray-500">Заезд:</span>
+                <span class="font-medium">${formatDisplayDate(res.check_in)}${res.early_checkin ? ' (ранний)' : ''}</span>
+            </div>`;
+
+            if (res.check_out) {
+                infoHtml += `<div class="flex justify-between py-1 border-b">
+                    <span class="text-gray-500">Выезд:</span>
+                    <span class="font-medium">${formatDisplayDate(res.check_out)}${res.late_checkout ? ' (поздний)' : ''}</span>
+                </div>`;
+            }
+
+            // Телефон
+            if (res.guest_phone) {
+                infoHtml += `<div class="flex justify-between py-1 border-b">
+                    <span class="text-gray-500">Телефон:</span>
+                    <span class="font-medium">${res.guest_phone}</span>
+                </div>`;
+            }
+
+            // Примечания
+            if (res.notes) {
+                infoHtml += `<div class="flex justify-between py-1 border-b">
+                    <span class="text-gray-500">Примечания:</span>
+                    <span class="font-medium">${res.notes}</span>
+                </div>`;
+            }
+
+            // Бронирование
+            if (res.bookings) {
+                if (res.bookings.name) {
+                    infoHtml += `<div class="flex justify-between py-1 border-b">
+                        <span class="text-gray-500">Бронь:</span>
+                        <span class="font-medium">${res.bookings.name}</span>
+                    </div>`;
+                }
+                if (res.bookings.contact_name) {
+                    infoHtml += `<div class="flex justify-between py-1 border-b">
+                        <span class="text-gray-500">Контакт:</span>
+                        <span class="font-medium">${res.bookings.contact_name}</span>
+                    </div>`;
+                }
+            }
+
+            document.getElementById('residentInfo').innerHTML = infoHtml;
+
+            // Кнопки действий
+            let actionsHtml = '';
+
+            if (isBooking) {
+                // Действия для бронирования
+                actionsHtml += `<button class="btn btn-primary" onclick="convertToCheckin()">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    </svg>
+                    Заселить
+                </button>`;
+                actionsHtml += `<button class="btn btn-info btn-outline" onclick="showMoveScreen()">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                    </svg>
+                    Перенос
+                </button>`;
+                actionsHtml += `<button class="btn btn-error btn-outline" onclick="cancelBooking()">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Отменить
+                </button>`;
+            } else {
+                // Действия для заселённого гостя
+                actionsHtml += `<button class="btn btn-warning" onclick="checkoutResident()">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    Выселить
+                </button>`;
+                actionsHtml += `<button class="btn btn-info btn-outline" onclick="showMoveScreen()">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                    </svg>
+                    Перенос
+                </button>`;
+                actionsHtml += `<button class="btn btn-error btn-outline" onclick="deleteResident()">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Удалить
+                </button>`;
+            }
+
+            document.getElementById('residentActions').innerHTML = actionsHtml;
+
+            // Показываем экран информации (сбрасываем если был на экране перемещения)
+            showResidentInfoScreen();
+
+            // Открываем модалку
+            document.getElementById('residentModal').showModal();
+        }
+
+        // Форматирование даты для отображения
+        function formatDisplayDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+
+        // Выселить резидента (установить дату выезда = сегодня)
+        async function checkoutResident() {
+            if (!currentResident) return;
+
+            const today = new Date().toISOString().split('T')[0];
+            const { error } = await Layout.db
+                .from('residents')
+                .update({ check_out: today, status: 'checked_out' })
+                .eq('id', currentResident.id);
+
+            if (error) {
+                alert('Ошибка: ' + error.message);
+                return;
+            }
+
+            document.getElementById('residentModal').close();
+            await loadTimelineData();
+            renderTable();
+        }
+
+        // Удалить резидента
+        async function deleteResident() {
+            if (!currentResident) return;
+            if (!confirm('Удалить эту запись?')) return;
+
+            const { error } = await Layout.db
+                .from('residents')
+                .delete()
+                .eq('id', currentResident.id);
+
+            if (error) {
+                alert('Ошибка: ' + error.message);
+                return;
+            }
+
+            document.getElementById('residentModal').close();
+            await loadTimelineData();
+            renderTable();
+        }
+
+        // Отменить бронирование
+        async function cancelBooking() {
+            if (!currentResident) return;
+            if (!confirm('Отменить это бронирование?')) return;
+
+            const res = currentResident.rawData;
+
+            // Удаляем резидента
+            const { error: resError } = await Layout.db
+                .from('residents')
+                .delete()
+                .eq('id', currentResident.id);
+
+            if (resError) {
+                alert('Ошибка: ' + resError.message);
+                return;
+            }
+
+            // Если это было связано с бронированием, обновляем статус брони
+            if (res.booking_id) {
+                await Layout.db
+                    .from('bookings')
+                    .update({ status: 'cancelled' })
+                    .eq('id', res.booking_id);
+            }
+
+            document.getElementById('residentModal').close();
+            await loadTimelineData();
+            renderTable();
+        }
+
+        // Показать экран информации о резиденте
+        function showResidentInfoScreen() {
+            document.getElementById('residentInfoScreen').classList.remove('hidden');
+            document.getElementById('moveScreen').classList.add('hidden');
+        }
+
+        // Показать экран выбора номера для перемещения
+        async function showMoveScreen() {
+            if (!currentResident) return;
+
+            document.getElementById('residentInfoScreen').classList.add('hidden');
+            document.getElementById('moveScreen').classList.remove('hidden');
+            document.getElementById('moveGuestName').textContent = currentResident.name;
+
+            // Загружаем список номеров
+            const roomsList = document.getElementById('roomsList');
+            roomsList.innerHTML = '<div class="text-center py-4">Загрузка...</div>';
+
+            const res = currentResident.rawData;
+            const checkIn = res.check_in;
+            const checkOut = res.check_out || '2099-12-31'; // если нет даты выезда
+
+            // Получаем здания, номера и текущих резидентов
+            const [buildingsRes, residentsRes] = await Promise.all([
+                Layout.db
+                    .from('buildings')
+                    .select('*, rooms(*)')
+                    .eq('is_active', true)
+                    .order('sort_order'),
+                Layout.db
+                    .from('residents')
+                    .select('room_id, check_in, check_out')
+                    .eq('status', 'active')
+                    .neq('id', currentResident.id) // исключаем текущего резидента
+                    .lte('check_in', checkOut)
+                    .or(`check_out.is.null,check_out.gte.${checkIn}`)
+            ]);
+
+            const buildings = buildingsRes.data || [];
+            const residents = residentsRes.data || [];
+
+            if (buildings.length === 0) {
+                roomsList.innerHTML = '<div class="text-center py-4 text-gray-500">Нет доступных номеров</div>';
+                return;
+            }
+
+            // Считаем занятость по комнатам на период перемещаемого резидента
+            const roomOccupancy = {};
+            residents.forEach(r => {
+                if (!roomOccupancy[r.room_id]) {
+                    roomOccupancy[r.room_id] = 0;
+                }
+                roomOccupancy[r.room_id]++;
+            });
+
+            const currentRoomId = res.room_id;
+
+            let html = '';
+            buildings.forEach(building => {
+                const rooms = (building.rooms?.filter(r => r.is_active) || [])
+                    .sort((a, b) => {
+                        if (a.floor !== b.floor) return (a.floor || 0) - (b.floor || 0);
+                        return a.number.localeCompare(b.number, undefined, { numeric: true });
+                    });
+                if (rooms.length === 0) return;
+
+                html += `<div class="collapse collapse-arrow bg-base-200 rounded-lg">
+                    <input type="checkbox" checked />
+                    <div class="collapse-title font-medium py-2">${Layout.getName(building)}</div>
+                    <div class="collapse-content p-0">
+                        <div class="grid grid-cols-3 gap-1 p-2">`;
+
+                rooms.forEach(room => {
+                    const isCurrent = room.id === currentRoomId;
+                    const occupied = roomOccupancy[room.id] || 0;
+                    const capacity = room.capacity || 1;
+                    const isFull = occupied >= capacity;
+
+                    let btnClass, label, disabled;
+
+                    if (isCurrent) {
+                        btnClass = 'btn-disabled bg-gray-200';
+                        label = `${room.number} ←`;
+                        disabled = true;
+                    } else if (isFull) {
+                        btnClass = 'btn-disabled bg-red-100 text-red-400';
+                        label = `${room.number} (${occupied}/${capacity})`;
+                        disabled = true;
+                    } else if (occupied > 0) {
+                        btnClass = 'btn-outline btn-warning';
+                        label = `${room.number} (${occupied}/${capacity})`;
+                        disabled = false;
+                    } else {
+                        btnClass = 'btn-outline btn-success';
+                        label = room.number;
+                        disabled = false;
+                    }
+
+                    html += `<button class="btn btn-sm ${btnClass}"
+                        ${disabled ? 'disabled' : `onclick="moveToRoom('${room.id}')"`}>
+                        ${label}
+                    </button>`;
+                });
+
+                html += `</div></div></div>`;
+            });
+
+            roomsList.innerHTML = html;
+        }
+
+        // Перенос резидента в другой номер
+        async function moveToRoom(newRoomId) {
+            if (!currentResident) return;
+
+            const { error } = await Layout.db
+                .from('residents')
+                .update({ room_id: newRoomId })
+                .eq('id', currentResident.id);
+
+            if (error) {
+                alert('Ошибка: ' + error.message);
+                return;
+            }
+
+            document.getElementById('residentModal').close();
+            await loadTimelineData();
+            renderTable();
+        }
+
+        // Превратить бронирование в заселение
+        async function convertToCheckin() {
+            if (!currentResident) return;
+
+            // Закрываем модалку резидента
+            document.getElementById('residentModal').close();
+
+            // Открываем модалку заселения с предзаполненными данными
+            const res = currentResident.rawData;
+
+            modalContext = {
+                roomId: res.room_id,
+                residentId: currentResident.id,
+                isConversion: true
+            };
+
+            // Показываем форму заселения
+            document.getElementById('actionScreen').classList.add('hidden');
+            document.getElementById('checkinScreen').classList.remove('hidden');
+            document.getElementById('bookingScreen').classList.add('hidden');
+
+            document.getElementById('checkinLocation').textContent =
+                document.getElementById('residentModalLocation').textContent;
+            document.getElementById('checkinDateIn').value = res.check_in;
+            document.getElementById('checkinDateOut').value = res.check_out || '';
+
+            // Сбрасываем форму
+            document.getElementById('checkinForm').reset();
+            document.getElementById('checkinDateIn').value = res.check_in;
+            document.getElementById('checkinDateOut').value = res.check_out || '';
+
+            if (res.early_checkin) {
+                document.querySelector('#checkinForm [name="early_checkin"]').checked = true;
+            }
+            if (res.late_checkout) {
+                document.querySelector('#checkinForm [name="late_checkout"]').checked = true;
+            }
+
+            toggleGuestFields();
+
+            document.getElementById('actionModal').showModal();
+        }
+
         // Рендер таблицы
         function renderTable() {
             const table = document.getElementById('timelineTable');
@@ -1190,15 +1710,96 @@
                     const roomArrowClass = roomCollapsed ? 'collapsed' : '';
                     const hiddenClass = buildingCollapsed ? 'collapsed' : '';
 
-                    // Заголовок номера
+                    // Заголовок номера — показываем сводку по занятости
                     html += `<tr class="row-room ${hiddenClass}">`;
                     html += `<td class="sticky-col" onclick="toggleRoom('${room.id}')">`;
                     html += `<span class="toggle-arrow ${roomArrowClass}">▼</span> Номер ${room.name}</td>`;
+
+                    // Вычисляем сегменты занятости только для свёрнутых номеров
+                    let segments = [];
+                    let totalBeds = room.beds.length;
+
+                    if (roomCollapsed) {
+                        const allGuests = room.beds.flatMap(bed =>
+                            bed.guests.filter(g => !g.isCleaning)
+                        );
+
+                        let currentSegment = null;
+
+                        for (let col = 0; col < DAYS_TO_SHOW * 2; col++) {
+                            const occupying = allGuests.filter(g => {
+                                const gStart = g.startDay * 2 + g.startHalf;
+                                const gEnd = g.endDay * 2 + g.endHalf;
+                                return col >= gStart && col <= gEnd;
+                            });
+
+                            const occupiedCount = occupying.length;
+                            const ids = occupying.map(g => g.id).sort().join(',');
+
+                            if (currentSegment && currentSegment.ids === ids) {
+                                currentSegment.endCol = col;
+                            } else {
+                                if (currentSegment && currentSegment.count > 0) {
+                                    segments.push(currentSegment);
+                                }
+                                if (occupiedCount > 0) {
+                                    currentSegment = {
+                                        startCol: col,
+                                        endCol: col,
+                                        count: occupiedCount,
+                                        ids: ids,
+                                        guests: occupying
+                                    };
+                                } else {
+                                    currentSegment = null;
+                                }
+                            }
+                        }
+                        if (currentSegment && currentSegment.count > 0) {
+                            segments.push(currentSegment);
+                        }
+                    }
+
+                    // Рендерим ячейки
                     for (let col = 0; col < DAYS_TO_SHOW * 2; col++) {
                         const dayIndex = Math.floor(col / 2);
                         const isFirstHalf = col % 2 === 0;
                         const dayStart = isFirstHalf ? 'day-start' : '';
-                        html += `<td class="${dayStart}"></td>`;
+
+                        html += `<td class="${dayStart}">`;
+
+                        // Показываем сводку только когда номер свёрнут
+                        if (roomCollapsed) {
+                            const segment = segments.find(s => s.startCol === col);
+                            if (segment) {
+                                const spanCells = segment.endCol - segment.startCol + 1;
+                                const width = spanCells * CELL_WIDTH - 2;
+
+                                const firstGuest = segment.guests[0];
+                                const bgColor = firstGuest?.color || '#fef08a';
+                                const isBooking = segment.guests.some(g => g.isBooking);
+                                const isPartial = segment.count < totalBeds;
+
+                                let label = '';
+                                if (isPartial) {
+                                    label = `<span class="fraction">${segment.count}/${totalBeds}</span>`;
+                                } else if (totalBeds === 1) {
+                                    label = firstGuest.name;
+                                } else {
+                                    const names = [...new Set(segment.guests.map(g => g.name))];
+                                    label = names.length <= 2 ? names.join(', ') : `${names.length} чел.`;
+                                }
+
+                                const bookingClass = isBooking ? 'booking' : '';
+                                const style = isBooking
+                                    ? `width: ${width}px; --bar-color: ${bgColor}; border-color: ${bgColor};`
+                                    : `width: ${width}px; background: ${bgColor};`;
+
+                                html += `<div class="room-summary-bar ${bookingClass}" style="${style}">${label}</div>`;
+                            }
+                        }
+
+                        html += '</td>';
                     }
                     html += '</tr>';
 
@@ -1238,17 +1839,17 @@
                                 const width = spanCells * CELL_WIDTH - 2; // минус отступы
 
                                 if (guest.isCleaning) {
-                                    // Уборка
+                                    // Уборка — без клика
                                     html += `<div class="cleaning-bar" style="width: ${width}px;">${guest.name}</div>`;
                                 } else if (guest.isBooking) {
                                     // Бронирование — штриховка
                                     const bgColor = guest.color || '#fef08a';
-                                    html += `<div class="guest-bar booking" style="width: ${width}px; --bar-color: ${bgColor}; border-color: ${bgColor};">${guest.name}</div>`;
+                                    html += `<div class="guest-bar booking" style="width: ${width}px; --bar-color: ${bgColor}; border-color: ${bgColor};" onclick="event.stopPropagation(); openResidentFromMap('${guest.id}')">${guest.name}</div>`;
                                 } else {
                                     // Обычное заселение
                                     const bgColor = guest.color || '#fef08a';
                                     const borderColor = guest.border || '#facc15';
-                                    html += `<div class="guest-bar" style="width: ${width}px; background: ${bgColor}; border-color: ${borderColor};">${guest.name}</div>`;
+                                    html += `<div class="guest-bar" style="width: ${width}px; background: ${bgColor}; border-color: ${borderColor};" onclick="event.stopPropagation(); openResidentFromMap('${guest.id}')">${guest.name}</div>`;
                                 }
                             }
 
