@@ -823,7 +823,7 @@
         function toggleTeamSections() {
             const isTeam = person?.is_team_member || document.getElementById('editIsTeamMember')?.checked;
             document.getElementById('staysSection').style.display = isTeam ? 'block' : 'none';
-            document.getElementById('teamFields').style.display = isTeam ? 'block' : 'none';
+            document.getElementById('teamSection').style.display = isTeam ? 'block' : 'none';
             document.getElementById('indiaExperienceField').style.display = isTeam ? 'none' : 'block';
         }
 
