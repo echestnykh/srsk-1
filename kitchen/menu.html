@@ -1932,11 +1932,22 @@
             Layout.$('#mealDetailsSubtitle').textContent =
                 `${d[date.getDay()]} · ${portions} ${t('persons')}${cook ? ` · ${getPersonName(cook)}` : ''}`;
 
-            // Print header
-            Layout.$('#mealDetailsPrintHeader').innerHTML = getPrintHeader(
-                `${date.getDate()} ${m[date.getMonth()]} ${date.getFullYear()}`,
-                `${getMealTypeName(mealType)} · ${portions} ${t('persons')}`
-            );
+            // Print header (увеличенный для деталей)
+            const loc = getCurrentLocation();
+            Layout.$('#mealDetailsPrintHeader').innerHTML = `
+                <div class="print-header-left">
+                    ${LOGO_SVG}
+                    <div>
+                        <div class="print-header-title">${t('app_name')}</div>
+                        <div class="print-header-location">${loc ? getName(loc) : ''}</div>
+                    </div>
+                </div>
+                <div class="print-header-right" style="text-align: right;">
+                    <div style="font-size: 28pt; font-weight: bold; line-height: 1.1;">${getMealTypeName(mealType)}</div>
+                    <div style="font-size: 18pt; margin-top: 4pt;">${date.getDate()} ${m[date.getMonth()]} ${date.getFullYear()}</div>
+                    <div style="font-size: 16pt; font-weight: bold; margin-top: 2pt;">${portions} ${t('persons')}</div>
+                </div>
+            `;
 
             // Показываем загрузку
             Layout.$('#mealDetailsContent').innerHTML =
