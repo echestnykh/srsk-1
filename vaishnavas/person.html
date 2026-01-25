@@ -611,15 +611,16 @@
             }
 
             Layout.showLoader();
-            await Promise.all([
-                loadPerson(personId),
-                loadDepartments()
-            ]);
+            // Сначала загружаем справочники, чтобы select'ы были заполнены
+            await loadDepartments();
+            populateCountriesList();
+            // Потом загружаем человека (renderPerson установит значения в select'ы)
+            await loadPerson(personId);
+            // Параллельно загружаем историю
             await Promise.all([
                 loadStays(personId),
                 loadRegistrations(personId)
             ]);
-            populateCountriesList();
             Layout.hideLoader();
         }
 
