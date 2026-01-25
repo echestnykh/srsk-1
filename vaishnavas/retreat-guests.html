@@ -1205,6 +1205,28 @@
                 return new Date(year, month - 1, day, hour, minute).toISOString();
             }
 
+            // Format: "06.02.2026 в 04.05" (с предлогом "в" и точкой в времени)
+            match = str.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})\s*в\s*(\d{1,2})\.(\d{2})/i);
+            if (match) {
+                const day = parseInt(match[1]);
+                const month = parseInt(match[2]);
+                let year = parseInt(match[3]);
+                if (year < 100) year += 2000;
+                const hour = parseInt(match[4]);
+                const minute = parseInt(match[5]);
+                return new Date(year, month - 1, day, hour, minute).toISOString();
+            }
+
+            // Format: "06.02.2026" or "22.02.26" (только дата без времени)
+            match = str.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})(?!\s*[\d:в])/);
+            if (match) {
+                const day = parseInt(match[1]);
+                const month = parseInt(match[2]);
+                let year = parseInt(match[3]);
+                if (year < 100) year += 2000;
+                return new Date(year, month - 1, day, 12, 0).toISOString();
+            }
+
             // Format: "7 февраля" (no time)
             match = str.match(/(\d{1,2})\s+(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря)/i);
             if (match) {

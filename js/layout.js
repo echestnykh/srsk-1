@@ -57,6 +57,7 @@ const modules = {
                 { id: 'timeline', href: 'housing/timeline.html' },
                 // { id: 'occupancy', href: 'housing/occupancy.html' }, // временно скрыто
                 { id: 'bookings', href: 'housing/bookings.html' },
+                { id: 'transfers', href: 'housing/transfers.html' },
                 { id: 'cleaning', href: 'housing/cleaning.html' }
             ]},
             { id: 'vaishnavas', items: [
