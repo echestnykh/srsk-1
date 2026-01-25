@@ -250,6 +250,7 @@ const grouped = allResidents.reduce((acc, r) => { (acc[r.booking_id] ||= []).pus
 |--------|------|
 | Список вайшнавов | `vaishnavas/index.html` |
 | Профиль вайшнава | `vaishnavas/person.html` |
+| Гости ретрита | `vaishnavas/retreat-guests.html` |
 
 ### housing/ (Проживание)
 | Термин | Файл |
@@ -322,6 +323,15 @@ function enterEditMode() {
     document.getElementById('profileContainer').classList.replace('view-mode', 'edit-mode');
 }
 ```
+
+## CSV Import (retreat-guests.html)
+
+Страница гостей ретрита поддерживает импорт из CSV с автоматическим:
+- Парсингом дат в форматах: `"7 февраля 18:30"`, `"22.02.26 5:50"`, `"7 февраля"`
+- Матчингом по email (+5), телефону (+4), духовному имени (+3), telegram (+3)
+- Разрешением конфликтов при score 3-4 (интерактивный выбор)
+
+Колонки CSV: `name`, `name2` (духовное имя), `phone`, `email`, `birth`, `country`, `arrival_time`, `departure_time`, `transfer_up_2`, `transfer_back`, `hotel`, `famili`, `Questions`.
 
 ## Documentation
 
