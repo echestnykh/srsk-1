@@ -902,6 +902,17 @@
             });
         }
 
+        function formatFlightDateTime(datetime, fallbackNotes) {
+            if (!datetime) return fallbackNotes || '';
+            const date = new Date(datetime);
+            const day = date.getDate();
+            const monthNames = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+            const month = monthNames[date.getMonth()];
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            return `${day} ${month}, ${hours}:${minutes}`;
+        }
+
         // ==================== EDIT MODE ====================
 
         function enterEditMode() {
@@ -1130,11 +1141,12 @@
                 let detailsHtml = '';
 
                 if (arrival) {
+                    const arrivalTime = formatFlightDateTime(arrival.flight_datetime, arrival.notes);
                     detailsHtml += `
                         <div class="detail-section">
                             <div class="detail-label">✈️ Прилёт</div>
                             <div class="text-sm space-y-1">
-                                ${arrival.notes ? `<div><span class="opacity-60">Время:</span> ${arrival.notes}</div>` : ''}
+                                ${arrivalTime ? `<div><span class="opacity-60">Время:</span> ${arrivalTime}</div>` : ''}
                                 ${arrival.flight_number ? `<div><span class="opacity-60">Рейс:</span> ${arrival.flight_number}</div>` : ''}
                                 <div><span class="opacity-60">Трансфер:</span> ${arrival.needs_transfer === 'yes' ? '✅ Нужен' : arrival.needs_transfer === 'no' ? '❌ Не нужен' : arrival.needs_transfer || '—'}</div>
                             </div>
@@ -1143,11 +1155,12 @@
                 }
 
                 if (departure) {
+                    const departureTime = formatFlightDateTime(departure.flight_datetime, departure.notes);
                     detailsHtml += `
                         <div class="detail-section">
                             <div class="detail-label">✈️ Вылет</div>
                             <div class="text-sm space-y-1">
-                                ${departure.notes ? `<div><span class="opacity-60">Время:</span> ${departure.notes}</div>` : ''}
+                                ${departureTime ? `<div><span class="opacity-60">Время:</span> ${departureTime}</div>` : ''}
                                 ${departure.flight_number ? `<div><span class="opacity-60">Рейс:</span> ${departure.flight_number}</div>` : ''}
                                 <div><span class="opacity-60">Трансфер:</span> ${departure.needs_transfer === 'yes' ? '✅ Нужен' : departure.needs_transfer === 'no' ? '❌ Не нужен' : departure.needs_transfer || '—'}</div>
                             </div>
