@@ -715,10 +715,35 @@
             }
         }
 
-        function goToBookingStep2() {
+        async function goToBookingStep2() {
             const form = Layout.$('#newBookingForm');
             if (!form.checkValidity()) {
                 form.reportValidity();
+                return;
+            }
+
+            const bedsCount = parseInt(form.beds_count.value) || 1;
+            const checkIn = form.check_in.value;
+            const checkOut = form.check_out.value;
+
+            // Проверяем доступность на весь период
+            const { data: problemDates, error } = await Layout.db.rpc('check_booking_availability', {
+                p_check_in: checkIn,
+                p_check_out: checkOut,
+                p_beds_needed: bedsCount
+            });
+
+            if (error) {
+                console.error('Error checking availability:', error);
+            } else if (problemDates && problemDates.length > 0) {
+                // Форматируем даты для показа пользователю
+                const dateFormatter = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' });
+                const problemDatesStr = problemDates.map(d => {
+                    const date = new Date(d.problem_date);
+                    return `${dateFormatter.format(date)} (свободно ${d.available_beds} из ${d.total_capacity})`;
+                }).join('\n');
+
+                alert(`Бронирование невозможно!\n\nНа следующие даты недостаточно свободных мест:\n${problemDatesStr}\n\nТребуется: ${bedsCount} мест`);
                 return;
             }
 
@@ -727,7 +752,6 @@
             Layout.$('#bookingStep1').classList.add('hidden');
             Layout.$('#bookingStep2').classList.remove('hidden');
 
-            const bedsCount = parseInt(form.beds_count.value) || 1;
             Layout.$('#bookingTotalCount').textContent = bedsCount;
             Layout.$('#bookingSelectedCount').textContent = bookingSelectedBeds.size;
 
