@@ -927,6 +927,109 @@
             return cleaned || null;
         }
 
+        // Разбор страны и города
+        function parseCountryCity(value) {
+            if (!value) return { country: null, city: null };
+            let trimmed = value.trim();
+
+            // Нормализация названий стран
+            const countryAliases = {
+                'рф': 'Россия', 'российская федерация': 'Россия', 'russia': 'Россия',
+                'латвии': 'Латвия', 'lithuania': 'Литва', 'usa': 'США',
+                'германию': 'Германия', 'беларусь': 'Беларусь', 'белоруссия': 'Беларусь'
+            };
+
+            // Известные страны (включая варианты написания)
+            const knownCountries = [
+                'Россия', 'Russia', 'Украина', 'Беларусь', 'Казахстан', 'Узбекистан', 'Латвия',
+                'Литва', 'Lithuania', 'Эстония', 'Молдова', 'Грузия', 'Армения', 'Азербайджан',
+                'США', 'USA', 'Германия', 'Germany', 'Франция', 'Италия', 'Испания', 'Швейцария', 'Швеция',
+                'Великобритания', 'Польша', 'Чехия', 'Индия', 'India', 'Китай', 'Израиль',
+                'Нидерланды', 'Дания', 'РФ'
+            ];
+
+            // Известные города (для определения обратного порядка и случая "только город")
+            const knownCities = [
+                'Москва', 'Санкт-Петербург', 'СПб', 'Екатеринбург', 'Новосибирск',
+                'Казань', 'Нижний Новгород', 'Самара', 'Омск', 'Ростов-на-Дону',
+                'Уфа', 'Красноярск', 'Воронеж', 'Пермь', 'Волгоград', 'Краснодар',
+                'Калининград', 'Владивосток', 'Иркутск', 'Сочи', 'Томск', 'Тюмень',
+                'Йошкар-Ола', 'Стерлитамак', 'Киев', 'Минск', 'Рига', 'Вильнюс'
+            ];
+
+            // Функция нормализации страны
+            function normalizeCountry(c) {
+                const lower = c.toLowerCase().trim();
+                return countryAliases[lower] || c;
+            }
+
+            // Убираем префиксы "г.", "г ", "город "
+            function cleanCity(c) {
+                return c.replace(/^(г\.|г |город )\s*/i, '').trim();
+            }
+
+            // Разделяем по запятой, точке с пробелом (но не "г.") или двойному пробелу
+            let parts = trimmed.split(/,|\.\s+(?!г)|\s{2,}/).map(p => p.trim()).filter(Boolean);
+
+            // Если одна часть и нет разделителей — пробуем разобрать по пробелу
+            if (parts.length === 1 && !trimmed.includes(',')) {
+                // Ищем страну в начале или конце
+                for (const country of knownCountries) {
+                    const lower = trimmed.toLowerCase();
+                    const countryLower = country.toLowerCase();
+
+                    // Страна в начале: "Россия Иркутск"
+                    if (lower.startsWith(countryLower + ' ')) {
+                        const city = cleanCity(trimmed.slice(country.length).trim());
+                        return { country: normalizeCountry(country), city: city || null };
+                    }
+                    // Страна в конце: "Новосибирск Россия"
+                    if (lower.endsWith(' ' + countryLower)) {
+                        const city = cleanCity(trimmed.slice(0, -country.length).trim());
+                        return { country: normalizeCountry(country), city: city || null };
+                    }
+                }
+
+                // Проверяем, не является ли это просто городом
+                for (const city of knownCities) {
+                    if (trimmed.toLowerCase() === city.toLowerCase()) {
+                        return { country: 'Россия', city: city }; // Предполагаем Россию для известных городов
+                    }
+                }
+
+                // Не удалось разобрать — всё в страну
+                return { country: normalizeCountry(trimmed), city: null };
+            }
+
+            // Несколько частей — определяем где страна, где город
+            let country = null;
+            let city = null;
+
+            for (const part of parts) {
+                const normalized = normalizeCountry(part);
+                const isCountry = knownCountries.some(c =>
+                    c.toLowerCase() === normalized.toLowerCase() ||
+                    c.toLowerCase() === part.toLowerCase()
+                );
+
+                if (isCountry) {
+                    country = normalized;
+                } else if (!city) {
+                    // Первый не-страна — это город
+                    city = cleanCity(part);
+                }
+                // Остальные части (область, край) игнорируем
+            }
+
+            // Если страна не найдена, но город известный — предполагаем Россию
+            if (!country && city) {
+                const isKnownCity = knownCities.some(c => c.toLowerCase() === city.toLowerCase());
+                if (isKnownCity) country = 'Россия';
+            }
+
+            return { country: country || null, city: city || null };
+        }
+
         function parseRowData(row) {
             // Split name
             const nameParts = (row.name || '').trim().split(/\s+/);
@@ -977,7 +1080,7 @@
                 email,
                 birthDate,
                 gender,
-                country: (row.country || '').trim() || null,
+                ...parseCountryCity(row.country),
                 indiaExperience: (row.travel_experience || '').trim() || null,
                 telegram,
                 photoUrl,
@@ -1098,6 +1201,7 @@
                     birth_date: parsed.birthDate,
                     gender: parsed.gender,
                     country: parsed.country,
+                    city: parsed.city,
                     india_experience: parsed.indiaExperience,
                     telegram: parsed.telegram,
                     photo_url: parsed.photoUrl,
@@ -1123,6 +1227,7 @@
             if (parsed.birthDate) updates.birth_date = parsed.birthDate;
             if (parsed.gender) updates.gender = parsed.gender;
             if (parsed.country) updates.country = parsed.country;
+            if (parsed.city) updates.city = parsed.city;
             if (parsed.indiaExperience) updates.india_experience = parsed.indiaExperience;
             if (parsed.telegram) updates.telegram = parsed.telegram;
             if (parsed.photoUrl) updates.photo_url = parsed.photoUrl;

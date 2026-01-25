@@ -335,11 +335,18 @@
                             <div class="view-only info-value" id="viewTelegram">—</div>
                             <input type="text" id="editTelegram" class="editable-input edit-only" placeholder="@username">
                         </div>
-                        <div>
-                            <div class="info-label" data-i18n="country">Страна</div>
-                            <div class="view-only info-value" id="viewCountry">—</div>
-                            <input type="text" id="editCountry" class="editable-input edit-only" list="countriesList">
-                            <datalist id="countriesList"></datalist>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <div class="info-label" data-i18n="country">Страна</div>
+                                <div class="view-only info-value" id="viewCountry">—</div>
+                                <input type="text" id="editCountry" class="editable-input edit-only" list="countriesList">
+                                <datalist id="countriesList"></datalist>
+                            </div>
+                            <div>
+                                <div class="info-label" data-i18n="city">Город</div>
+                                <div class="view-only info-value" id="viewCity">—</div>
+                                <input type="text" id="editCity" class="editable-input edit-only">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -754,6 +761,7 @@
             renderViewEmail();
             renderViewTelegram();
             document.getElementById('viewCountry').textContent = getCountryName(person.country) || person.country || '—';
+            document.getElementById('viewCity').textContent = person.city || '—';
 
             // Contact info - edit
             document.getElementById('editPhone').value = person.phone || '';
@@ -761,6 +769,7 @@
             document.getElementById('editEmail').value = person.email || '';
             document.getElementById('editTelegram').value = person.telegram || '';
             document.getElementById('editCountry').value = getCountryName(person.country) || '';
+            document.getElementById('editCity').value = person.city || '';
 
             // Personal info - view
             document.getElementById('viewGender').textContent = person.gender ? t(person.gender) : '—';
@@ -994,6 +1003,7 @@
                 email: document.getElementById('editEmail').value || null,
                 telegram: document.getElementById('editTelegram').value || null,
                 country: normalizeCountry(document.getElementById('editCountry').value),
+                city: document.getElementById('editCity').value || null,
                 gender: document.getElementById('editGender').value || null,
                 birth_date: document.getElementById('editBirthDate').value || null,
                 india_experience: document.getElementById('editIndiaExperience').value || null,
