@@ -918,6 +918,15 @@
             }
         }
 
+        // Очистка "пустых" значений духовного имени
+        function cleanSpiritualName(value) {
+            if (!value) return null;
+            const cleaned = value.trim();
+            const emptyValues = ['нет', 'пока нет', 'еще нет', 'ещё нет', '-', '–', '—', 'no', 'none', 'n/a'];
+            if (emptyValues.includes(cleaned.toLowerCase())) return null;
+            return cleaned || null;
+        }
+
         function parseRowData(row) {
             // Split name
             const nameParts = (row.name || '').trim().split(/\s+/);
@@ -963,7 +972,7 @@
             return {
                 firstName,
                 lastName,
-                spiritualName: (row.name2 || '').trim() || null,
+                spiritualName: cleanSpiritualName(row.name2),
                 phone,
                 email,
                 birthDate,
