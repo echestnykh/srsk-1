@@ -1546,18 +1546,12 @@
             const endDate = document.getElementById('modalCheckOut').value;
 
             if (action === 'cleaning') {
-                // Рассчитываем даты в зависимости от половины дня:
-                // - Клик по первой половине (halfIndex=0): обе половинки этого дня
-                // - Клик по второй половине (halfIndex=1): вторая половина этого + первая следующего
-                const cleaningStartDate = formatDateForInput(getDateForDay(modalContext.dayIndex));
-                const cleaningEndDate = modalContext.halfIndex === 0
-                    ? cleaningStartDate  // Тот же день
-                    : formatDateForInput(getDateForDay(modalContext.dayIndex + 1));  // Следующий день
-
+                // Используем выбранные пользователем даты
                 const { error } = await Layout.db.from('room_cleanings').insert({
                     room_id: modalContext.roomId,
-                    start_date: cleaningStartDate,
-                    end_date: cleaningEndDate
+                    start_date: startDate,
+                    end_date: endDate,
+                    type: 'cleaning'
                 });
 
                 if (error) {
