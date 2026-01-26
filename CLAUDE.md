@@ -121,12 +121,11 @@ Housing (модуль проживания):
 
 ### SQL Migrations
 
-Файлы в `supabase/` выполняются последовательно по номерам (001-075):
+Файлы в `supabase/` выполняются последовательно по номерам (001-066):
 - `001-010` — основная схема, seed-данные, рецепты
 - `011-030` — переводы, RLS-политики, склад, команда
 - `031-050` — инвентаризация, меню-шаблоны, справочники
 - `051-066` — модуль Housing (здания, комнаты, бронирования, уборка)
-- `067-075` — модуль Гостей (guests, retreat_registrations, визы, платежи, трансферы)
 
 Применять через MCP `mcp__supabase__apply_migration` или Supabase SQL Editor.
 
@@ -173,7 +172,7 @@ const { data, error } = await Layout.db
 - settings: dictionaries, translations, festivals
 
 **Housing** (проживание):
-- housing: timeline, bookings, cleaning
+- housing: timeline, bookings, transfers, cleaning
 - vaishnavas: vaishnavas_all, vaishnavas_guests, vaishnavas_team
 - ashram: retreats
 - settings: buildings, rooms, housing_dictionaries
@@ -248,20 +247,23 @@ const grouped = allResidents.reduce((acc, r) => { (acc[r.booking_id] ||= []).pus
 ### vaishnavas/ (Вайшнавы)
 | Термин | Файл |
 |--------|------|
-| Список вайшнавов | `vaishnavas/index.html` |
+| Все вайшнавы | `vaishnavas/index.html` |
+| Команда | `vaishnavas/team.html` |
+| Гости | `vaishnavas/guests.html` |
 | Профиль вайшнава | `vaishnavas/person.html` |
-| Гости ретрита | `vaishnavas/retreat-guests.html` |
+| Гости ретрита (импорт CSV) | `vaishnavas/retreat-guests.html` |
 
 ### housing/ (Проживание)
 | Термин | Файл |
 |--------|------|
 | Шахматка / Таймлайн | `housing/timeline.html` |
 | Бронирования | `housing/bookings.html` |
+| Трансферы | `housing/transfers.html` |
 | Уборка | `housing/cleaning.html` |
 | Здания | `housing/buildings.html` |
 | Комнаты | `housing/rooms.html` |
-| Заполненность | `housing/occupancy.html` |
 | Планы этажей | `housing/floor-plan.html` |
+| Редактор планов | `housing/floor-plan-editor.html` |
 | Справочники (housing) | `housing/dictionaries.html` |
 
 ### kitchen/ (Кухня)
