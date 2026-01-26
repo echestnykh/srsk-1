@@ -643,6 +643,122 @@
         <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
 
+    <!-- Edit Registration Modal -->
+    <dialog id="editRegModal" class="modal">
+        <div class="modal-box max-w-2xl">
+            <button type="button" class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" onclick="editRegModal.close()">✕</button>
+            <h3 class="font-bold text-lg mb-4">Редактирование регистрации</h3>
+            <input type="hidden" id="editRegId" />
+
+            <div class="space-y-4">
+                <!-- Статус -->
+                <div class="form-control">
+                    <label class="label"><span class="label-text font-medium">Статус</span></label>
+                    <select id="editRegStatus" class="select select-bordered">
+                        <option value="pending">Планирует</option>
+                        <option value="confirmed">Подтверждён</option>
+                        <option value="team">Команда</option>
+                        <option value="cancelled">Отказ</option>
+                        <option value="no_response">Нет ответа</option>
+                    </select>
+                </div>
+
+                <!-- Прилёт -->
+                <div class="border rounded-lg p-3">
+                    <div class="font-medium mb-2">✈️ Прилёт</div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="form-control">
+                            <label class="label label-text text-xs">Дата и время</label>
+                            <input type="datetime-local" id="editArrivalDatetime" class="input input-bordered input-sm" />
+                        </div>
+                        <div class="form-control">
+                            <label class="label label-text text-xs">Номер рейса</label>
+                            <input type="text" id="editArrivalFlight" class="input input-bordered input-sm" placeholder="SU 123" />
+                        </div>
+                        <div class="form-control">
+                            <label class="label label-text text-xs">Трансфер</label>
+                            <select id="editArrivalTransfer" class="select select-bordered select-sm">
+                                <option value="">Не указано</option>
+                                <option value="yes">Нужен</option>
+                                <option value="no">Не нужен</option>
+                            </select>
+                        </div>
+                        <div class="form-control">
+                            <label class="label label-text text-xs">Примечание</label>
+                            <input type="text" id="editArrivalNotes" class="input input-bordered input-sm" placeholder="07.02.2025 в 08:00" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Вылет -->
+                <div class="border rounded-lg p-3">
+                    <div class="font-medium mb-2">✈️ Вылет</div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="form-control">
+                            <label class="label label-text text-xs">Дата и время</label>
+                            <input type="datetime-local" id="editDepartureDatetime" class="input input-bordered input-sm" />
+                        </div>
+                        <div class="form-control">
+                            <label class="label label-text text-xs">Номер рейса</label>
+                            <input type="text" id="editDepartureFlight" class="input input-bordered input-sm" placeholder="SU 456" />
+                        </div>
+                        <div class="form-control">
+                            <label class="label label-text text-xs">Трансфер</label>
+                            <select id="editDepartureTransfer" class="select select-bordered select-sm">
+                                <option value="">Не указано</option>
+                                <option value="yes">Нужен</option>
+                                <option value="no">Не нужен</option>
+                            </select>
+                        </div>
+                        <div class="form-control">
+                            <label class="label label-text text-xs">Примечание</label>
+                            <input type="text" id="editDepartureNotes" class="input input-bordered input-sm" placeholder="23.02.2025 в 13:00" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Пожелания и доп. поля -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">Пожелания по проживанию</span></label>
+                        <input type="text" id="editAccommodationWishes" class="input input-bordered" />
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">Семья / Спутники</span></label>
+                        <input type="text" id="editCompanions" class="input input-bordered" />
+                    </div>
+                </div>
+
+                <div class="form-control">
+                    <label class="label"><span class="label-text font-medium">После ретрита</span></label>
+                    <textarea id="editExtendedStay" class="textarea textarea-bordered" rows="2"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">Оплата</span></label>
+                        <input type="text" id="editPaymentNotes" class="input input-bordered" />
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">Комментарий ОП</span></label>
+                        <input type="text" id="editOrgNotes" class="input input-bordered" />
+                    </div>
+                </div>
+
+                <div class="form-control">
+                    <label class="label"><span class="label-text font-medium">Вопросы</span></label>
+                    <textarea id="editGuestQuestions" class="textarea textarea-bordered" rows="2"></textarea>
+                </div>
+            </div>
+
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost" onclick="editRegModal.close()">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="saveRegistration()">Сохранить</button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+
     <div id="footer-placeholder"></div>
 
     <script src="../js/layout.js"></script>
@@ -1291,6 +1407,122 @@
             }
         }
 
+        // ==================== EDIT REGISTRATION ====================
+
+        let currentEditRegId = null;
+
+        function openEditRegModal(registrationId) {
+            const reg = registrations.find(r => r.id === registrationId);
+            if (!reg) return;
+
+            currentEditRegId = registrationId;
+            document.getElementById('editRegId').value = registrationId;
+
+            // Статус
+            document.getElementById('editRegStatus').value = reg.status || 'pending';
+
+            // Трансферы
+            const transfers = reg.guest_transfers || [];
+            const arrival = transfers.find(t => t.direction === 'arrival');
+            const departure = transfers.find(t => t.direction === 'departure');
+
+            // Прилёт
+            document.getElementById('editArrivalDatetime').value = arrival?.flight_datetime ? arrival.flight_datetime.slice(0, 16) : '';
+            document.getElementById('editArrivalFlight').value = arrival?.flight_number || '';
+            document.getElementById('editArrivalTransfer').value = arrival?.needs_transfer || '';
+            document.getElementById('editArrivalNotes').value = arrival?.notes || '';
+
+            // Вылет
+            document.getElementById('editDepartureDatetime').value = departure?.flight_datetime ? departure.flight_datetime.slice(0, 16) : '';
+            document.getElementById('editDepartureFlight').value = departure?.flight_number || '';
+            document.getElementById('editDepartureTransfer').value = departure?.needs_transfer || '';
+            document.getElementById('editDepartureNotes').value = departure?.notes || '';
+
+            // Остальные поля
+            document.getElementById('editAccommodationWishes').value = reg.accommodation_wishes || '';
+            document.getElementById('editCompanions').value = reg.companions || '';
+            document.getElementById('editExtendedStay').value = reg.extended_stay || '';
+            document.getElementById('editPaymentNotes').value = reg.payment_notes || '';
+            document.getElementById('editOrgNotes').value = reg.org_notes || '';
+            document.getElementById('editGuestQuestions').value = reg.guest_questions || '';
+
+            editRegModal.showModal();
+        }
+
+        async function saveRegistration() {
+            const regId = currentEditRegId;
+            if (!regId) return;
+
+            const reg = registrations.find(r => r.id === regId);
+            if (!reg) return;
+
+            try {
+                // Обновляем регистрацию
+                const regData = {
+                    status: document.getElementById('editRegStatus').value,
+                    accommodation_wishes: document.getElementById('editAccommodationWishes').value || null,
+                    companions: document.getElementById('editCompanions').value || null,
+                    extended_stay: document.getElementById('editExtendedStay').value || null,
+                    payment_notes: document.getElementById('editPaymentNotes').value || null,
+                    org_notes: document.getElementById('editOrgNotes').value || null,
+                    guest_questions: document.getElementById('editGuestQuestions').value || null
+                };
+
+                const { error: regError } = await Layout.db
+                    .from('retreat_registrations')
+                    .update(regData)
+                    .eq('id', regId);
+
+                if (regError) throw regError;
+
+                // Обновляем/создаём трансферы
+                const transfers = reg.guest_transfers || [];
+                const arrival = transfers.find(t => t.direction === 'arrival');
+                const departure = transfers.find(t => t.direction === 'departure');
+
+                // Прилёт
+                const arrivalData = {
+                    registration_id: regId,
+                    direction: 'arrival',
+                    flight_datetime: document.getElementById('editArrivalDatetime').value || null,
+                    flight_number: document.getElementById('editArrivalFlight').value || null,
+                    needs_transfer: document.getElementById('editArrivalTransfer').value || null,
+                    notes: document.getElementById('editArrivalNotes').value || null
+                };
+
+                if (arrival) {
+                    await Layout.db.from('guest_transfers').update(arrivalData).eq('id', arrival.id);
+                } else if (arrivalData.flight_datetime || arrivalData.flight_number || arrivalData.needs_transfer || arrivalData.notes) {
+                    await Layout.db.from('guest_transfers').insert(arrivalData);
+                }
+
+                // Вылет
+                const departureData = {
+                    registration_id: regId,
+                    direction: 'departure',
+                    flight_datetime: document.getElementById('editDepartureDatetime').value || null,
+                    flight_number: document.getElementById('editDepartureFlight').value || null,
+                    needs_transfer: document.getElementById('editDepartureTransfer').value || null,
+                    notes: document.getElementById('editDepartureNotes').value || null
+                };
+
+                if (departure) {
+                    await Layout.db.from('guest_transfers').update(departureData).eq('id', departure.id);
+                } else if (departureData.flight_datetime || departureData.flight_number || departureData.needs_transfer || departureData.notes) {
+                    await Layout.db.from('guest_transfers').insert(departureData);
+                }
+
+                // Перезагружаем данные
+                await loadRegistrations();
+                renderRegistrations();
+
+                editRegModal.close();
+            } catch (err) {
+                console.error('Error saving registration:', err);
+                alert('Ошибка сохранения: ' + err.message);
+            }
+        }
+
         // ==================== PLACEMENT ====================
 
         let currentPlacementRegId = null;
@@ -1613,6 +1845,12 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                             </svg>
                             Заселить
+                        </button>
+                        <button class="btn btn-xs btn-ghost gap-1" onclick="event.stopPropagation(); openEditRegModal('${reg.id}')">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Изменить
                         </button>
                     </div>
                 `;

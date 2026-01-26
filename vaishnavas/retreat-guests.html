@@ -2139,6 +2139,28 @@
                 return new Date(year, month - 1, day, hour, minute).toISOString();
             }
 
+            // Format: "7.02. в 00.25" или "7.02 в 00:25" (день.месяц без года, предлог "в", время)
+            match = str.match(/(\d{1,2})\.(\d{1,2})\.?\s*в\s*(\d{1,2})[.:](\d{2})/i);
+            if (match) {
+                const day = parseInt(match[1]);
+                const month = parseInt(match[2]);
+                const hour = parseInt(match[3]);
+                const minute = parseInt(match[4]);
+                const year = retreatYear || new Date().getFullYear();
+                return new Date(year, month - 1, day, hour, minute).toISOString();
+            }
+
+            // Format: "7.02 00:25" или "7.02. 00.25" (день.месяц без года, время без "в")
+            match = str.match(/(\d{1,2})\.(\d{1,2})\.?\s+(\d{1,2})[.:](\d{2})/);
+            if (match) {
+                const day = parseInt(match[1]);
+                const month = parseInt(match[2]);
+                const hour = parseInt(match[3]);
+                const minute = parseInt(match[4]);
+                const year = retreatYear || new Date().getFullYear();
+                return new Date(year, month - 1, day, hour, minute).toISOString();
+            }
+
             // Format: "06.02.2026" or "22.02.26" (только дата без времени)
             match = str.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})(?!\s*[\d:в])/);
             if (match) {
