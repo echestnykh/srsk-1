@@ -30,8 +30,9 @@
             padding-left: 0.5rem;
         }
 
-        .table td { padding: 0.5rem 0.75rem; }
-        .table th { padding: 0.5rem 0.75rem; }
+        .table td { padding: 0.5rem 0.75rem; border-right: 1px solid white; }
+        .table th { padding: 0.5rem 0.75rem; border-right: 1px solid white; }
+        .table tbody tr { border-bottom: 1px solid white; }
 
         .filter-btn.active {
             background: var(--current-color);
@@ -154,14 +155,13 @@
         </div>
 
         <!-- Search and Filter -->
-        <div class="bg-base-100 rounded-xl shadow p-3 mb-4">
-            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div class="relative w-full sm:w-64">
-                    <input type="text" id="searchInput" class="input input-bordered w-full pl-10 pr-8" placeholder="Поиск..." oninput="onSearchInput(this.value)" />
-                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 opacity-40" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-2">
+                <div class="relative w-full sm:w-56">
+                    <input type="text" id="searchInput" class="input input-bordered input-sm w-full pl-8 pr-7" placeholder="Поиск..." oninput="onSearchInput(this.value)" />
+                    <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
-                    <button type="button" id="searchClear" class="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 opacity-40 hover:opacity-70 hidden" onclick="clearSearch()">
+                    <button type="button" id="searchClear" class="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40 hover:opacity-70 hidden" onclick="clearSearch()">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -174,7 +174,6 @@
                     <button class="btn btn-xs btn-ghost filter-btn" data-filter="team" data-i18n="status_team">Команда</button>
                     <button class="btn btn-xs btn-ghost filter-btn" data-filter="cancelled" data-i18n="status_cancelled">Отказ</button>
                 </div>
-            </div>
         </div>
 
         <!-- Guests Table -->
@@ -196,7 +195,7 @@
                         </th>
                         <th class="text-center whitespace-nowrap">Заезд</th>
                         <th class="text-center whitespace-nowrap">Выезд</th>
-                        <th data-i18n="accommodation">Проживание</th>
+                        <th data-i18n="accommodation_wish">Пожелание</th>
                         <th class="w-16"></th>
                     </tr>
                 </thead>
@@ -591,7 +590,7 @@
         }
 
         function formatFlightDateTime(datetime, fallbackNotes) {
-            if (!datetime) return fallbackNotes ? fallbackNotes.substring(0, 15) : '';
+            if (!datetime) return fallbackNotes ? fallbackNotes.substring(0, 20) : '';
             const date = new Date(datetime);
             const day = date.getDate().toString().padStart(2, '0');
             const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -747,7 +746,7 @@
                         </td>
                         <td class="text-sm max-w-xs">
                             ${reg.resident?.rooms ? `<div class="font-medium text-success">${reg.resident.rooms.buildings ? Layout.getName(reg.resident.rooms.buildings) + ', ' : ''}${reg.resident.rooms.number}</div>` : ''}
-                            ${reg.accommodation_wishes ? `<div class="opacity-60 truncate">${reg.accommodation_wishes}</div>` : ''}
+                            ${reg.accommodation_wishes ? `<div class="opacity-60 truncate">${reg.accommodation_wishes.replace('Пожелание: ', '')}</div>` : ''}
                         </td>
                         <td class="text-right whitespace-nowrap">
                             <button class="btn btn-xs btn-ghost" onclick="openInfoModal('${reg.id}')" title="Подробнее">
@@ -1908,10 +1907,11 @@
 
             // Замены длинных строк на короткие
             const replacements = [
-                ['Бридж Васундар (стандартное размещение, на небольшом расстоянии от места проведения программ)', 'Пожелание: Бридж Васундар'],
-                ['Если будет место, хочу проживать в Шри Рупа Сева Кундж (главная площадка, место проведение программ)', 'Пожелание: ШРСК'],
-                ['Рукмини Дхам (недорогой, но вполне комфортный отель, на некотором расстоянии от места проведения программ)', 'Пожелание: Рукмини-дхам'],
-                ['Напишите, если у вас свой вариант размещения:', '']
+                ['Бридж Васундар (стандартное размещение, на небольшом расстоянии от места проведения программ)', 'Бридж Васундар'],
+                ['Если будет место, хочу проживать в Шри Рупа Сева Кундж (главная площадка, место проведение программ)', 'ШРСК'],
+                ['Рукмини Дхам (недорогой, но вполне комфортный отель, на некотором расстоянии от места проведения программ)', 'Рукмини-дхам'],
+                ['Напишите, если у вас свой вариант размещения:', ''],
+                ['Пожелание: ', '']
             ];
 
             for (const [from, to] of replacements) {
