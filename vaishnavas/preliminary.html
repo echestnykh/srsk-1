@@ -721,7 +721,7 @@
                 const departureTransfer = departure?.needs_transfer === 'yes' ? ' 🚐' : '';
 
                 return `
-                    <tr class="hover">
+                    <tr class="hover align-top">
                         <td class="cursor-pointer" onclick="window.location.href='person.html?id=${v?.id}'">
                             <div>
                                 ${spiritualName ? `<div class="font-medium">${spiritualName}</div>` : ''}
@@ -729,30 +729,18 @@
                             </div>
                         </td>
                         <td class="text-sm whitespace-nowrap">${genderAge}</td>
-                        <td class="text-sm max-w-[150px]">
-                            <div class="truncate" title="${v?.india_experience || ''}">${v?.india_experience || '—'}</div>
-                        </td>
-                        <td class="text-sm max-w-[180px]">
-                            <div class="truncate" title="${reg.companions || ''}">${reg.companions || '—'}</div>
-                        </td>
-                        <td class="text-sm max-w-[150px]">
-                            <div class="truncate" title="${reg.accommodation_wishes || ''}">${reg.accommodation_wishes || '—'}</div>
-                        </td>
+                        <td class="text-sm">${v?.india_experience || '—'}</td>
+                        <td class="text-sm">${reg.companions || '—'}</td>
+                        <td class="text-sm">${reg.accommodation_wishes || '—'}</td>
                         <td class="text-center text-sm whitespace-nowrap">
                             ${arrivalDate ? `${arrivalDate}${arrivalTransfer}` : '<span class="opacity-30">—</span>'}
                         </td>
                         <td class="text-center text-sm whitespace-nowrap">
                             ${departureDate ? `${departureDate}${departureTransfer}` : '<span class="opacity-30">—</span>'}
                         </td>
-                        <td class="text-sm max-w-[150px]">
-                            <div class="truncate" title="${reg.extended_stay || ''}">${reg.extended_stay || '—'}</div>
-                        </td>
-                        <td class="text-sm max-w-[150px]">
-                            <div class="truncate" title="${reg.guest_questions || ''}">${reg.guest_questions || '—'}</div>
-                        </td>
-                        <td class="text-sm max-w-[150px]">
-                            <div class="truncate" title="${reg.org_notes || ''}">${reg.org_notes || '—'}</div>
-                        </td>
+                        <td class="text-sm">${reg.extended_stay || '—'}</td>
+                        <td class="text-sm">${reg.guest_questions || '—'}</td>
+                        <td class="text-sm">${reg.org_notes || '—'}</td>
                     </tr>
                 `;
             }).join('');
