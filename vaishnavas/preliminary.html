@@ -524,7 +524,7 @@
                 .from('retreat_registrations')
                 .select(`
                     *,
-                    vaishnavas (id, first_name, last_name, spiritual_name, phone, email, telegram, has_whatsapp, photo_url),
+                    vaishnavas (id, first_name, last_name, spiritual_name, phone, email, telegram, has_whatsapp, photo_url, gender, birth_date, india_experience),
                     guest_transfers (*)
                 `)
                 .eq('retreat_id', retreatId)
