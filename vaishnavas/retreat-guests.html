@@ -71,6 +71,53 @@
         th:hover .sort-icon {
             opacity: 0.6;
         }
+
+        /* Floor plan styles */
+        .floor-plan-container {
+            position: relative;
+            background: #f8fafc;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        .floor-plan-container img {
+            width: 100%;
+            display: block;
+        }
+        .floor-plan-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        .floor-plan-svg .room-marker {
+            pointer-events: all;
+            cursor: pointer;
+            transition: filter 0.15s, opacity 0.15s;
+        }
+        .floor-plan-svg .room-marker:hover {
+            filter: brightness(1.15);
+        }
+        .floor-plan-svg .room-marker.disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .floor-plan-svg .room-label {
+            pointer-events: none;
+            font-size: 3px;
+            font-weight: 600;
+            fill: white;
+            text-anchor: middle;
+            dominant-baseline: central;
+        }
+        .placement-tabs .tab {
+            min-width: 80px;
+        }
+        .placement-tabs .tab-active {
+            background: var(--current-color) !important;
+            color: white !important;
+        }
     </style>
 </head>
 <body class="bg-base-200 min-h-screen flex flex-col">
@@ -296,44 +343,74 @@
 
     <!-- Placement Modal -->
     <dialog id="placementModal" class="modal">
-        <div class="modal-box max-w-2xl">
+        <div class="modal-box max-w-4xl">
             <button type="button" class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" onclick="placementModal.close()">✕</button>
             <h3 class="font-bold text-lg mb-4">Размещение гостя</h3>
 
+            <!-- Инфо о госте -->
             <div id="placementGuestInfo" class="mb-4 p-3 bg-base-200 rounded-lg">
                 <!-- Guest info will be inserted here -->
             </div>
 
-            <!-- Dates -->
+            <!-- СНАЧАЛА ДАТЫ -->
             <div class="grid grid-cols-2 gap-4 mb-4">
                 <div>
                     <label class="label"><span class="label-text font-medium">Заезд</span></label>
-                    <input type="date" id="placementCheckIn" class="input input-bordered w-full" onchange="updateRoomsList()" />
+                    <input type="date" id="placementCheckIn" class="input input-bordered w-full" onchange="onPlacementDatesChange()" />
                 </div>
                 <div>
                     <label class="label"><span class="label-text font-medium">Выезд</span></label>
-                    <input type="date" id="placementCheckOut" class="input input-bordered w-full" onchange="updateRoomsList()" />
+                    <input type="date" id="placementCheckOut" class="input input-bordered w-full" onchange="onPlacementDatesChange()" />
                 </div>
             </div>
 
-            <!-- Rooms List -->
-            <div class="mb-4">
-                <label class="label"><span class="label-text font-medium">Выберите комнату</span></label>
-                <div id="roomsList" class="space-y-2 max-h-64 overflow-y-auto">
-                    <div class="text-center py-4 opacity-50">Загрузка...</div>
-                </div>
+            <!-- Сообщение если даты не выбраны -->
+            <div id="placementDateMessage" class="alert alert-info mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span>Выберите даты заезда и выезда для просмотра доступных комнат</span>
             </div>
 
-            <!-- Legend -->
-            <div class="flex flex-wrap gap-3 text-xs opacity-60 mb-4">
-                <div class="flex items-center gap-1">
-                    <span class="w-3 h-3 rounded bg-success"></span> Свободно
+            <!-- Контейнер номеров (скрыт пока нет дат) -->
+            <div id="placementRoomsContainer" class="hidden">
+
+                <!-- ТАБЫ: Список / План -->
+                <div class="tabs tabs-boxed placement-tabs mb-4 w-fit">
+                    <button type="button" class="tab tab-active" data-mode="list" onclick="switchPlacementMode('list')">Список</button>
+                    <button type="button" class="tab" data-mode="plan" onclick="switchPlacementMode('plan')">План</button>
                 </div>
-                <div class="flex items-center gap-1">
-                    <span class="w-3 h-3 rounded bg-warning"></span> Частично
+
+                <!-- Режим СПИСОК -->
+                <div id="placementListView">
+                    <div id="roomsList" class="space-y-2 max-h-80 overflow-y-auto">
+                        <div class="text-center py-4 opacity-50">Загрузка...</div>
+                    </div>
                 </div>
-                <div class="flex items-center gap-1">
-                    <span class="w-3 h-3 rounded bg-error opacity-50"></span> Занято
+
+                <!-- Режим ПЛАН -->
+                <div id="placementPlanView" class="hidden">
+                    <!-- Табы зданий -->
+                    <div id="planBuildingTabs" class="tabs tabs-boxed mb-3 w-fit"></div>
+                    <!-- Табы этажей -->
+                    <div id="planFloorTabs" class="flex gap-1 mb-3"></div>
+                    <!-- План этажа -->
+                    <div class="floor-plan-container">
+                        <img id="planFloorPlanImage" src="" alt="План этажа" class="hidden" />
+                        <div id="planNoFloorPlan" class="text-center py-12 opacity-50">Нет плана для этого этажа</div>
+                        <svg id="planFloorPlanSvg" class="floor-plan-svg hidden" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"></svg>
+                    </div>
+                </div>
+
+                <!-- Легенда -->
+                <div class="flex flex-wrap gap-3 text-xs opacity-60 mt-4">
+                    <div class="flex items-center gap-1">
+                        <span class="w-3 h-3 rounded bg-success"></span> Свободно
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <span class="w-3 h-3 rounded bg-warning"></span> Частично
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <span class="w-3 h-3 rounded bg-error opacity-50"></span> Занято
+                    </div>
                 </div>
             </div>
 
@@ -450,8 +527,7 @@
                 .select(`
                     *,
                     vaishnavas (id, first_name, last_name, spiritual_name, phone, email, telegram, has_whatsapp, photo_url),
-                    guest_transfers (*),
-                    guest_accommodations (*)
+                    guest_transfers (*)
                 `)
                 .eq('retreat_id', retreatId)
                 .eq('is_deleted', false)
@@ -463,6 +539,27 @@
             }
 
             registrations = data || [];
+
+            // Загружаем размещения из residents (единая таблица для шахматки)
+            const vaishnavIds = registrations.map(r => r.vaishnava_id).filter(Boolean);
+            if (vaishnavIds.length > 0) {
+                const { data: residentsData } = await Layout.db
+                    .from('residents')
+                    .select('*, rooms(id, number, building_id, buildings(id, name_ru, name_en, name_hi))')
+                    .eq('retreat_id', retreatId)
+                    .in('vaishnava_id', vaishnavIds);
+
+                // Привязываем residents к регистрациям
+                const residentsByVaishnava = (residentsData || []).reduce((acc, res) => {
+                    acc[res.vaishnava_id] = res;
+                    return acc;
+                }, {});
+
+                registrations.forEach(reg => {
+                    reg.resident = residentsByVaishnava[reg.vaishnava_id] || null;
+                });
+            }
+
             renderTable();
         }
 
@@ -647,7 +744,7 @@
                             ${departureTransfer ? `<div class="text-xs">🚐</div>` : ''}
                         </td>
                         <td class="text-sm max-w-xs">
-                            ${reg.guest_accommodations?.[0]?.room_number ? `<div class="font-medium text-success">${reg.guest_accommodations[0].building_name ? reg.guest_accommodations[0].building_name + ', ' : ''}${reg.guest_accommodations[0].room_number}</div>` : ''}
+                            ${reg.resident?.rooms ? `<div class="font-medium text-success">${reg.resident.rooms.buildings ? Layout.getName(reg.resident.rooms.buildings) + ', ' : ''}${reg.resident.rooms.number}</div>` : ''}
                             ${reg.accommodation_wishes ? `<div class="opacity-60 truncate">${reg.accommodation_wishes}</div>` : ''}
                         </td>
                         <td class="text-right whitespace-nowrap">
@@ -852,90 +949,155 @@
 
         // ==================== PLACEMENT MODAL ====================
         let buildings = [];
-        let currentPlacementRegId = null;
+        let floorPlans = [];
+
+        // Состояние модалки размещения
+        let placementState = {
+            registrationId: null,
+            vaishnavId: null,
+            retreatId: null,
+            checkIn: null,
+            checkOut: null,
+            mode: 'list',  // 'list' | 'plan'
+            occupancy: {},  // roomId => count занятости
+            currentBuildingId: null,
+            currentFloor: 1,
+            existingResidentId: null  // для переселения
+        };
 
         async function loadBuildingsAndRooms() {
-            const { data, error } = await Layout.db
-                .from('buildings')
-                .select('*, rooms(*)')
-                .eq('is_active', true)
-                .order('sort_order');
+            const [buildingsRes, floorPlansRes] = await Promise.all([
+                Layout.db.from('buildings')
+                    .select('*, rooms(*)')
+                    .eq('is_active', true)
+                    .order('sort_order'),
+                Layout.db.from('floor_plans')
+                    .select('*')
+            ]);
 
-            if (error) console.error('Error loading buildings:', error);
-            buildings = data || [];
+            if (buildingsRes.error) console.error('Error loading buildings:', buildingsRes.error);
+            if (floorPlansRes.error) console.error('Error loading floor plans:', floorPlansRes.error);
+
+            buildings = buildingsRes.data || [];
+            floorPlans = floorPlansRes.data || [];
         }
 
         function openPlacementModal(registrationId) {
             const reg = registrations.find(r => r.id === registrationId);
             if (!reg) return;
 
-            currentPlacementRegId = registrationId;
+            // Сброс состояния
+            placementState = {
+                registrationId: registrationId,
+                vaishnavId: reg.vaishnava_id,
+                retreatId: retreat?.id || null,
+                checkIn: reg.resident?.check_in || retreat?.start_date || null,
+                checkOut: reg.resident?.check_out || retreat?.end_date || null,
+                mode: 'list',
+                occupancy: {},
+                currentBuildingId: buildings[0]?.id || null,
+                currentFloor: 1,
+                existingResidentId: reg.resident?.id || null
+            };
 
             const modal = document.getElementById('placementModal');
             const guestInfo = document.getElementById('placementGuestInfo');
 
-            // Show guest info
+            // Показать инфо о госте
             const v = reg.vaishnavas;
             const name = v ? `${v.first_name || ''} ${v.last_name || ''}`.trim() : '—';
             const spiritualName = v?.spiritual_name ? ` (${v.spiritual_name})` : '';
 
             guestInfo.innerHTML = `
                 <div class="font-medium">${name}${spiritualName}</div>
-                ${reg.accommodation_wishes ? `<div class="text-sm opacity-60 mt-1">${reg.accommodation_wishes}</div>` : ''}
+                ${reg.accommodation_wishes ? `<div class="text-sm opacity-60 mt-1">Пожелания: ${reg.accommodation_wishes}</div>` : ''}
             `;
 
-            // Set default dates from retreat
-            if (retreat) {
-                document.getElementById('placementCheckIn').value = retreat.start_date;
-                document.getElementById('placementCheckOut').value = retreat.end_date;
-            }
+            // Установить даты из ретрита
+            document.getElementById('placementCheckIn').value = placementState.checkIn || '';
+            document.getElementById('placementCheckOut').value = placementState.checkOut || '';
+
+            // Сброс табов
+            document.querySelectorAll('.placement-tabs .tab').forEach(tab => {
+                tab.classList.toggle('tab-active', tab.dataset.mode === 'list');
+            });
 
             modal.showModal();
-            updateRoomsList();
+            onPlacementDatesChange();
         }
 
-        async function updateRoomsList() {
-            const roomsList = document.getElementById('roomsList');
+        async function onPlacementDatesChange() {
             const checkIn = document.getElementById('placementCheckIn').value;
             const checkOut = document.getElementById('placementCheckOut').value;
 
+            placementState.checkIn = checkIn;
+            placementState.checkOut = checkOut;
+
+            const dateMessage = document.getElementById('placementDateMessage');
+            const roomsContainer = document.getElementById('placementRoomsContainer');
+
             if (!checkIn || !checkOut) {
-                roomsList.innerHTML = '<div class="text-center py-4 opacity-50">Укажите даты заезда и выезда</div>';
+                dateMessage.classList.remove('hidden');
+                roomsContainer.classList.add('hidden');
                 return;
             }
 
-            roomsList.innerHTML = '<div class="text-center py-4"><span class="loading loading-spinner"></span></div>';
+            dateMessage.classList.add('hidden');
+            roomsContainer.classList.remove('hidden');
 
-            // Load occupancy for the date range from multiple sources
-            const [residentsRes, accommodationsRes] = await Promise.all([
-                // Заселённые гости (residents)
-                Layout.db.from('residents')
-                    .select('room_id')
-                    .lte('check_in', checkOut)
-                    .gte('check_out', checkIn),
-                // Бронирования гостей ретритов (guest_accommodations)
-                Layout.db.from('guest_accommodations')
-                    .select('room_id')
-                    .not('room_id', 'is', null)
-                    .lte('check_in_date', checkOut)
-                    .gte('check_out_date', checkIn)
-            ]);
+            // Загрузить занятость
+            await loadPlacementOccupancy(checkIn, checkOut);
 
-            if (residentsRes.error) {
-                console.error('Error loading residents:', residentsRes.error);
+            // Отрисовать текущий режим
+            if (placementState.mode === 'list') {
+                renderPlacementListView();
+            } else {
+                renderPlacementPlanView();
             }
-            if (accommodationsRes.error) {
-                console.error('Error loading accommodations:', accommodationsRes.error);
-            }
+        }
 
-            // Count occupancy per room from all sources
-            const roomOccupancy = {};
-            (residentsRes.data || []).forEach(r => {
-                if (r.room_id) roomOccupancy[r.room_id] = (roomOccupancy[r.room_id] || 0) + 1;
+        async function loadPlacementOccupancy(checkIn, checkOut) {
+            // Загружаем все размещения из единой таблицы residents
+            const { data: residentsData, error } = await Layout.db
+                .from('residents')
+                .select('id, room_id')
+                .not('room_id', 'is', null)
+                .lte('check_in', checkOut)
+                .gte('check_out', checkIn);
+
+            if (error) console.error('Error loading residents:', error);
+
+            // Подсчёт занятости по комнатам (исключаем текущего при переселении)
+            placementState.occupancy = {};
+            (residentsData || []).forEach(r => {
+                if (r.room_id && r.id !== placementState.existingResidentId) {
+                    placementState.occupancy[r.room_id] = (placementState.occupancy[r.room_id] || 0) + 1;
+                }
             });
-            (accommodationsRes.data || []).forEach(r => {
-                if (r.room_id) roomOccupancy[r.room_id] = (roomOccupancy[r.room_id] || 0) + 1;
+        }
+
+        function switchPlacementMode(mode) {
+            placementState.mode = mode;
+
+            // Обновить табы
+            document.querySelectorAll('.placement-tabs .tab').forEach(tab => {
+                tab.classList.toggle('tab-active', tab.dataset.mode === mode);
             });
+
+            // Показать/скрыть вьюхи
+            document.getElementById('placementListView').classList.toggle('hidden', mode !== 'list');
+            document.getElementById('placementPlanView').classList.toggle('hidden', mode !== 'plan');
+
+            // Отрисовать
+            if (mode === 'list') {
+                renderPlacementListView();
+            } else {
+                renderPlacementPlanView();
+            }
+        }
+
+        function renderPlacementListView() {
+            const roomsList = document.getElementById('roomsList');
 
             if (buildings.length === 0) {
                 roomsList.innerHTML = '<div class="text-center py-4 opacity-50">Нет доступных зданий</div>';
@@ -956,10 +1118,10 @@
                     <input type="checkbox" checked />
                     <div class="collapse-title font-medium py-2">${Layout.getName(building)}</div>
                     <div class="collapse-content p-0">
-                        <div class="grid grid-cols-4 sm:grid-cols-6 gap-1 p-2">`;
+                        <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-1 p-2">`;
 
                 rooms.forEach(room => {
-                    const occupied = roomOccupancy[room.id] || 0;
+                    const occupied = placementState.occupancy[room.id] || 0;
                     const capacity = room.capacity || 1;
                     const isFull = occupied >= capacity;
 
@@ -980,7 +1142,7 @@
                     }
 
                     html += `<button type="button" class="btn btn-sm ${btnClass}"
-                        ${disabled ? 'disabled' : `onclick="selectRoom('${room.id}', '${building.id}')"`}>
+                        ${disabled ? 'disabled' : `onclick="selectPlacementRoom('${room.id}', '${building.id}')"`}>
                         ${label}
                     </button>`;
                 });
@@ -991,41 +1153,151 @@
             roomsList.innerHTML = html || '<div class="text-center py-4 opacity-50">Нет комнат</div>';
         }
 
-        async function selectRoom(roomId, buildingId) {
+        function renderPlacementPlanView() {
+            // Табы зданий
+            const buildingTabsHtml = buildings.map(b => {
+                const hasPlans = floorPlans.some(fp => fp.building_id === b.id);
+                const isActive = b.id === placementState.currentBuildingId;
+                return `<button type="button" class="tab ${isActive ? 'tab-active' : ''} ${!hasPlans ? 'opacity-50' : ''}"
+                    onclick="selectPlanBuilding('${b.id}')" ${!hasPlans ? 'title="Нет плана"' : ''}>
+                    ${Layout.getName(b)}
+                </button>`;
+            }).join('');
+            document.getElementById('planBuildingTabs').innerHTML = buildingTabsHtml;
+
+            // Получить этажи для текущего здания
+            const building = buildings.find(b => b.id === placementState.currentBuildingId);
+            const buildingFloorPlans = floorPlans.filter(fp => fp.building_id === placementState.currentBuildingId);
+            const floors = [...new Set(buildingFloorPlans.map(fp => fp.floor))].sort((a, b) => a - b);
+
+            // Если нет этажей с планами
+            if (floors.length === 0) {
+                document.getElementById('planFloorTabs').innerHTML = '';
+                document.getElementById('planFloorPlanImage').classList.add('hidden');
+                document.getElementById('planFloorPlanSvg').classList.add('hidden');
+                document.getElementById('planNoFloorPlan').classList.remove('hidden');
+                document.getElementById('planNoFloorPlan').textContent = 'Нет планов для этого здания';
+                return;
+            }
+
+            // Проверить что текущий этаж существует
+            if (!floors.includes(placementState.currentFloor)) {
+                placementState.currentFloor = floors[0];
+            }
+
+            // Табы этажей
+            const floorTabsHtml = floors.map(floor => {
+                const isActive = floor === placementState.currentFloor;
+                return `<button type="button" class="btn btn-sm ${isActive ? 'btn-primary' : 'btn-ghost'}"
+                    onclick="selectPlanFloor(${floor})">
+                    ${floor} этаж
+                </button>`;
+            }).join('');
+            document.getElementById('planFloorTabs').innerHTML = floorTabsHtml;
+
+            // Получить план этажа
+            const floorPlan = buildingFloorPlans.find(fp => fp.floor === placementState.currentFloor);
+
+            if (!floorPlan) {
+                document.getElementById('planFloorPlanImage').classList.add('hidden');
+                document.getElementById('planFloorPlanSvg').classList.add('hidden');
+                document.getElementById('planNoFloorPlan').classList.remove('hidden');
+                return;
+            }
+
+            // Показать изображение плана
+            const img = document.getElementById('planFloorPlanImage');
+            img.src = floorPlan.image_url;
+            img.classList.remove('hidden');
+            document.getElementById('planNoFloorPlan').classList.add('hidden');
+
+            // Отрисовать комнаты на SVG
+            const svg = document.getElementById('planFloorPlanSvg');
+            svg.classList.remove('hidden');
+
+            // Установить viewBox по размеру изображения
+            svg.setAttribute('viewBox', `0 0 100 100`);
+
+            // Получить комнаты этого этажа с координатами
+            const rooms = (building?.rooms || []).filter(r =>
+                r.is_active &&
+                r.floor === placementState.currentFloor &&
+                r.plan_x !== null && r.plan_y !== null
+            );
+
+            let svgContent = '';
+            rooms.forEach(room => {
+                const occupied = placementState.occupancy[room.id] || 0;
+                const capacity = room.capacity || 1;
+                const isFull = occupied >= capacity;
+
+                let fillColor;
+                if (isFull) {
+                    fillColor = '#ef4444'; // red
+                } else if (occupied > 0) {
+                    fillColor = '#eab308'; // yellow
+                } else {
+                    fillColor = '#10b981'; // green
+                }
+
+                const x = parseFloat(room.plan_x);
+                const y = parseFloat(room.plan_y);
+                const w = parseFloat(room.plan_width || 8);
+                const h = parseFloat(room.plan_height || 8);
+
+                const clickHandler = isFull ? '' : `onclick="selectPlacementRoom('${room.id}', '${building.id}')"`;
+                const disabledClass = isFull ? 'disabled' : '';
+
+                svgContent += `
+                    <g class="room-marker ${disabledClass}" ${clickHandler}>
+                        <rect x="${x}" y="${y}" width="${w}" height="${h}"
+                            fill="${fillColor}" rx="0.5" opacity="0.85" />
+                        <text x="${x + w/2}" y="${y + h/2}" class="room-label">
+                            ${room.number}${occupied > 0 ? ` (${occupied}/${capacity})` : ''}
+                        </text>
+                    </g>`;
+            });
+
+            svg.innerHTML = svgContent;
+        }
+
+        function selectPlanBuilding(buildingId) {
+            placementState.currentBuildingId = buildingId;
+            placementState.currentFloor = 1;
+            renderPlacementPlanView();
+        }
+
+        function selectPlanFloor(floor) {
+            placementState.currentFloor = floor;
+            renderPlacementPlanView();
+        }
+
+        async function selectPlacementRoom(roomId, buildingId) {
             const building = buildings.find(b => b.id === buildingId);
             const room = building?.rooms?.find(r => r.id === roomId);
-            if (!room) return;
-
-            const checkIn = document.getElementById('placementCheckIn').value;
-            const checkOut = document.getElementById('placementCheckOut').value;
+            if (!room || !placementState.vaishnavId) return;
 
             const data = {
-                registration_id: currentPlacementRegId,
                 room_id: roomId,
-                building_name: Layout.getName(building),
-                room_number: room.number,
-                room_type: room.capacity ? `${room.capacity}-местная` : null,
-                check_in_date: checkIn || null,
-                check_out_date: checkOut || null
+                vaishnava_id: placementState.vaishnavId,
+                retreat_id: placementState.retreatId,
+                check_in: placementState.checkIn || null,
+                check_out: placementState.checkOut || null,
+                status: 'confirmed'
             };
 
             try {
-                // Check if accommodation already exists
-                const { data: existing } = await Layout.db
-                    .from('guest_accommodations')
-                    .select('id')
-                    .eq('registration_id', data.registration_id)
-                    .maybeSingle();
-
-                if (existing) {
+                if (placementState.existingResidentId) {
+                    // Обновить существующее размещение
                     const { error } = await Layout.db
-                        .from('guest_accommodations')
+                        .from('residents')
                         .update(data)
-                        .eq('id', existing.id);
+                        .eq('id', placementState.existingResidentId);
                     if (error) throw error;
                 } else {
+                    // Создать новое
                     const { error } = await Layout.db
-                        .from('guest_accommodations')
+                        .from('residents')
                         .insert(data);
                     if (error) throw error;
                 }
@@ -1037,6 +1309,10 @@
                 alert('Ошибка размещения: ' + err.message);
             }
         }
+
+        // Старые функции для совместимости (deprecated)
+        function updateRoomsList() { onPlacementDatesChange(); }
+        function selectRoom(roomId, buildingId) { selectPlacementRoom(roomId, buildingId); }
 
         // ==================== INFO MODAL ====================
         function openInfoModal(registrationId) {
