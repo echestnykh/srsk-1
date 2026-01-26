@@ -541,13 +541,15 @@
             registrations = data || [];
 
             // Загружаем размещения из residents (единая таблица для шахматки)
+            // Исключаем выселенных (checked_out)
             const vaishnavIds = registrations.map(r => r.vaishnava_id).filter(Boolean);
             if (vaishnavIds.length > 0) {
                 const { data: residentsData } = await Layout.db
                     .from('residents')
                     .select('*, rooms(id, number, building_id, buildings(id, name_ru, name_en, name_hi))')
                     .eq('retreat_id', retreatId)
-                    .in('vaishnava_id', vaishnavIds);
+                    .in('vaishnava_id', vaishnavIds)
+                    .in('status', ['active', 'confirmed']);
 
                 // Привязываем residents к регистрациям
                 const residentsByVaishnava = (residentsData || []).reduce((acc, res) => {
@@ -1058,10 +1060,12 @@
 
         async function loadPlacementOccupancy(checkIn, checkOut) {
             // Загружаем все размещения из единой таблицы residents
+            // Исключаем выселенных (checked_out)
             const { data: residentsData, error } = await Layout.db
                 .from('residents')
                 .select('id, room_id')
                 .not('room_id', 'is', null)
+                .in('status', ['active', 'confirmed'])
                 .lte('check_in', checkOut)
                 .gte('check_out', checkIn);
 
