@@ -56,11 +56,10 @@ const modules = {
             { id: 'vaishnavas', items: [
                 { id: 'vaishnavas_all', href: 'vaishnavas/index.html' },
                 { id: 'vaishnavas_guests', href: 'vaishnavas/guests.html' },
-                { id: 'vaishnavas_team', href: 'vaishnavas/team.html' },
-                { id: 'retreat_guests', href: 'vaishnavas/retreat-guests.html' }
+                { id: 'vaishnavas_team', href: 'vaishnavas/team.html' }
             ]},
             { id: 'placement', items: [
-                { id: 'timeline', href: 'placement/timeline.html' },
+                { id: 'retreat_guests', href: 'vaishnavas/retreat-guests.html' },
                 { id: 'bookings', href: 'placement/bookings.html' },
                 { id: 'transfers', href: 'placement/transfers.html' }
             ]},

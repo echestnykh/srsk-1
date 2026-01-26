@@ -2308,7 +2308,7 @@
 
         // ==================== INIT ====================
         async function init() {
-            await Layout.init({ module: 'housing', menuId: 'vaishnavas', itemId: 'retreat_guests' });
+            await Layout.init({ module: 'housing', menuId: 'placement', itemId: 'retreat_guests' });
             Layout.showLoader();
 
             await Promise.all([loadAllRetreats(), loadVaishnavas(), loadBuildingsAndRooms()]);
