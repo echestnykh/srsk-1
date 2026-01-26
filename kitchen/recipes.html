@@ -286,11 +286,12 @@
                             </div>
                             <h3 class="card-title text-base leading-tight mb-0">${Layout.getName(recipe)}</h3>
                             <p class="sub-text">${recipe[`name_${secondaryLang}`] || ''}</p>
-                            ${lang !== 'hi' ? `<p class="sub-text">${recipe.name_hi} · ${recipe.translit || ''}</p>` : ''}
+                            ${lang !== 'hi' && (recipe.name_hi || recipe.translit) ? `<p class="sub-text">${[recipe.name_hi, recipe.translit].filter(Boolean).join(' · ')}</p>` : ''}
+                            ${recipe.output_amount || recipe.portion_amount ? `
                             <div class="flex gap-4 mt-2 text-sm">
-                                <div><span class="opacity-50">${t('output')}:</span> <span class="font-medium">${recipe.output_amount} ${unitOutput}</span></div>
-                                <div><span class="opacity-50">${t('portion')}:</span> <span class="font-medium">${recipe.portion_amount} ${unitPortion}</span></div>
-                            </div>
+                                ${recipe.output_amount ? `<div><span class="opacity-50">${t('output')}:</span> <span class="font-medium">${recipe.output_amount} ${unitOutput}</span></div>` : ''}
+                                ${recipe.portion_amount ? `<div><span class="opacity-50">${t('portion')}:</span> <span class="font-medium">${recipe.portion_amount} ${unitPortion}</span></div>` : ''}
+                            </div>` : ''}
                         </div>
                     </div>
                 `;
