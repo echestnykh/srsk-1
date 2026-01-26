@@ -786,6 +786,10 @@
                 const departureDate = formatFlightDateTime(departure?.flight_datetime, departure?.notes);
                 const departureTransfer = departure?.needs_transfer === 'yes' ? ' 🚐' : '';
 
+                // Проверка на проблемы: нет данных вообще, или есть notes но нет datetime
+                const arrivalProblem = !arrival || (arrival?.notes && !arrival?.flight_datetime);
+                const departureProblem = !departure || (departure?.notes && !departure?.flight_datetime);
+
                 return `
                     <tr class="hover align-top">
                         <td class="cursor-pointer" onclick="window.location.href='person.html?id=${v?.id}'">
@@ -798,10 +802,10 @@
                         <td class="text-sm">${v?.india_experience || '—'}</td>
                         <td class="text-sm">${reg.companions || '—'}</td>
                         <td class="text-sm">${reg.accommodation_wishes || '—'}</td>
-                        <td class="text-center text-sm whitespace-nowrap">
+                        <td class="text-center text-sm whitespace-nowrap ${arrivalProblem ? 'bg-warning/30' : ''}">
                             ${arrivalDate ? `${arrivalDate}${arrivalTransfer}` : '<span class="opacity-30">—</span>'}
                         </td>
-                        <td class="text-center text-sm whitespace-nowrap">
+                        <td class="text-center text-sm whitespace-nowrap ${departureProblem ? 'bg-warning/30' : ''}">
                             ${departureDate ? `${departureDate}${departureTransfer}` : '<span class="opacity-30">—</span>'}
                         </td>
                         <td class="text-sm">${reg.extended_stay || '—'}</td>
