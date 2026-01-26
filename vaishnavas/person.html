@@ -496,6 +496,18 @@
 
             <!-- Right column: History -->
             <div class="lg:col-span-2 space-y-6">
+                <!-- Retreat Registrations -->
+                <div class="section-card" id="retreatsSection">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-semibold" data-i18n="retreat_history">История ретритов</h3>
+                        <span class="badge badge-lg" id="retreatsCount">0</span>
+                    </div>
+                    <div id="registrationsList" class="space-y-3"></div>
+                    <div id="emptyRegistrations" class="hidden text-center py-6 opacity-60">
+                        <p data-i18n="no_retreat_registrations">Нет регистраций на ретриты</p>
+                    </div>
+                </div>
+
                 <!-- Team Stays (only for team members) -->
                 <div class="section-card" id="staysSection">
                     <div class="flex items-center justify-between mb-4">
@@ -510,18 +522,6 @@
                     <div id="staysList" class="space-y-3"></div>
                     <div id="emptyStays" class="hidden text-center py-6 opacity-60">
                         <p data-i18n="no_stays">Нет запланированных периодов</p>
-                    </div>
-                </div>
-
-                <!-- Retreat Registrations -->
-                <div class="section-card" id="retreatsSection">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="font-semibold" data-i18n="retreat_history">История ретритов</h3>
-                        <span class="badge badge-lg" id="retreatsCount">0</span>
-                    </div>
-                    <div id="registrationsList" class="space-y-3"></div>
-                    <div id="emptyRegistrations" class="hidden text-center py-6 opacity-60">
-                        <p data-i18n="no_retreat_registrations">Нет регистраций на ретриты</p>
                     </div>
                 </div>
             </div>
