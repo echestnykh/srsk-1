@@ -183,19 +183,64 @@
                     <tr>
                         <th class="cursor-pointer hover:bg-base-200 select-none" onclick="toggleSort('name')">
                             <div class="flex items-center gap-1">
-                                <span data-i18n="name">Имя</span>
+                                <span>Имя</span>
                                 <span class="sort-icon" data-sort="name">↕</span>
                             </div>
                         </th>
-                        <th class="whitespace-nowrap">Пол / Возраст</th>
-                        <th class="whitespace-nowrap">Опыт в Индии</th>
-                        <th>С кем едет / хотят жить</th>
-                        <th>Где хотят жить</th>
-                        <th class="text-center whitespace-nowrap">Заезд</th>
-                        <th class="text-center whitespace-nowrap">Выезд</th>
-                        <th>Планы до/после</th>
-                        <th>Пожелания</th>
-                        <th>Заметки ОП</th>
+                        <th class="cursor-pointer hover:bg-base-200 select-none whitespace-nowrap" onclick="toggleSort('gender_age')">
+                            <div class="flex items-center gap-1">
+                                <span>Пол / Возраст</span>
+                                <span class="sort-icon" data-sort="gender_age">↕</span>
+                            </div>
+                        </th>
+                        <th class="cursor-pointer hover:bg-base-200 select-none whitespace-nowrap" onclick="toggleSort('india_experience')">
+                            <div class="flex items-center gap-1">
+                                <span>Опыт в Индии</span>
+                                <span class="sort-icon" data-sort="india_experience">↕</span>
+                            </div>
+                        </th>
+                        <th class="cursor-pointer hover:bg-base-200 select-none" onclick="toggleSort('companions')">
+                            <div class="flex items-center gap-1">
+                                <span>С кем едет</span>
+                                <span class="sort-icon" data-sort="companions">↕</span>
+                            </div>
+                        </th>
+                        <th class="cursor-pointer hover:bg-base-200 select-none" onclick="toggleSort('accommodation_wishes')">
+                            <div class="flex items-center gap-1">
+                                <span>Где хотят жить</span>
+                                <span class="sort-icon" data-sort="accommodation_wishes">↕</span>
+                            </div>
+                        </th>
+                        <th class="cursor-pointer hover:bg-base-200 select-none text-center whitespace-nowrap" onclick="toggleSort('arrival')">
+                            <div class="flex items-center gap-1 justify-center">
+                                <span>Заезд</span>
+                                <span class="sort-icon" data-sort="arrival">↕</span>
+                            </div>
+                        </th>
+                        <th class="cursor-pointer hover:bg-base-200 select-none text-center whitespace-nowrap" onclick="toggleSort('departure')">
+                            <div class="flex items-center gap-1 justify-center">
+                                <span>Выезд</span>
+                                <span class="sort-icon" data-sort="departure">↕</span>
+                            </div>
+                        </th>
+                        <th class="cursor-pointer hover:bg-base-200 select-none" onclick="toggleSort('extended_stay')">
+                            <div class="flex items-center gap-1">
+                                <span>Планы до/после</span>
+                                <span class="sort-icon" data-sort="extended_stay">↕</span>
+                            </div>
+                        </th>
+                        <th class="cursor-pointer hover:bg-base-200 select-none" onclick="toggleSort('guest_questions')">
+                            <div class="flex items-center gap-1">
+                                <span>Пожелания</span>
+                                <span class="sort-icon" data-sort="guest_questions">↕</span>
+                            </div>
+                        </th>
+                        <th class="cursor-pointer hover:bg-base-200 select-none" onclick="toggleSort('org_notes')">
+                            <div class="flex items-center gap-1">
+                                <span>Заметки ОП</span>
+                                <span class="sort-icon" data-sort="org_notes">↕</span>
+                            </div>
+                        </th>
                     </tr>
                 </thead>
                 <tbody id="guestsTable">
@@ -644,16 +689,37 @@
                 let aVal, bVal;
 
                 if (sortField === 'name') {
-                    // Sort by spiritual name if exists, otherwise by regular name
                     aVal = (a.vaishnavas?.spiritual_name || `${a.vaishnavas?.first_name || ''} ${a.vaishnavas?.last_name || ''}`.trim()).toLowerCase();
                     bVal = (b.vaishnavas?.spiritual_name || `${b.vaishnavas?.first_name || ''} ${b.vaishnavas?.last_name || ''}`.trim()).toLowerCase();
-                } else if (sortField === 'status') {
-                    const statusOrder = { confirmed: 1, pending: 2, team: 3, no_response: 4, cancelled: 5 };
-                    aVal = statusOrder[a.status] || 99;
-                    bVal = statusOrder[b.status] || 99;
+                } else if (sortField === 'gender_age') {
+                    // Сортировка по полу, потом по возрасту
+                    const genderOrder = { male: 1, female: 2 };
+                    const aGender = genderOrder[a.vaishnavas?.gender] || 3;
+                    const bGender = genderOrder[b.vaishnavas?.gender] || 3;
+                    if (aGender !== bGender) {
+                        aVal = aGender;
+                        bVal = bGender;
+                    } else {
+                        aVal = a.vaishnavas?.birth_date || '9999';
+                        bVal = b.vaishnavas?.birth_date || '9999';
+                    }
+                } else if (sortField === 'india_experience') {
+                    aVal = (a.vaishnavas?.india_experience || '').toLowerCase();
+                    bVal = (b.vaishnavas?.india_experience || '').toLowerCase();
+                } else if (sortField === 'arrival') {
+                    const aTransfer = (a.guest_transfers || []).find(t => t.direction === 'arrival');
+                    const bTransfer = (b.guest_transfers || []).find(t => t.direction === 'arrival');
+                    aVal = aTransfer?.flight_datetime || '9999';
+                    bVal = bTransfer?.flight_datetime || '9999';
+                } else if (sortField === 'departure') {
+                    const aTransfer = (a.guest_transfers || []).find(t => t.direction === 'departure');
+                    const bTransfer = (b.guest_transfers || []).find(t => t.direction === 'departure');
+                    aVal = aTransfer?.flight_datetime || '9999';
+                    bVal = bTransfer?.flight_datetime || '9999';
                 } else {
-                    aVal = a[sortField] || '';
-                    bVal = b[sortField] || '';
+                    // companions, accommodation_wishes, extended_stay, guest_questions, org_notes
+                    aVal = (a[sortField] || '').toLowerCase();
+                    bVal = (b[sortField] || '').toLowerCase();
                 }
 
                 if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
