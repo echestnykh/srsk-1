@@ -219,6 +219,14 @@
             document.getElementById('statsBlock').style.display = '';
         }
 
+        // Helper to format date as YYYY-MM-DD in local timezone
+        function toLocalDateStr(date) {
+            const year = date.getFullYear();
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
         function updateStats() {
             const total = registrations.length;
             let withTime = 0;
@@ -227,10 +235,10 @@
             let tomorrow = 0;
 
             const now = new Date();
-            const todayStr = now.toISOString().split('T')[0];
+            const todayStr = toLocalDateStr(now);
             const tomorrowDate = new Date(now);
             tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-            const tomorrowStr = tomorrowDate.toISOString().split('T')[0];
+            const tomorrowStr = toLocalDateStr(tomorrowDate);
 
             registrations.forEach(reg => {
                 const arrival = (reg.guest_transfers || []).find(t => t.direction === 'arrival');
@@ -239,7 +247,7 @@
                     // Estimated arrival = flight_datetime + 4 hours
                     const estimatedDate = new Date(arrival.flight_datetime);
                     estimatedDate.setHours(estimatedDate.getHours() + 4);
-                    const estimatedStr = estimatedDate.toISOString().split('T')[0];
+                    const estimatedStr = toLocalDateStr(estimatedDate);
 
                     if (estimatedStr === todayStr) today++;
                     if (estimatedStr === tomorrowStr) tomorrow++;
@@ -278,7 +286,7 @@
                 if (arrival?.flight_datetime) {
                     const estimatedDate = new Date(arrival.flight_datetime);
                     estimatedDate.setHours(estimatedDate.getHours() + 4);
-                    const dateStr = estimatedDate.toISOString().split('T')[0];
+                    const dateStr = toLocalDateStr(estimatedDate);
 
                     if (dateStr === selectedDate) {
                         const hour = estimatedDate.getHours();
