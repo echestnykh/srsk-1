@@ -798,7 +798,7 @@
                                 <div class="${spiritualName ? 'text-xs opacity-60' : 'font-medium'}">${name}</div>
                             </div>
                         </td>
-                        <td class="text-sm whitespace-nowrap">${genderAge}</td>
+                        <td class="text-sm whitespace-nowrap ${v?.gender === 'male' ? 'bg-blue-500/10' : v?.gender === 'female' ? 'bg-pink-500/10' : ''}">${genderAge}</td>
                         <td class="text-sm">${v?.india_experience || '—'}</td>
                         <td class="text-sm">${reg.companions || '—'}</td>
                         <td class="text-sm">${reg.accommodation_wishes || '—'}</td>
