@@ -522,6 +522,7 @@
             const lang = Layout.currentLang;
 
             // Instructions stored as text with line breaks
+            console.log('renderInstructions lang:', lang, 'instructions_' + lang + ':', recipe[`instructions_${lang}`]);
             const instructionsText = recipe[`instructions_${lang}`] || recipe.instructions_ru || '';
             const steps = instructionsText.split('\n').filter(s => s.trim());
 
