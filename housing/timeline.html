@@ -728,7 +728,7 @@
                 <div class="space-y-2 mb-4" id="residentInfo"></div>
 
                 <!-- Кнопки действий -->
-                <div class="grid grid-cols-3 gap-3" id="residentActions"></div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2" id="residentActions"></div>
 
                 <div class="modal-action">
                     <form method="dialog">
@@ -753,6 +753,34 @@
 
                 <div class="modal-action">
                     <button class="btn btn-ghost" onclick="showResidentInfoScreen()">Отмена</button>
+                </div>
+            </div>
+
+            <!-- Экран редактирования дат -->
+            <div id="editDatesScreen" class="hidden">
+                <div class="flex items-center gap-2 mb-4">
+                    <button class="btn btn-ghost btn-sm btn-circle" onclick="showResidentInfoScreen()">←</button>
+                    <h3 class="font-bold text-lg">Изменить даты</h3>
+                </div>
+
+                <div class="text-sm text-gray-500 mb-4">
+                    <span id="editDatesGuestName" class="font-medium"></span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Заезд</span></label>
+                        <input type="date" id="editCheckIn" class="input input-bordered">
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Выезд</span></label>
+                        <input type="date" id="editCheckOut" class="input input-bordered">
+                    </div>
+                </div>
+
+                <div class="modal-action">
+                    <button class="btn btn-ghost" onclick="showResidentInfoScreen()">Отмена</button>
+                    <button class="btn btn-primary" onclick="saveDates()">Сохранить</button>
                 </div>
             </div>
         </div>
@@ -1668,19 +1696,27 @@
                     </svg>
                     Выселить
                 </button>`;
+                actionsHtml += `<button class="btn btn-outline" onclick="showEditDatesScreen()">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Даты
+                </button>`;
                 actionsHtml += `<button class="btn btn-info btn-outline" onclick="showMoveScreen()">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                     </svg>
                     Перенос
                 </button>`;
-                actionsHtml += `<button class="btn btn-error btn-outline" onclick="deleteResident()">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    Удалить
-                </button>`;
             }
+
+            // Кнопка удаления для всех
+            actionsHtml += `<button class="btn btn-error btn-outline" onclick="deleteResident()">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Удалить
+            </button>`;
 
             document.getElementById('residentActions').innerHTML = actionsHtml;
 
@@ -1772,6 +1808,52 @@
         function showResidentInfoScreen() {
             document.getElementById('residentInfoScreen').classList.remove('hidden');
             document.getElementById('moveScreen').classList.add('hidden');
+            document.getElementById('editDatesScreen').classList.add('hidden');
+        }
+
+        // Показать экран редактирования дат
+        function showEditDatesScreen() {
+            if (!currentResident) return;
+
+            document.getElementById('residentInfoScreen').classList.add('hidden');
+            document.getElementById('moveScreen').classList.add('hidden');
+            document.getElementById('editDatesScreen').classList.remove('hidden');
+
+            document.getElementById('editDatesGuestName').textContent = currentResident.name;
+
+            const res = currentResident.rawData;
+            document.getElementById('editCheckIn').value = res.check_in || '';
+            document.getElementById('editCheckOut').value = res.check_out || '';
+        }
+
+        // Сохранить изменённые даты
+        async function saveDates() {
+            if (!currentResident) return;
+
+            const checkIn = document.getElementById('editCheckIn').value;
+            const checkOut = document.getElementById('editCheckOut').value;
+
+            if (!checkIn) {
+                alert('Укажите дату заезда');
+                return;
+            }
+
+            const { error } = await Layout.db
+                .from('residents')
+                .update({
+                    check_in: checkIn,
+                    check_out: checkOut || null
+                })
+                .eq('id', currentResident.id);
+
+            if (error) {
+                alert('Ошибка: ' + error.message);
+                return;
+            }
+
+            document.getElementById('residentModal').close();
+            await loadTimelineData();
+            renderTable();
         }
 
         // Показать экран выбора номера для перемещения
@@ -1780,6 +1862,7 @@
 
             document.getElementById('residentInfoScreen').classList.add('hidden');
             document.getElementById('moveScreen').classList.remove('hidden');
+            document.getElementById('editDatesScreen').classList.add('hidden');
             document.getElementById('moveGuestName').textContent = currentResident.name;
 
             // Загружаем список номеров
