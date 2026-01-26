@@ -1077,7 +1077,27 @@
                     }
                 }
 
-                // TODO: Upload photo if changed
+                // Upload photo if changed
+                if (photoFile) {
+                    const fileName = `${savedRecipeId}_${Date.now()}.jpg`;
+
+                    // Удаляем старое фото если было
+                    if (recipe?.photo_url && recipe.photo_url.includes('recipe-photos')) {
+                        const oldPath = recipe.photo_url.split('/recipe-photos/')[1];
+                        if (oldPath) await Layout.db.storage.from('recipe-photos').remove([oldPath]);
+                    }
+
+                    const { error: uploadError } = await Layout.db.storage
+                        .from('recipe-photos')
+                        .upload(fileName, photoFile, { contentType: photoFile.type, cacheControl: '3600', upsert: true });
+
+                    if (uploadError) {
+                        console.error('Photo upload error:', uploadError);
+                    } else {
+                        const { data: { publicUrl } } = Layout.db.storage.from('recipe-photos').getPublicUrl(fileName);
+                        await Layout.db.from('recipes').update({ photo_url: publicUrl }).eq('id', savedRecipeId);
+                    }
+                }
 
                 // Redirect to view page
                 console.log('Success! Redirecting to:', savedRecipeId);

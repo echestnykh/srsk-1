@@ -98,7 +98,7 @@
     <script src="../js/layout.js"></script>
     <script>
         // ==================== STATE ====================
-        let currentCategory = 'all';
+        let currentCategory = localStorage.getItem('recipes_category') || 'all';
         let searchQuery = '';
         let showPhotos = true;
         let sortColumn = 'name';
@@ -233,6 +233,7 @@
             container.querySelectorAll('.filter-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     currentCategory = btn.dataset.category;
+                    localStorage.setItem('recipes_category', currentCategory);
                     renderCategoryFilters();
                     renderRecipes();
                 });
