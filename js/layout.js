@@ -325,6 +325,17 @@ function debounce(fn, delay = 300) {
     };
 }
 
+/** Экранирование HTML для защиты от XSS */
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 /**
  * Автоперевод текста через MyMemory API
  * @param {string} text - текст для перевода
@@ -1044,6 +1055,7 @@ window.Layout = {
     t,
     pluralize,
     debounce,
+    escapeHtml,
     updateAllTranslations,
     switchModule,
     showLoader,

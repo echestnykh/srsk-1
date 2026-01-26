@@ -826,6 +826,7 @@
         // Конфигурация
         const DAYS_TO_SHOW = 90; // 3 месяца
         const CELL_WIDTH = 24;   // ширина половины дня
+        const e = str => Layout.escapeHtml(str);
 
         // Состояние сворачивания
         const collapsedBuildings = new Set();
@@ -1708,7 +1709,7 @@
             if (res.guest_phone) {
                 infoHtml += `<div class="flex justify-between py-1 border-b">
                     <span class="text-gray-500">Телефон:</span>
-                    <span class="font-medium">${res.guest_phone}</span>
+                    <span class="font-medium">${e(res.guest_phone)}</span>
                 </div>`;
             }
 
@@ -1716,7 +1717,7 @@
             if (res.notes) {
                 infoHtml += `<div class="flex justify-between py-1 border-b">
                     <span class="text-gray-500">Примечания:</span>
-                    <span class="font-medium">${res.notes}</span>
+                    <span class="font-medium">${e(res.notes)}</span>
                 </div>`;
             }
 
@@ -1725,13 +1726,13 @@
                 if (res.bookings.name) {
                     infoHtml += `<div class="flex justify-between py-1 border-b">
                         <span class="text-gray-500">Бронь:</span>
-                        <span class="font-medium">${res.bookings.name}</span>
+                        <span class="font-medium">${e(res.bookings.name)}</span>
                     </div>`;
                 }
                 if (res.bookings.contact_name) {
                     infoHtml += `<div class="flex justify-between py-1 border-b">
                         <span class="text-gray-500">Контакт:</span>
-                        <span class="font-medium">${res.bookings.contact_name}</span>
+                        <span class="font-medium">${e(res.bookings.contact_name)}</span>
                     </div>`;
                 }
             }

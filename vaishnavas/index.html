@@ -190,6 +190,7 @@
     <script src="../js/layout.js"></script>
     <script>
         const t = key => Layout.t(key);
+        const e = str => Layout.escapeHtml(str);
         let people = [];
         let stays = {};
         let currentFilter = 'all';
@@ -434,10 +435,10 @@
                                 </div>
                             </div>
                         </td>
-                        <td class="truncate">${person.spiritual_name || ''}</td>
-                        <td class="truncate">${person.country || ''}</td>
-                        <td class="truncate">${person.spiritual_teacher || ''}</td>
-                        <td class="truncate text-sm opacity-60">${person.phone || ''}</td>
+                        <td class="truncate">${e(person.spiritual_name || '')}</td>
+                        <td class="truncate">${e(person.country || '')}</td>
+                        <td class="truncate">${e(person.spiritual_teacher || '')}</td>
+                        <td class="truncate text-sm opacity-60">${e(person.phone || '')}</td>
                         <td>
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />

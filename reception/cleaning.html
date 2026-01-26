@@ -481,6 +481,7 @@
         let bulkSelectedRooms = new Set();
 
         const t = key => Layout.t(key);
+        const e = str => Layout.escapeHtml(str);
         const today = new Date().toISOString().split('T')[0];
         const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
 
@@ -780,7 +781,7 @@
                 return resident.guest_name;
             }
             if (resident.bookings) {
-                return `${t('booking_placeholder') || 'Бронь'}: ${resident.bookings.name || resident.bookings.contact_name}`;
+                return `${t('booking_placeholder') || 'Бронь'}: ${e(resident.bookings.name || resident.bookings.contact_name)}`;
             }
             return '—';
         }
@@ -1024,7 +1025,7 @@
                             ${badge}
                         </div>
                         <div class="text-sm opacity-60">
-                            ${isManual ? (resident.notes || '') : getResidentName(resident)}
+                            ${isManual ? e(resident.notes || '') : getResidentName(resident)}
                         </div>
                     </div>
                     <div class="text-right">

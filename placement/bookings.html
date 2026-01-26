@@ -389,6 +389,7 @@
         };
 
         const t = key => Layout.t(key);
+        const e = str => Layout.escapeHtml(str);
         const today = new Date().toISOString().split('T')[0];
 
         // ==================== DATA ====================
@@ -681,7 +682,7 @@
                 <div class="flex items-center justify-between p-3 bg-warning/10 border border-warning/30 rounded-lg cursor-pointer hover:bg-warning/20 transition-colors"
                      onclick="closeDayModal(); openBookingModal('${b.id}')">
                     <div>
-                        <div class="font-medium">${b.name || b.contact_name}</div>
+                        <div class="font-medium">${e(b.name || b.contact_name)}</div>
                         <div class="text-sm opacity-60">
                             ${new Date(b.check_in).toLocaleDateString()} — ${new Date(b.check_out).toLocaleDateString()}
                         </div>
@@ -1189,18 +1190,18 @@
                     <h4 class="font-medium mb-2">${t('booking_contact') || 'Контакт'}</h4>
                     <div class="grid grid-cols-2 gap-2 text-sm">
                         <div class="opacity-60">${t('booking_contact_name')}</div>
-                        <div class="font-medium">${details.contact_name}</div>
+                        <div class="font-medium">${e(details.contact_name)}</div>
                         ${details.contact_phone ? `
                             <div class="opacity-60">${t('booking_contact_phone')}</div>
-                            <div>${details.contact_phone}</div>
+                            <div>${e(details.contact_phone)}</div>
                         ` : ''}
                         ${details.contact_email ? `
                             <div class="opacity-60">${t('booking_contact_email')}</div>
-                            <div>${details.contact_email}</div>
+                            <div>${e(details.contact_email)}</div>
                         ` : ''}
                         ${details.contact_country ? `
                             <div class="opacity-60">${t('booking_contact_country')}</div>
-                            <div>${details.contact_country}</div>
+                            <div>${e(details.contact_country)}</div>
                         ` : ''}
                     </div>
                 </div>
@@ -1233,7 +1234,7 @@
                 ` : ''}
 
                 ${details.notes ? `
-                    <div class="text-sm opacity-70 italic">${details.notes}</div>
+                    <div class="text-sm opacity-70 italic">${e(details.notes)}</div>
                 ` : ''}
 
                 <!-- Rooms -->
@@ -1246,7 +1247,7 @@
                                     <div>
                                         <span class="font-medium">${Layout.currentLang === 'ru' ? r.building_name_ru : r.building_name_en || r.building_name_ru} / ${r.room_number}</span>
                                     </div>
-                                    <div class="text-sm">${r.guest_name || r.team_member_name || ''}</div>
+                                    <div class="text-sm">${e(r.guest_name || r.team_member_name || '')}</div>
                                 </div>
                             `).join('')}
                             ${pendingRooms.map(r => `

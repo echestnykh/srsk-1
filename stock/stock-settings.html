@@ -213,6 +213,7 @@
         let minPurchaseSearch = '';
 
         const t = key => Layout.t(key);
+        const e = str => Layout.escapeHtml(str);
 
         // ==================== HELPER FUNCTIONS ====================
         function tr(key, fallback) {
@@ -342,9 +343,9 @@
                 return `
                 <tr>
                     <td class="font-medium">${Layout.getName(buyer)}</td>
-                    <td>${buyer.phone || '—'}</td>
-                    <td>${buyer.whatsapp ? `<span class="flex items-center gap-1">${buyer.whatsapp} ${waBtn}</span>` : '—'}</td>
-                    <td class="text-sm opacity-60">${buyer.notes || '—'}</td>
+                    <td>${e(buyer.phone || '—')}</td>
+                    <td>${buyer.whatsapp ? `<span class="flex items-center gap-1">${e(buyer.whatsapp)} ${waBtn}</span>` : '—'}</td>
+                    <td class="text-sm opacity-60">${e(buyer.notes || '—')}</td>
                     <td>
                         <div class="flex gap-1">
                             <button class="btn btn-ghost btn-sm btn-square" onclick="editBuyer('${buyer.id}')" title="Редактировать">

@@ -117,6 +117,7 @@
         let transfers = [];
         let currentFilter = 'all';
         const t = key => Layout.t(key);
+        const e = str => Layout.escapeHtml(str);
 
         async function loadTransfers() {
             // Загружаем трансферы с данными о регистрации и вайшнаве
@@ -274,8 +275,8 @@
                     const v = reg?.vaishnavas;
                     const retreat = reg?.retreats;
 
-                    const name = v?.spiritual_name || `${v?.first_name || ''} ${v?.last_name || ''}`.trim() || '—';
-                    const phone = v?.phone || '';
+                    const name = e(v?.spiritual_name || `${v?.first_name || ''} ${v?.last_name || ''}`.trim() || '—');
+                    const phone = e(v?.phone || '');
                     const retreatName = Layout.getName(retreat) || '';
                     const flightNumber = t.flight_number || '';
                     const needsTransfer = t.needs_transfer === 'yes';

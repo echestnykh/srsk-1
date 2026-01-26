@@ -194,6 +194,7 @@
         let filterDepartment = 'all';
 
         const t = key => Layout.t(key);
+        const e = str => Layout.escapeHtml(str);
         const db = Layout.db;
 
         // Admin client для создания пользователей
@@ -354,7 +355,7 @@
                                         ${user.is_superuser ? '<span class="badge badge-primary badge-sm">Super</span>' : ''}
                                     </div>
                                     ${fullName && fullName !== name ? `<div class="text-sm opacity-60">${Layout.currentLang === 'ru' ? fullName : Layout.transliterate(fullName)}</div>` : ''}
-                                    <div class="text-sm opacity-60 truncate">${user.email || '—'}</div>
+                                    <div class="text-sm opacity-60 truncate">${e(user.email) || '—'}</div>
                                     ${dept ? `<div class="mt-1"><span class="badge badge-sm" style="background-color: ${dept.color}20; color: ${dept.color}">${Layout.getName(dept)}</span></div>` : ''}
                                 </div>
                             </div>
