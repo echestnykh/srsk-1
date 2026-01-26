@@ -239,7 +239,7 @@
                 <!-- Team Member Selection -->
                 <div id="teamMemberSection">
                     <label class="label"><span class="label-text font-medium" data-i18n="select_team_member">Выбрать из команды</span></label>
-                    <select name="team_member_id" id="teamMemberSelect" class="select select-bordered w-full">
+                    <select name="vaishnava_id" id="teamMemberSelect" class="select select-bordered w-full">
                         <option value="">— Гость (ввести данные ниже) —</option>
                     </select>
                 </div>
@@ -473,7 +473,7 @@
                 <!-- Team Member Selection -->
                 <div>
                     <label class="label"><span class="label-text font-medium" data-i18n="select_team_member">Выбрать из команды</span></label>
-                    <select name="team_member_id" id="checkinTeamMemberSelect" class="select select-bordered w-full">
+                    <select name="vaishnava_id" id="checkinTeamMemberSelect" class="select select-bordered w-full">
                         <option value="">— Гость (ввести данные ниже) —</option>
                     </select>
                 </div>
@@ -1398,8 +1398,8 @@
             const roomResidents = residents.filter(r => r.room_id === roomId);
 
             // Разделяем на заселённых и забронированных
-            const checkedIn = roomResidents.filter(r => r.team_member_id || r.guest_name);
-            const bookedPlaceholders = roomResidents.filter(r => r.booking_id && !r.team_member_id && !r.guest_name);
+            const checkedIn = roomResidents.filter(r => r.vaishnava_id || r.guest_name);
+            const bookedPlaceholders = roomResidents.filter(r => r.booking_id && !r.vaishnava_id && !r.guest_name);
 
             const modalHtml = `
                 <dialog id="roomModal" class="modal modal-open">
@@ -1547,7 +1547,7 @@
                     form.id.value = resident.id;
                     form.room_id.value = resident.room_id || '';
                     form.category_id.value = resident.category_id || '';
-                    form.team_member_id.value = resident.team_member_id || '';
+                    form.vaishnava_id.value = resident.vaishnava_id || '';
                     form.guest_name.value = resident.guest_name || '';
                     form.guest_phone.value = resident.guest_phone || '';
                     form.guest_email.value = resident.guest_email || '';
@@ -1591,7 +1591,7 @@
             e.preventDefault();
             const form = Layout.$('#residentForm');
 
-            const teamMemberId = form.team_member_id.value;
+            const teamMemberId = form.vaishnava_id.value;
             const guestName = form.guest_name.value.trim();
 
             if (!teamMemberId && !guestName) {
@@ -1602,7 +1602,7 @@
             const data = {
                 room_id: form.room_id.value,
                 category_id: form.category_id.value || null,
-                team_member_id: teamMemberId || null,
+                vaishnava_id: teamMemberId || null,
                 guest_name: teamMemberId ? null : guestName,
                 guest_phone: teamMemberId ? null : form.guest_phone.value.trim() || null,
                 guest_email: teamMemberId ? null : form.guest_email.value.trim() || null,
@@ -2160,7 +2160,7 @@
             if (!checkinResidentId) return;
 
             const form = Layout.$('#checkinBookingForm');
-            const teamMemberId = form.team_member_id.value;
+            const teamMemberId = form.vaishnava_id.value;
             const guestName = form.guest_name.value.trim();
 
             if (!teamMemberId && !guestName) {
@@ -2170,7 +2170,7 @@
 
             try {
                 const updateData = {
-                    team_member_id: teamMemberId || null,
+                    vaishnava_id: teamMemberId || null,
                     guest_name: teamMemberId ? null : guestName,
                     guest_phone: teamMemberId ? null : form.guest_phone.value.trim() || null,
                     guest_email: teamMemberId ? null : form.guest_email?.value?.trim() || null,

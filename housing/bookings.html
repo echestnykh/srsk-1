@@ -385,7 +385,6 @@
             const { data: retreatsData } = await Layout.db
                 .from('retreats')
                 .select('*')
-                .eq('is_active', true)
                 .order('start_date', { ascending: false });
             retreats = retreatsData || [];
         }
@@ -418,7 +417,7 @@
                 const bookingIds = bookings.map(b => b.id);
                 const { data: allResidents } = await Layout.db
                     .from('residents')
-                    .select('id, booking_id, team_member_id, guest_name')
+                    .select('id, booking_id, vaishnava_id, guest_name')
                     .in('booking_id', bookingIds)
                     .eq('status', 'active');
 
@@ -434,7 +433,7 @@
                 // Calculate stats for each booking
                 for (const booking of bookings) {
                     const stats = residentsByBooking[booking.id] || [];
-                    const filled = stats.filter(r => r.team_member_id || r.guest_name).length;
+                    const filled = stats.filter(r => r.vaishnava_id || r.guest_name).length;
                     const pending = stats.length - filled;
                     booking.beds_filled = filled;
                     booking.beds_pending = pending;
