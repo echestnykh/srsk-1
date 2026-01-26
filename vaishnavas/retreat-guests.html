@@ -1841,8 +1841,8 @@
                 gender = row['Ваш_пол'].toLowerCase().includes('муж') ? 'male' : 'female';
             }
 
-            // Telegram
-            let telegram = row.telegram_id || '';
+            // Telegram - проверяем разные варианты названия колонки
+            let telegram = row.telegram_id || row.telegram || row['Телеграм'] || row['telegram_id'] || row['Telegram'] || '';
             if (telegram.startsWith('@')) telegram = telegram.substring(1);
             telegram = telegram.trim() || null;
 
