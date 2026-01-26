@@ -60,6 +60,7 @@ const modules = {
             ]},
             { id: 'placement', items: [
                 { id: 'retreat_guests', href: 'vaishnavas/retreat-guests.html' },
+                { id: 'preliminary', href: 'vaishnavas/preliminary.html' },
                 { id: 'bookings', href: 'placement/bookings.html' },
                 { id: 'transfers', href: 'placement/transfers.html' }
             ]},
