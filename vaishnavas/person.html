@@ -753,7 +753,8 @@
                 .select(`
                     *,
                     retreats(id, name_ru, name_en, name_hi, start_date, end_date),
-                    guest_transfers(*)
+                    guest_transfers(*),
+                    guest_accommodations(*)
                 `)
                 .eq('vaishnava_id', personId)
                 .eq('is_deleted', false)
@@ -1457,7 +1458,7 @@
                 }
 
                 document.getElementById('placementModal').close();
-                alert(`Гость размещён в ${room.number}!`);
+                await loadRegistrations(person.id);
             } catch (err) {
                 console.error('Error saving placement:', err);
                 alert('Ошибка размещения: ' + err.message);
@@ -1489,7 +1490,7 @@
                 const departure = transfers.find(t => t.direction === 'departure');
 
                 // Check if there's any detail to show
-                const hasDetails = arrival || departure || reg.accommodation_wishes || reg.companions || reg.payment_notes || reg.org_notes || reg.extended_stay || reg.guest_questions;
+                const hasDetails = arrival || departure || reg.guest_accommodations?.[0] || reg.accommodation_wishes || reg.companions || reg.payment_notes || reg.org_notes || reg.extended_stay || reg.guest_questions;
 
                 // Build details HTML
                 let detailsHtml = '';
@@ -1518,6 +1519,17 @@
                                 ${departure.flight_number ? `<div><span class="opacity-60">Рейс:</span> ${departure.flight_number}</div>` : ''}
                                 <div><span class="opacity-60">Трансфер:</span> ${departure.needs_transfer === 'yes' ? '✅ Нужен' : departure.needs_transfer === 'no' ? '❌ Не нужен' : departure.needs_transfer || '—'}</div>
                             </div>
+                        </div>
+                    `;
+                }
+
+                // Размещение
+                const accommodation = reg.guest_accommodations?.[0];
+                if (accommodation?.room_number) {
+                    detailsHtml += `
+                        <div class="detail-section">
+                            <div class="detail-label">🏠 Размещение</div>
+                            <div class="text-sm font-medium text-success">${accommodation.building_name ? accommodation.building_name + ', ' : ''}${accommodation.room_number}</div>
                         </div>
                     `;
                 }

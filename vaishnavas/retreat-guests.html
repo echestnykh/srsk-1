@@ -450,7 +450,8 @@
                 .select(`
                     *,
                     vaishnavas (id, first_name, last_name, spiritual_name, phone, email, telegram, has_whatsapp, photo_url),
-                    guest_transfers (*)
+                    guest_transfers (*),
+                    guest_accommodations (*)
                 `)
                 .eq('retreat_id', retreatId)
                 .eq('is_deleted', false)
@@ -645,7 +646,10 @@
                             ${departureDate ? `<div>${departureDate}</div>` : '<span class="opacity-30">—</span>'}
                             ${departureTransfer ? `<div class="text-xs">🚐</div>` : ''}
                         </td>
-                        <td class="text-sm opacity-60 max-w-xs truncate">${reg.accommodation_wishes || ''}</td>
+                        <td class="text-sm max-w-xs">
+                            ${reg.guest_accommodations?.[0]?.room_number ? `<div class="font-medium text-success">${reg.guest_accommodations[0].building_name ? reg.guest_accommodations[0].building_name + ', ' : ''}${reg.guest_accommodations[0].room_number}</div>` : ''}
+                            ${reg.accommodation_wishes ? `<div class="opacity-60 truncate">${reg.accommodation_wishes}</div>` : ''}
+                        </td>
                         <td class="text-right whitespace-nowrap">
                             <button class="btn btn-xs btn-ghost" onclick="openInfoModal('${reg.id}')" title="Подробнее">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1027,7 +1031,7 @@
                 }
 
                 placementModal.close();
-                alert(`Гость размещён в ${room.number}!`);
+                await loadRegistrations();
             } catch (err) {
                 console.error('Error saving placement:', err);
                 alert('Ошибка размещения: ' + err.message);
