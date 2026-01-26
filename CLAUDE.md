@@ -56,7 +56,7 @@ npx serve .
 ```html
 <head>
     <!-- Предзагрузка цвета модуля (предотвращает мигание) -->
-    <script>(function(){var c={kitchen:'#f49800',vaishnavas:'#10b981',placement:'#8b5cf6',reception:'#06b6d4'};var m=localStorage.getItem('srsk_module')||'kitchen';document.documentElement.style.setProperty('--current-color',c[m]||c.kitchen);})();</script>
+    <script>(function(){var c={kitchen:'#f49800',housing:'#8b5cf6'};var m=localStorage.getItem('srsk_module')||'kitchen';document.documentElement.style.setProperty('--current-color',c[m]||c.kitchen);})();</script>
 </head>
 <body>
     <div id="header-placeholder"></div>
@@ -150,9 +150,7 @@ Layout.pluralize(5, FORMS)  // "5 рецептов"
 ### Цвет модуля
 CSS-переменная `--current-color` определяет акцентный цвет:
 - **Kitchen**: `#f49800` (оранжевый)
-- **Vaishnavas**: `#10b981` (зелёный)
-- **Placement**: `#8b5cf6` (фиолетовый)
-- **Reception**: `#06b6d4` (бирюзовый)
+- **Housing**: `#8b5cf6` (фиолетовый)
 
 Использовать для кнопок, активных табов, подменю. Цвет устанавливается в `<head>` inline-скриптом для предотвращения мигания при загрузке.
 
@@ -166,7 +164,7 @@ const { data, error } = await Layout.db
 
 ## Menu Structure
 
-Четыре модуля с разными меню (см. `js/layout.js`):
+Два модуля с разными меню (см. `js/layout.js`):
 
 **Kitchen** (кухня):
 - kitchen: menu, menu_templates, recipes, products
@@ -174,16 +172,11 @@ const { data, error } = await Layout.db
 - ashram: retreats, vaishnavas_team
 - settings: dictionaries, translations, festivals
 
-**Vaishnavas** (вайшнавы — база людей):
+**Housing** (проживание):
 - vaishnavas: vaishnavas_all, vaishnavas_guests, vaishnavas_team, retreat_guests
-
-**Placement** (размещение — бронирования, заезды, трансферы):
 - placement: timeline, bookings, transfers
-- ashram: retreats
-
-**Reception** (ресепшен — шахматка, уборка):
 - reception: floor_plan, cleaning
-- settings: buildings, rooms, reception_dictionaries
+- settings: buildings, rooms, housing_dictionaries
 
 Ключи переводов: `nav_kitchen`, `nav_vaishnavas_team`, etc.
 
@@ -261,9 +254,9 @@ const grouped = allResidents.reduce((acc, r) => { (acc[r.booking_id] ||= []).pus
 ├── kitchen/        # рецепты, меню, продукты
 ├── stock/          # склад, заявки, инвентаризация
 ├── ashram/         # ретриты, праздники
-├── vaishnavas/     # база людей (все, гости, команда)
-├── placement/      # размещение (бронирования, таймлайн, трансферы)
-├── reception/      # ресепшен (шахматка, уборка, комнаты, здания)
+├── vaishnavas/     # модуль Housing: база людей (все, гости, команда)
+├── placement/      # модуль Housing: размещение (бронирования, таймлайн, трансферы)
+├── reception/      # модуль Housing: ресепшен (шахматка, уборка, комнаты, здания)
 ├── settings/       # переводы, пользователи
 ├── css/            # common.css
 ├── js/             # layout.js
