@@ -62,6 +62,7 @@ const modules = {
                 { id: 'retreat_guests', href: 'vaishnavas/retreat-guests.html' },
                 { id: 'preliminary', href: 'vaishnavas/preliminary.html' },
                 { id: 'bookings', href: 'placement/bookings.html' },
+                { id: 'arrivals', href: 'placement/arrivals.html' },
                 { id: 'transfers', href: 'placement/transfers.html' }
             ]},
             { id: 'reception', items: [
