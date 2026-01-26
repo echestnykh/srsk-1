@@ -106,6 +106,26 @@
                     </label>
                 </div>
 
+                <!-- Временное размещение -->
+                <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-2">
+                        <input type="checkbox" name="is_temporary" id="isTemporaryCheckbox" class="checkbox checkbox-warning" />
+                        <span class="label-text" data-i18n="temporary_building">Временное размещение</span>
+                    </label>
+                </div>
+
+                <div id="temporaryDatesSection" class="hidden">
+                    <label class="label"><span class="label-text font-medium" data-i18n="rental_period">Период аренды</span><span class="text-error ml-1">*</span></label>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <input type="date" name="available_from" class="input input-bordered w-full" />
+                        </div>
+                        <div>
+                            <input type="date" name="available_until" class="input input-bordered w-full" />
+                        </div>
+                    </div>
+                </div>
+
                 <div class="modal-action">
                     <button type="button" class="btn btn-ghost" onclick="closeBuildingModal()" data-i18n="cancel">Отмена</button>
                     <button type="submit" class="btn btn-primary" data-i18n="save">Сохранить</button>
@@ -139,6 +159,14 @@
         const t = key => Layout.t(key);
         const today = new Date().toISOString().split('T')[0];
         const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '—';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString(Layout.currentLang === 'hi' ? 'hi-IN' : Layout.currentLang === 'en' ? 'en-US' : 'ru-RU', {
+                day: 'numeric', month: 'short'
+            });
+        }
 
         // ==================== DATA ====================
         async function loadBuildingTypes() {
@@ -259,7 +287,10 @@
                             <div class="flex items-start justify-between gap-2 mb-2">
                                 <div>
                                     <h3 class="font-semibold text-lg">${Layout.getName(building)}</h3>
-                                    ${type ? `<span class="badge badge-sm" style="background-color: ${type.color}20; color: ${type.color}; border-color: ${type.color}">${Layout.getName(type)}</span>` : ''}
+                                    <div class="flex flex-wrap gap-1 mt-1">
+                                        ${type ? `<span class="badge badge-sm" style="background-color: ${type.color}20; color: ${type.color}; border-color: ${type.color}">${Layout.getName(type)}</span>` : ''}
+                                        ${building.is_temporary ? `<span class="badge badge-warning badge-sm">${t('temporary') || 'Временное'}</span>` : ''}
+                                    </div>
                                 </div>
                                 <button class="btn btn-ghost btn-sm btn-square" onclick="openBuildingModal('${building.id}')">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -283,6 +314,14 @@
                                 </div>
                             </div>
 
+                            ${building.is_temporary && building.available_from && building.available_until ? `
+                                            <div class="text-sm opacity-70 mt-2 flex items-center gap-1">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                                ${formatDate(building.available_from)} — ${formatDate(building.available_until)}
+                                            </div>
+                                        ` : ''}
                             ${building.description_ru ? `<p class="text-sm opacity-60 mt-2">${building['description_' + Layout.currentLang] || building.description_ru}</p>` : ''}
 
                             <div class="mt-3 flex gap-2">
@@ -312,6 +351,22 @@
                 buildingTypes.map(bt => `<option value="${bt.id}">${Layout.getName(bt)}</option>`).join('');
         }
 
+        function toggleTemporaryDates() {
+            const isTemporary = Layout.$('#isTemporaryCheckbox').checked;
+            const section = Layout.$('#temporaryDatesSection');
+            const form = Layout.$('#buildingForm');
+
+            if (isTemporary) {
+                section.classList.remove('hidden');
+                form.available_from.required = true;
+                form.available_until.required = true;
+            } else {
+                section.classList.add('hidden');
+                form.available_from.required = false;
+                form.available_until.required = false;
+            }
+        }
+
         function openBuildingModal(buildingId = null) {
             editingBuildingId = buildingId;
             const form = Layout.$('#buildingForm');
@@ -334,6 +389,9 @@
                     form.address.value = building.address || '';
                     form.description_ru.value = building.description_ru || '';
                     form.is_active.checked = building.is_active !== false;
+                    form.is_temporary.checked = building.is_temporary || false;
+                    form.available_from.value = building.available_from || '';
+                    form.available_until.value = building.available_until || '';
                     deleteSection.classList.remove('hidden');
                 }
             } else {
@@ -341,6 +399,7 @@
                 deleteSection.classList.add('hidden');
             }
 
+            toggleTemporaryDates();
             Layout.setupAutoTranslate('#buildingForm', ['name']);
             Layout.$('#buildingModal').showModal();
         }
@@ -353,6 +412,7 @@
         async function saveBuilding(e) {
             e.preventDefault();
             const form = Layout.$('#buildingForm');
+            const isTemporary = form.is_temporary.checked;
 
             const data = {
                 name_ru: form.name_ru.value.trim(),
@@ -362,7 +422,10 @@
                 floors: parseInt(form.floors.value) || 1,
                 address: form.address.value.trim() || null,
                 description_ru: form.description_ru.value.trim() || null,
-                is_active: form.is_active.checked
+                is_active: form.is_active.checked,
+                is_temporary: isTemporary,
+                available_from: isTemporary ? form.available_from.value : null,
+                available_until: isTemporary ? form.available_until.value : null
             };
 
             try {
@@ -435,6 +498,7 @@
 
             // Forms
             Layout.$('#buildingForm').addEventListener('submit', saveBuilding);
+            Layout.$('#isTemporaryCheckbox').addEventListener('change', toggleTemporaryDates);
 
             updateUI();
             Layout.hideLoader();

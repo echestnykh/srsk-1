@@ -1364,13 +1364,21 @@
                 if (r.room_id) roomOccupancy[r.room_id] = (roomOccupancy[r.room_id] || 0) + 1;
             });
 
-            if (buildings.length === 0) {
+            // Фильтруем временные здания по датам
+            const availableBuildings = buildings.filter(b => {
+                // Постоянные здания показываем всегда
+                if (!b.is_temporary) return true;
+                // Временные — только если период аренды пересекается с датами заезда/выезда
+                return b.available_from <= checkOut && b.available_until >= checkIn;
+            });
+
+            if (availableBuildings.length === 0) {
                 roomsList.innerHTML = '<div class="text-center py-4 opacity-50">Нет доступных зданий</div>';
                 return;
             }
 
             let html = '';
-            buildings.forEach(building => {
+            availableBuildings.forEach(building => {
                 const rooms = (building.rooms?.filter(r => r.is_active) || [])
                     .sort((a, b) => {
                         if (a.floor !== b.floor) return (a.floor || 0) - (b.floor || 0);

@@ -169,6 +169,7 @@
             font-weight: 600;
             font-size: 14px;
             border-top: 4px solid #6b7280 !important;
+            height: 44px;
         }
 
         .row-building .sticky-col {
@@ -180,6 +181,19 @@
 
         .row-building .sticky-col:hover {
             background: #c0c5cc !important;
+        }
+
+        /* Временное здание — светлее */
+        .row-building.temporary td {
+            background: #e8e8e8 !important;
+        }
+
+        .row-building.temporary .sticky-col {
+            background: #e8e8e8 !important;
+        }
+
+        .row-building.temporary .sticky-col:hover {
+            background: #dcdcdc !important;
         }
 
         /* Заголовок номера */
@@ -276,6 +290,10 @@
 
         .cleaning-bar.completed {
             background: #22c55e;
+        }
+
+        .cleaning-bar.bedding {
+            background: #06b6d4;
         }
 
         /* Сводная плашка в строке номера */
@@ -444,6 +462,12 @@
                             <path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                         </svg>
                         Уборка
+                    </button>
+                    <button class="btn" style="background: #06b6d4; color: white; border: none;" onclick="handleAction('bedding')">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                        </svg>
+                        Бельё
                     </button>
                     <button class="btn btn-error" onclick="handleAction('repair')">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -877,11 +901,19 @@
                     .gte('end_date', startDateStr)
             ]);
 
-            const buildings = buildingsRes.data || [];
+            let buildings = buildingsRes.data || [];
             const rooms = roomsRes.data || [];
             const residents = residentsRes.data || [];
             const retreats = retreatsRes.data || [];
             const cleanings = cleaningsRes.data || [];
+
+            // Фильтруем временные здания по датам шахматки
+            buildings = buildings.filter(b => {
+                // Постоянные здания показываем всегда
+                if (!b.is_temporary) return true;
+                // Временные — только если период аренды пересекается с диапазоном шахматки
+                return b.available_from <= endDateStr && b.available_until >= startDateStr;
+            });
 
             // Очищаем хранилища
             guestsMap.clear();
@@ -944,6 +976,9 @@
                 return {
                     id: building.id,
                     name: Layout.getName(building),
+                    isTemporary: building.is_temporary || false,
+                    availableFromDay: building.available_from ? dateToDayIndex(building.available_from) : null,
+                    availableUntilDay: building.available_until ? dateToDayIndex(building.available_until) : null,
                     rooms: buildingRooms.map(room => {
                         const capacity = room.capacity || 1;
                         const roomResidents = residentsByRoom[room.id] || [];
@@ -1022,11 +1057,11 @@
                                 rawData: res
                             };
 
-                            // Уборка после выезда
+                            // Уборка после выезда (не для временных зданий)
                             // Обычный выезд (endHalf=0): уборка со второй половины дня выезда
                             // Поздний выезд (endHalf=1): уборка с первой половины СЛЕДУЮЩЕГО дня
                             let cleaningEntry = null;
-                            if (res.check_out) {
+                            if (res.check_out && !building.isTemporary) {
                                 let cleaningStartDay, cleaningStartHalf, cleaningEndDay, cleaningEndHalf;
 
                                 if (endHalf === 0) {
@@ -1120,16 +1155,33 @@
                             if (startDay > DAYS_TO_SHOW - 1 || endDay < 0) return;
 
                             // Определяем половины дня:
-                            // - Если start_date === end_date: обе половины одного дня (0-1)
-                            // - Если end_date = start_date + 1: вторая половина первого + первая второго (1-0)
+                            // - bedding: только первая половина дня (0-0)
+                            // - cleaning с start_date === end_date: обе половины одного дня (0-1)
+                            // - cleaning с end_date = start_date + 1: вторая половина первого + первая второго (1-0)
+                            const isBedding = c.type === 'bedding';
                             const sameDay = c.start_date === c.end_date;
-                            const startHalf = sameDay ? 0 : 1;
-                            const endHalf = sameDay ? 1 : 0;
+                            let startHalf, endHalf;
+                            if (isBedding) {
+                                startHalf = 0;
+                                endHalf = 0; // только первая половина
+                            } else if (sameDay) {
+                                startHalf = 0;
+                                endHalf = 1;
+                            } else {
+                                startHalf = 1;
+                                endHalf = 0;
+                            }
+
+                            // Иконка зависит от типа
+                            const icon = isBedding
+                                ? '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>'
+                                : '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>';
 
                             const cleaningEntry = {
                                 id: 'manual-cleaning-' + c.id,
                                 cleaningId: c.id,
-                                name: '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>',
+                                name: icon,
+                                type: c.type || 'cleaning',
                                 startDay,
                                 startHalf,
                                 endDay,
@@ -1215,6 +1267,19 @@
             renderTable();
         }
 
+        // Свернуть всё (включая здания)
+        function collapseAllBuildings() {
+            collapsedBuildings.clear();
+            collapsedRooms.clear();
+            timelineData.buildings.forEach(building => {
+                collapsedBuildings.add(building.id);
+                building.rooms.forEach(room => {
+                    collapsedRooms.add(room.id);
+                });
+            });
+            renderTable();
+        }
+
         // Развернуть всё
         function expandAll() {
             collapsedBuildings.clear();
@@ -1293,14 +1358,18 @@
                 <span class="text-sm text-gray-600">Бронь</span>
             </div>`;
 
-            // Уборка
+            // Уборка и бельё
             const cleaningHtml = `<div class="flex items-center gap-1.5">
                 <span class="w-4 h-4 rounded" style="background: #9ca3af;"></span>
                 <span class="text-sm text-gray-600">Уборка</span>
             </div>
             <div class="flex items-center gap-1.5">
+                <span class="w-4 h-4 rounded" style="background: #06b6d4;"></span>
+                <span class="text-sm text-gray-600">Бельё</span>
+            </div>
+            <div class="flex items-center gap-1.5">
                 <span class="w-4 h-4 rounded" style="background: #22c55e;"></span>
-                <span class="text-sm text-gray-600">Убрано</span>
+                <span class="text-sm text-gray-600">Готово</span>
             </div>`;
 
             legend.innerHTML = categoriesHtml + bookingHtml + cleaningHtml;
@@ -1545,13 +1614,15 @@
             const startDate = document.getElementById('modalCheckIn').value;
             const endDate = document.getElementById('modalCheckOut').value;
 
-            if (action === 'cleaning') {
-                // Используем выбранные пользователем даты
+            if (action === 'cleaning' || action === 'bedding') {
+                // Для белья: только половина ячейки (end_date = start_date)
+                const finalEndDate = action === 'bedding' ? startDate : endDate;
+
                 const { error } = await Layout.db.from('room_cleanings').insert({
                     room_id: modalContext.roomId,
                     start_date: startDate,
-                    end_date: endDate,
-                    type: 'cleaning'
+                    end_date: finalEndDate,
+                    type: action
                 });
 
                 if (error) {
@@ -2226,10 +2297,13 @@
             // Строка с числами
             html += `<tr class="row-dates"><th class="sticky-col">
                 <div class="flex gap-1">
-                    <button class="btn btn-xs btn-ghost opacity-60 hover:opacity-100" onclick="event.stopPropagation(); collapseAllRooms()" title="${Layout.t('collapse_all') || 'Свернуть'}">
+                    <button class="btn btn-xs btn-ghost opacity-60 hover:opacity-100" onclick="event.stopPropagation(); collapseAllBuildings()" title="Свернуть всё">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 9H4m16 6H4" /></svg>
+                    </button>
+                    <button class="btn btn-xs btn-ghost opacity-60 hover:opacity-100" onclick="event.stopPropagation(); collapseAllRooms()" title="Свернуть номера">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" /></svg>
                     </button>
-                    <button class="btn btn-xs btn-ghost opacity-60 hover:opacity-100" onclick="event.stopPropagation(); expandAll()" title="${Layout.t('expand_all') || 'Развернуть'}">
+                    <button class="btn btn-xs btn-ghost opacity-60 hover:opacity-100" onclick="event.stopPropagation(); expandAll()" title="Развернуть всё">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
                     </button>
                 </div>
@@ -2266,14 +2340,25 @@
                 const arrowClass = buildingCollapsed ? 'collapsed' : '';
 
                 // Заголовок здания
-                html += `<tr class="row-building">`;
+                const tempBadge = building.isTemporary ? ' <span style="font-size: 10px; color: #d97706;">⏱</span>' : '';
+                const tempClass = building.isTemporary ? ' temporary' : '';
+                html += `<tr class="row-building${tempClass}">`;
                 html += `<td class="sticky-col" onclick="toggleBuilding('${building.id}')">`;
-                html += `<span class="toggle-arrow ${arrowClass}">▼</span> ${building.name}</td>`;
+                html += `<span class="toggle-arrow ${arrowClass}">▼</span> ${building.name}${tempBadge}</td>`;
                 for (let col = 0; col < DAYS_TO_SHOW * 2; col++) {
                     const dayIndex = Math.floor(col / 2);
                     const isFirstHalf = col % 2 === 0;
                     const dayStart = isFirstHalf ? 'day-start' : '';
-                    html += `<td class="${dayStart}"></td>`;
+
+                    // Для временных зданий закрашиваем ячейки вне периода аренды
+                    const isOutsideRental = building.isTemporary &&
+                        (dayIndex < building.availableFromDay || dayIndex > building.availableUntilDay);
+
+                    if (isOutsideRental) {
+                        html += `<td class="${dayStart}" style="background: #d1d5db;"></td>`;
+                    } else {
+                        html += `<td class="${dayStart}"></td>`;
+                    }
                 }
                 html += '</tr>';
 
@@ -2340,6 +2425,15 @@
                         const isFirstHalf = halfIndex === 0;
                         const dayStart = isFirstHalf ? 'day-start' : '';
 
+                        // Проверка: для временных зданий закрашиваем ячейки вне периода аренды
+                        const isOutsideRental = building.isTemporary &&
+                            (dayIndex < building.availableFromDay || dayIndex > building.availableUntilDay);
+
+                        if (isOutsideRental) {
+                            html += `<td class="${dayStart}" style="background: #e5e7eb; pointer-events: none;"></td>`;
+                            continue;
+                        }
+
                         html += `<td class="${dayStart}">`;
 
                         // Показываем сводку только когда номер свёрнут
@@ -2382,7 +2476,8 @@
                             const spanCells = Math.max(1, endCol - startCol + 1);
                             const width = spanCells * CELL_WIDTH - 2;
                             const completedClass = cleaning.isCompleted ? ' completed' : '';
-                            html += `<div class="cleaning-bar clickable${completedClass}" style="width: ${width}px;" onclick="event.stopPropagation(); openCleaningModal('${cleaning.cleaningId}')">${cleaning.name}</div>`;
+                            const typeClass = cleaning.type === 'bedding' ? ' bedding' : '';
+                            html += `<div class="cleaning-bar clickable${completedClass}${typeClass}" style="width: ${width}px;" onclick="event.stopPropagation(); openCleaningModal('${cleaning.cleaningId}')">${cleaning.name}</div>`;
                         }
 
                         html += '</td>';
@@ -2404,6 +2499,15 @@
                             const dayStart = isFirstHalf ? 'day-start' : '';
                             const weekend = isWeekend(dayIndex) ? 'weekend' : '';
                             const today = dayIndex === TODAY_INDEX ? 'today' : '';
+
+                            // Проверка: для временных зданий закрашиваем ячейки вне периода аренды
+                            const isOutsideRental = building.isTemporary &&
+                                (dayIndex < building.availableFromDay || dayIndex > building.availableUntilDay);
+
+                            if (isOutsideRental) {
+                                html += `<td class="half-day ${dayStart}" style="background: #e5e7eb; pointer-events: none;"></td>`;
+                                continue;
+                            }
 
                             // Проверяем есть ли гость начинающийся здесь
                             const guest = bed.guests.find(g =>

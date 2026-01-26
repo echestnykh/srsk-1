@@ -498,8 +498,8 @@
             url.searchParams.set('id', id);
             history.replaceState(null, '', url);
 
-            // Load data
-            await loadRegistrations();
+            // Load data (здания перезагружаем для фильтрации временных по датам ретрита)
+            await Promise.all([loadRegistrations(), loadBuildingsAndRooms()]);
         }
 
         function onRetreatChange(id) {
@@ -980,7 +980,22 @@
             if (buildingsRes.error) console.error('Error loading buildings:', buildingsRes.error);
             if (floorPlansRes.error) console.error('Error loading floor plans:', floorPlansRes.error);
 
-            buildings = buildingsRes.data || [];
+            let allBuildings = buildingsRes.data || [];
+
+            // Фильтруем временные здания по датам ретрита
+            if (retreat?.start_date && retreat?.end_date) {
+                allBuildings = allBuildings.filter(b => {
+                    // Постоянные здания показываем всегда
+                    if (!b.is_temporary) return true;
+                    // Временные — только если период аренды пересекается с ретритом
+                    return b.available_from <= retreat.end_date && b.available_until >= retreat.start_date;
+                });
+            } else {
+                // Без ретрита показываем только постоянные здания
+                allBuildings = allBuildings.filter(b => !b.is_temporary);
+            }
+
+            buildings = allBuildings;
             floorPlans = floorPlansRes.data || [];
         }
 
