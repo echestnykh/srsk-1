@@ -76,6 +76,10 @@
         <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
 
+    <script src="../js/cache.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/translit.js"></script>
+    <script src="../js/auto-translate.js"></script>
     <script src="../js/layout.js"></script>
     <script>
         // ==================== STATE ====================
@@ -359,6 +363,9 @@
                 return false;
             }
 
+            // Инвалидируем кэш для изменённой таблицы
+            Cache.invalidate(currentTab);
+
             renderTable();
             return true;
         }
@@ -374,6 +381,8 @@
                 return;
             }
 
+            // Инвалидируем кэш
+            Cache.invalidate(currentTab);
             data[currentTab] = data[currentTab].filter(r => r.id !== id);
             renderTable();
         }

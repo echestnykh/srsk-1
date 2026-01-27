@@ -182,6 +182,10 @@
     </dialog>
 
     <script src="js/config.js"></script>
+    <script src="../js/cache.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/translit.js"></script>
+    <script src="../js/auto-translate.js"></script>
     <script src="../js/layout.js"></script>
     <script>
         // ==================== STATE ====================
@@ -255,9 +259,12 @@
 
         async function loadDepartments() {
             try {
-                const { data, error } = await db.from('departments').select('*').order('sort_order');
-                if (error) throw error;
-                departments = data || [];
+                departments = await Cache.getOrLoad('departments', async () => {
+                    const { data, error } = await db.from('departments').select('*').order('sort_order');
+                    if (error) throw error;
+                    return data;
+                });
+                departments = departments || [];
                 populateDepartmentFilters();
             } catch (err) {
                 console.error('Error loading departments:', err);

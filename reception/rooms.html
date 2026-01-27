@@ -156,6 +156,10 @@
         <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
 
+    <script src="../js/cache.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/translit.js"></script>
+    <script src="../js/auto-translate.js"></script>
     <script src="../js/layout.js"></script>
     <script>
         // ==================== STATE ====================
@@ -170,7 +174,11 @@
 
         // ==================== DATA ====================
         async function loadBuildings() {
-            const { data } = await Layout.db.from('buildings').select('*').eq('is_active', true).order('sort_order');
+            const data = await Cache.getOrLoad('buildings', async () => {
+                const { data, error } = await Layout.db.from('buildings').select('*').eq('is_active', true).order('sort_order');
+                if (error) { console.error('Error loading buildings:', error); return null; }
+                return data;
+            });
             return data || [];
         }
 
@@ -182,8 +190,11 @@
         }
 
         async function loadRoomTypes() {
-            const { data } = await Layout.db.from('room_types').select('*').order('sort_order');
-            return data || [];
+            const result = await Cache.getOrLoad('room_types', async () => {
+                const { data } = await Layout.db.from('room_types').select('*').order('sort_order');
+                return data;
+            });
+            return result || [];
         }
 
         // Натуральная сортировка (1, 2, 10, 11 вместо 1, 10, 11, 2)

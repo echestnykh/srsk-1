@@ -90,14 +90,22 @@
             <div class="card bg-base-100 shadow-md skeleton-card"><div class="skeleton h-32 w-full"></div><div class="card-body p-4"><div class="skeleton h-4 w-16 mb-2"></div><div class="skeleton h-6 w-full mb-1"></div><div class="skeleton h-3 w-3/4"></div></div></div>
         </div>
 
+        <!-- Pagination -->
+        <div id="paginationContainer"></div>
+
     </main>
 
     <!-- Футер (вставляется из layout.js) -->
     <div id="footer-placeholder"></div>
 
+    <script src="../js/cache.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/translit.js"></script>
+    <script src="../js/auto-translate.js"></script>
     <script src="../js/layout.js"></script>
     <script>
         // ==================== STATE ====================
+        const PAGE_SIZE = 50;
         let currentCategory = localStorage.getItem('recipes_category') || 'all';
         let searchQuery = '';
         let showPhotos = true;
@@ -107,6 +115,8 @@
         let categories = [];
         let units = [];
         let locationId = null;
+        let totalCount = 0;
+        let currentPage = 1;
 
         // Алиасы для удобства
         const t = key => Layout.t(key);
@@ -136,33 +146,80 @@
         }
 
         async function loadCategories() {
-            const { data, error } = await Layout.db.from('recipe_categories').select('*').order('name_ru');
-            if (error) { console.error('Error loading categories:', error); return; }
-            categories = data;
-            renderCategoryFilters();
+            categories = await Cache.getOrLoad('recipe_categories', async () => {
+                const { data, error } = await Layout.db.from('recipe_categories').select('*').order('name_ru');
+                if (error) { console.error('Error loading categories:', error); return null; }
+                return data;
+            });
+            categories = categories || [];
+        }
+
+        async function loadUnits() {
+            units = await Cache.getOrLoad('units', async () => {
+                const { data, error } = await Layout.db.from('units').select('*').order('sort_order');
+                if (error) { console.error('Error loading units:', error); return null; }
+                return data;
+            });
+            units = units || [];
         }
 
         async function loadRecipes() {
             let query = Layout.db
                 .from('recipes')
-                .select('*, recipe_categories(slug, name_ru, name_en, name_hi, color, emoji)')
-                .order('name_ru');
+                .select('*, recipe_categories(slug, name_ru, name_en, name_hi, color, emoji)', { count: 'exact' });
 
-            // Фильтруем по локации, если location_id установлен
+            // Фильтруем по локации
             if (locationId) {
                 query = query.eq('location_id', locationId);
             }
 
-            const { data, error } = await query;
+            // Фильтр по категории (серверный)
+            if (currentCategory !== 'all') {
+                const cat = categories.find(c => c.slug === currentCategory);
+                if (cat) {
+                    query = query.eq('category_id', cat.id);
+                }
+            }
+
+            // Серверный поиск
+            if (searchQuery) {
+                const q = `%${searchQuery}%`;
+                query = query.or(`name_ru.ilike.${q},name_en.ilike.${q},name_hi.ilike.${q}`);
+            }
+
+            // Серверная сортировка
+            const SORT_MAP = { name: 'name_ru', category: 'category_id', time: 'cooking_time' };
+            const dbField = SORT_MAP[sortColumn] || 'name_ru';
+            query = query.order(dbField, { ascending: sortDirection === 'asc' });
+
+            // Пагинация
+            const from = (currentPage - 1) * PAGE_SIZE;
+            const to = from + PAGE_SIZE - 1;
+            query = query.range(from, to);
+
+            const { data, error, count } = await query;
             if (error) { console.error('Error loading recipes:', error); return; }
-            recipes = data;
+            recipes = data || [];
+            totalCount = count || 0;
             renderRecipes();
+            renderCategoryFilters();
         }
 
-        async function loadUnits() {
-            const { data, error } = await Layout.db.from('units').select('*').order('sort_order');
-            if (error) { console.error('Error loading units:', error); return; }
-            units = data || [];
+        // Загрузка счётчиков категорий
+        async function loadCategoryCounts() {
+            let baseQuery = Layout.db.from('recipes').select('category_id');
+            if (locationId) baseQuery = baseQuery.eq('location_id', locationId);
+            if (searchQuery) {
+                const q = `%${searchQuery}%`;
+                baseQuery = baseQuery.or(`name_ru.ilike.${q},name_en.ilike.${q},name_hi.ilike.${q}`);
+            }
+            const { data } = await baseQuery;
+            const counts = { all: (data || []).length };
+            (data || []).forEach(r => {
+                const cat = categories.find(c => c.id === r.category_id);
+                if (cat) counts[cat.slug] = (counts[cat.slug] || 0) + 1;
+            });
+            return counts;
         }
 
         // ==================== SORTING ====================
@@ -174,7 +231,8 @@
                 sortDirection = 'asc';
             }
             updateSortIcons();
-            renderRecipes();
+            currentPage = 1;
+            loadRecipes();
         }
 
         function updateSortIcons() {
@@ -189,38 +247,10 @@
             });
         }
 
-        function sortRecipes(items) {
-            const lang = Layout.currentLang;
-            const nameKey = `name_${lang}`;
-            const mult = sortDirection === 'asc' ? 1 : -1;
-
-            return [...items].sort((a, b) => {
-                let cmp = 0;
-                switch (sortColumn) {
-                    case 'name':
-                        cmp = (a[nameKey] || a.name_ru || '').localeCompare(b[nameKey] || b.name_ru || '', lang);
-                        break;
-                    case 'category':
-                        const catA = a.recipe_categories ? Layout.getName(a.recipe_categories) : '';
-                        const catB = b.recipe_categories ? Layout.getName(b.recipe_categories) : '';
-                        cmp = catA.localeCompare(catB, lang);
-                        break;
-                    case 'time':
-                        cmp = (a.cooking_time || 0) - (b.cooking_time || 0);
-                        break;
-                }
-                return cmp * mult;
-            });
-        }
-
         // ==================== RENDERING ====================
-        function renderCategoryFilters() {
+        async function renderCategoryFilters() {
             const container = Layout.$('#categoryFilters');
-            const counts = { all: recipes.length };
-            recipes.forEach(r => {
-                const slug = r.recipe_categories?.slug;
-                if (slug) counts[slug] = (counts[slug] || 0) + 1;
-            });
+            const counts = await loadCategoryCounts();
 
             let html = `<button class="btn btn-sm filter-btn ${currentCategory === 'all' ? 'active btn-neutral' : 'btn-ghost'}" data-category="all">${t('all')}<sup class="ml-1 opacity-60">${counts.all}</sup></button>`;
 
@@ -234,8 +264,8 @@
                 btn.addEventListener('click', () => {
                     currentCategory = btn.dataset.category;
                     localStorage.setItem('recipes_category', currentCategory);
-                    renderCategoryFilters();
-                    renderRecipes();
+                    currentPage = 1;
+                    loadRecipes();
                 });
             });
         }
@@ -245,26 +275,15 @@
             const countEl = Layout.$('#recipesCount');
             const lang = Layout.currentLang;
 
-            let filtered = recipes.filter(recipe => {
-                const matchesCategory = currentCategory === 'all' || recipe.recipe_categories?.slug === currentCategory;
-                const matchesSearch = searchQuery === '' ||
-                    recipe.name_ru.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    recipe.name_en.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    recipe.name_hi.includes(searchQuery);
-                return matchesCategory && matchesSearch;
-            });
+            countEl.textContent = Layout.pluralize(totalCount, RECIPE_FORMS);
 
-            // Применяем сортировку
-            filtered = sortRecipes(filtered);
-
-            countEl.textContent = Layout.pluralize(filtered.length, RECIPE_FORMS);
-
-            if (filtered.length === 0) {
+            if (recipes.length === 0) {
                 grid.innerHTML = `<div class="col-span-full text-center py-12 opacity-50"><div class="text-4xl mb-2">🍽️</div><div>${t('no_recipes')}</div></div>`;
+                document.getElementById('paginationContainer').innerHTML = '';
                 return;
             }
 
-            grid.innerHTML = filtered.map(recipe => {
+            grid.innerHTML = recipes.map(recipe => {
                 const cat = recipe.recipe_categories;
                 const secondaryLang = lang === 'ru' ? 'en' : 'ru';
                 const unitOutput = getUnitShort(recipe.output_unit);
@@ -296,13 +315,56 @@
                     </div>
                 `;
             }).join('');
+
+            // Пагинация
+            renderRecipesPagination();
+        }
+
+        function renderRecipesPagination() {
+            const container = document.getElementById('paginationContainer');
+            const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+            if (totalPages <= 1) { container.innerHTML = ''; return; }
+
+            let html = '<div class="flex justify-center py-4"><div class="join">';
+            html += `<button class="join-item btn btn-sm ${currentPage <= 1 ? 'btn-disabled' : ''}" data-page="${currentPage - 1}">&laquo;</button>`;
+
+            const maxVisible = 7;
+            let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+            let end = Math.min(totalPages, start + maxVisible - 1);
+            if (end - start < maxVisible - 1) start = Math.max(1, end - maxVisible + 1);
+
+            if (start > 1) {
+                html += `<button class="join-item btn btn-sm" data-page="1">1</button>`;
+                if (start > 2) html += `<button class="join-item btn btn-sm btn-disabled">...</button>`;
+            }
+            for (let i = start; i <= end; i++) {
+                html += `<button class="join-item btn btn-sm ${i === currentPage ? 'btn-active' : ''}" data-page="${i}">${i}</button>`;
+            }
+            if (end < totalPages) {
+                if (end < totalPages - 1) html += `<button class="join-item btn btn-sm btn-disabled">...</button>`;
+                html += `<button class="join-item btn btn-sm" data-page="${totalPages}">${totalPages}</button>`;
+            }
+
+            html += `<button class="join-item btn btn-sm ${currentPage >= totalPages ? 'btn-disabled' : ''}" data-page="${currentPage + 1}">&raquo;</button>`;
+            html += '</div></div>';
+            container.innerHTML = html;
+
+            container.querySelectorAll('[data-page]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const p = parseInt(btn.dataset.page);
+                    if (p >= 1 && p <= totalPages && p !== currentPage) {
+                        currentPage = p;
+                        loadRecipes();
+                        document.getElementById('recipesGrid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                });
+            });
         }
 
         function updatePageLanguage() {
             Layout.updateAllTranslations();
-            renderCategoryFilters();
             updateSortIcons();
-            renderRecipes();
+            loadRecipes();
         }
 
         function openRecipe(id) {
@@ -313,11 +375,14 @@
         document.addEventListener('DOMContentLoaded', () => {
             const searchInput = Layout.$('#searchInput');
             const clearBtn = Layout.$('#clearSearch');
-            const debouncedSearch = Layout.debounce(() => renderRecipes(), 200);
+            const debouncedSearch = Layout.debounce(() => {
+                currentPage = 1;
+                loadRecipes();
+            }, 300);
 
             searchInput?.addEventListener('input', e => {
-                searchQuery = e.target.value;
-                clearBtn?.classList.toggle('hidden', !e.target.value);
+                searchQuery = e.target.value.trim();
+                clearBtn?.classList.toggle('hidden', !searchQuery);
                 debouncedSearch();
             });
 
@@ -325,7 +390,8 @@
                 searchInput.value = '';
                 searchQuery = '';
                 clearBtn.classList.add('hidden');
-                renderRecipes();
+                currentPage = 1;
+                loadRecipes();
                 searchInput.focus();
             });
 
@@ -344,8 +410,8 @@
         // Колбэк при смене локации
         window.onLocationChange = async function() {
             await loadLocationId();
+            currentPage = 1;
             await loadRecipes();
-            renderCategoryFilters();
         };
 
         // ==================== INIT ====================
@@ -355,10 +421,9 @@
 
             // Загружаем данные страницы
             await loadLocationId();
-            await loadUnits();
-            await loadCategories();
+            await Promise.all([loadUnits(), loadCategories()]);
             await loadRecipes();
-            updatePageLanguage();
+            updateSortIcons();
         }
 
         init();

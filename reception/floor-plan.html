@@ -271,6 +271,10 @@
         <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
 
+    <script src="../js/cache.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/translit.js"></script>
+    <script src="../js/auto-translate.js"></script>
     <script src="../js/layout.js"></script>
     <script>
         // ==================== STATE ====================
@@ -289,11 +293,15 @@
 
         // ==================== DATA ====================
         async function loadBuildings() {
-            const { data } = await Layout.db
-                .from('buildings')
-                .select('*, building_types(color)')
-                .eq('is_active', true)
-                .order('sort_order');
+            const data = await Cache.getOrLoad('buildings', async () => {
+                const { data, error } = await Layout.db
+                    .from('buildings')
+                    .select('*, building_types(color)')
+                    .eq('is_active', true)
+                    .order('sort_order');
+                if (error) { console.error('Error loading buildings:', error); return null; }
+                return data;
+            });
             return data || [];
         }
 

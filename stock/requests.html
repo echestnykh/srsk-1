@@ -327,6 +327,10 @@
         <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
 
+    <script src="../js/cache.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/translit.js"></script>
+    <script src="../js/auto-translate.js"></script>
     <script src="../js/layout.js"></script>
     <script>
         // ==================== STATE ====================
@@ -467,11 +471,14 @@
         }
 
         async function loadProductCategories() {
-            const { data } = await Layout.db
-                .from('product_categories')
-                .select('*')
-                .order('sort_order');
-            productCategories = data || [];
+            productCategories = await Cache.getOrLoad('product_categories', async () => {
+                const { data } = await Layout.db
+                    .from('product_categories')
+                    .select('*')
+                    .order('sort_order');
+                return data;
+            });
+            productCategories = productCategories || [];
         }
 
         async function loadBuyers() {

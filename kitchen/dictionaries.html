@@ -88,6 +88,10 @@
         <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
 
+    <script src="../js/cache.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/translit.js"></script>
+    <script src="../js/auto-translate.js"></script>
     <script src="../js/layout.js"></script>
     <script>
         // ==================== STATE ====================
@@ -473,6 +477,9 @@
                 return false;
             }
 
+            // Инвалидируем кэш для изменённой таблицы
+            Cache.invalidate(currentTab);
+
             // Перезагружаем данные (особенно важно для product_densities с join)
             await loadData(currentTab);
             return true;
@@ -491,6 +498,8 @@
                 return;
             }
 
+            // Инвалидируем кэш
+            Cache.invalidate(currentTab);
             data[currentTab] = data[currentTab].filter(r => r[idField] !== id);
             renderTable();
         }

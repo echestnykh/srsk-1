@@ -145,6 +145,10 @@
         <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
 
+    <script src="../js/cache.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/translit.js"></script>
+    <script src="../js/auto-translate.js"></script>
     <script src="../js/layout.js"></script>
     <script>
         // ==================== STATE ====================
@@ -170,7 +174,11 @@
 
         // ==================== DATA ====================
         async function loadBuildingTypes() {
-            const { data } = await Layout.db.from('building_types').select('*').order('sort_order');
+            const data = await Cache.getOrLoad('building_types', async () => {
+                const { data, error } = await Layout.db.from('building_types').select('*').order('sort_order');
+                if (error) { console.error('Error loading building_types:', error); return null; }
+                return data;
+            });
             return data || [];
         }
 
@@ -437,6 +445,7 @@
                     if (error) throw error;
                 }
 
+                Cache.invalidate('buildings');
                 closeBuildingModal();
                 buildings = await loadBuildings();
                 render();
@@ -454,6 +463,7 @@
                 const { error } = await Layout.db.from('buildings').delete().eq('id', editingBuildingId);
                 if (error) throw error;
 
+                Cache.invalidate('buildings');
                 closeBuildingModal();
                 buildings = await loadBuildings();
                 roomCounts = await loadRoomCounts();

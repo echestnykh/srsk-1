@@ -117,6 +117,9 @@
             </div>
         </div>
 
+        <!-- Pagination -->
+        <div id="paginationContainer"></div>
+
     </main>
 
     <div id="footer-placeholder"></div>
@@ -165,12 +168,17 @@
         <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
 
+    <script src="../js/cache.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/translit.js"></script>
+    <script src="../js/auto-translate.js"></script>
     <script src="../js/layout.js"></script>
     <script src="../js/vaishnavas-utils.js"></script>
     <script>
         const V = VaishnavasUtils;
         let people = [];
-        const state = { searchQuery: '', sortField: 'name', sortDirection: 'asc' };
+        let totalCount = 0;
+        const state = { searchQuery: '', sortField: 'name', sortDirection: 'asc', currentPage: 1 };
 
         async function init() {
             await Layout.init({ module: 'housing', menuId: 'vaishnavas', itemId: 'vaishnavas_guests' });
@@ -179,46 +187,54 @@
             await loadPeople();
             Layout.hideLoader();
 
-            V.setupSearch(state, renderPeople);
+            V.setupSearch(state, loadPeople);
             V.updateSortIcons(state);
         }
 
         async function loadPeople() {
-            const { data, error } = await Layout.db
+            let query = Layout.db
                 .from('vaishnavas')
-                .select('id, first_name, last_name, spiritual_name, phone, email, country, spiritual_teacher, is_team_member')
+                .select('id, first_name, last_name, spiritual_name, phone, email, country, spiritual_teacher, is_team_member', { count: 'exact' })
                 .eq('is_deleted', false)
-                .or('is_team_member.is.null,is_team_member.eq.false')
-                .order('spiritual_name', { ascending: true, nullsFirst: false });
+                .or('is_team_member.is.null,is_team_member.eq.false');
 
+            query = V.applyServerSearch(query, state.searchQuery);
+            query = V.applyServerSort(query, state);
+
+            const from = (state.currentPage - 1) * V.PAGE_SIZE;
+            const to = from + V.PAGE_SIZE - 1;
+            query = query.range(from, to);
+
+            const { data, error, count } = await query;
             if (error) { console.error('Error loading people:', error); return; }
             people = data || [];
+            totalCount = count || 0;
             renderPeople();
         }
 
         function toggleSort(field) {
-            V.toggleSort(state, field, renderPeople);
+            V.toggleSort(state, field, loadPeople);
         }
 
         function renderPeople() {
             const tbody = document.getElementById('peopleTable');
             const emptyState = document.getElementById('emptyState');
 
-            document.getElementById('countAll').textContent = people.length;
+            document.getElementById('countAll').textContent = totalCount;
 
-            let filtered = people.filter(person => V.matchesSearch(person, state.searchQuery));
-            V.sortPeople(filtered, state);
-
-            if (filtered.length === 0) {
+            if (people.length === 0) {
                 tbody.innerHTML = '';
                 emptyState.classList.remove('hidden');
+                document.getElementById('paginationContainer').innerHTML = '';
                 return;
             }
             emptyState.classList.add('hidden');
 
-            tbody.innerHTML = filtered.map(person =>
+            tbody.innerHTML = people.map(person =>
                 V.renderPersonRow(person, { showTeamBadge: false })
             ).join('');
+
+            V.renderPagination('paginationContainer', state, totalCount, loadPeople);
         }
 
         function openAddModal() { V.openAddModal(); }
@@ -226,7 +242,7 @@
         function saveNewPerson(event) { V.saveNewPerson(event, { isTeamMember: false }); }
 
         window.onLanguageChange = function(lang) {
-            renderPeople();
+            loadPeople();
             Layout.updateAllTranslations();
         };
 

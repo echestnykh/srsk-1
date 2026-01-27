@@ -159,6 +159,10 @@
         <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
 
+    <script src="../js/cache.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/translit.js"></script>
+    <script src="../js/auto-translate.js"></script>
     <script src="../js/layout.js"></script>
     <script>
         // ==================== STATE ====================
@@ -273,9 +277,12 @@
         }
 
         async function loadProductCategories() {
-            const { data, error } = await Layout.db.from('product_categories').select('*').order('name_ru');
-            if (error) { console.error('Error loading categories:', error); return; }
-            productCategories = data || [];
+            productCategories = await Cache.getOrLoad('product_categories', async () => {
+                const { data, error } = await Layout.db.from('product_categories').select('*').order('name_ru');
+                if (error) { console.error('Error loading categories:', error); return null; }
+                return data;
+            });
+            productCategories = productCategories || [];
         }
 
         async function loadStock() {

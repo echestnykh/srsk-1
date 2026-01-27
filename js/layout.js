@@ -138,6 +138,42 @@ const $ = (sel, ctx = document) => ctx.querySelector(sel);
 const $$ = (sel, ctx = document) => ctx.querySelectorAll(sel);
 const setColor = color => document.documentElement.style.setProperty('--current-color', color);
 
+// ==================== DELEGATING WRAPPERS ====================
+// Делегирование к Utils (из utils.js)
+function pluralize(n, forms) {
+    return Utils.pluralize(n, forms, currentLang);
+}
+
+function debounce(fn, delay) {
+    return Utils.debounce(fn, delay);
+}
+
+function escapeHtml(str) {
+    return Utils.escapeHtml(str);
+}
+
+// Делегирование к Translit (из translit.js)
+function transliterate(text) {
+    return Translit.ru(text);
+}
+
+function transliterateHindi(hindi) {
+    return Translit.hi(hindi);
+}
+
+// Делегирование к AutoTranslate (из auto-translate.js)
+function translate(text, from, to) {
+    return AutoTranslate.translate(text, from, to);
+}
+
+function setupAutoTranslate(formSelector, fieldPrefixes) {
+    return AutoTranslate.setup(formSelector, fieldPrefixes);
+}
+
+function resetAutoTranslate() {
+    return AutoTranslate.reset();
+}
+
 // ==================== LOADER ====================
 let loaderElement = null;
 
@@ -171,111 +207,6 @@ function getName(item, lang = currentLang) {
     return item.name_ru || '';
 }
 
-/** Таблица транслитерации кириллицы в латиницу */
-const TRANSLIT_MAP = {
-    'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'yo','ж':'zh','з':'z','и':'i','й':'y',
-    'к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f',
-    'х':'h','ц':'ts','ч':'ch','ш':'sh','щ':'shch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya',
-    'А':'A','Б':'B','В':'V','Г':'G','Д':'D','Е':'E','Ё':'Yo','Ж':'Zh','З':'Z','И':'I','Й':'Y',
-    'К':'K','Л':'L','М':'M','Н':'N','О':'O','П':'P','Р':'R','С':'S','Т':'T','У':'U','Ф':'F',
-    'Х':'H','Ц':'Ts','Ч':'Ch','Ш':'Sh','Щ':'Shch','Ъ':'','Ы':'Y','Ь':'','Э':'E','Ю':'Yu','Я':'Ya'
-};
-
-/** Транслитерация кириллицы в латиницу */
-function transliterate(text) {
-    if (!text) return '';
-    return text.split('').map(c => TRANSLIT_MAP[c] || c).join('');
-}
-
-/** Транслитерация хинди (деванагари) в IAST */
-function transliterateHindi(hindi) {
-    if (!hindi) return '';
-
-    const CONSONANTS = {
-        'क': 'k', 'ख': 'kh', 'ग': 'g', 'घ': 'gh', 'ङ': 'ṅ',
-        'च': 'c', 'छ': 'ch', 'ज': 'j', 'झ': 'jh', 'ञ': 'ñ',
-        'ट': 'ṭ', 'ठ': 'ṭh', 'ड': 'ḍ', 'ढ': 'ḍh', 'ण': 'ṇ',
-        'त': 't', 'थ': 'th', 'द': 'd', 'ध': 'dh', 'न': 'n',
-        'प': 'p', 'फ': 'ph', 'ब': 'b', 'भ': 'bh', 'म': 'm',
-        'य': 'y', 'र': 'r', 'ल': 'l', 'व': 'v',
-        'श': 'ś', 'ष': 'ṣ', 'स': 's', 'ह': 'h'
-    };
-    const VOWELS = { 'अ': 'a', 'आ': 'ā', 'इ': 'i', 'ई': 'ī', 'उ': 'u', 'ऊ': 'ū', 'ऋ': 'ṛ', 'ए': 'e', 'ऐ': 'ai', 'ओ': 'o', 'औ': 'au' };
-    const MATRAS = { 'ा': 'ā', 'ि': 'i', 'ी': 'ī', 'ु': 'u', 'ू': 'ū', 'ृ': 'ṛ', 'े': 'e', 'ै': 'ai', 'ो': 'o', 'ौ': 'au' };
-    const NUKTA_MAP = { 'क': 'q', 'ख': 'kh', 'ग': 'ġ', 'ज': 'z', 'फ': 'f', 'ड': 'ṛ', 'ढ': 'ṛh' };
-    const ANUSVARA_MAP = {
-        'क': 'ṅ', 'ख': 'ṅ', 'ग': 'ṅ', 'घ': 'ṅ', 'ङ': 'ṅ',
-        'च': 'ñ', 'छ': 'ñ', 'ज': 'ñ', 'झ': 'ñ', 'ञ': 'ñ',
-        'ट': 'ṇ', 'ठ': 'ṇ', 'ड': 'ṇ', 'ढ': 'ṇ', 'ण': 'ṇ',
-        'त': 'n', 'थ': 'n', 'द': 'n', 'ध': 'n', 'न': 'n',
-        'प': 'm', 'फ': 'm', 'ब': 'm', 'भ': 'm', 'म': 'm'
-    };
-
-    const text = hindi.normalize('NFC');
-    let result = '';
-    let i = 0;
-
-    while (i < text.length) {
-        const char = text[i];
-        const next = text[i + 1];
-
-        if (VOWELS[char]) {
-            result += VOWELS[char];
-            i++;
-            continue;
-        }
-
-        if (CONSONANTS[char]) {
-            if (next === '़') {
-                result += NUKTA_MAP[char] || CONSONANTS[char];
-                i += 2;
-            } else {
-                result += CONSONANTS[char];
-                i++;
-            }
-
-            const after = text[i];
-            if (after === '्') {
-                i++;
-            } else if (MATRAS[after]) {
-                result += MATRAS[after];
-                i++;
-            } else if (after === 'ं') {
-                result += 'a';
-            } else if (after === 'ः') {
-                result += 'aḥ';
-                i++;
-            } else if (after === 'ँ') {
-                result += 'am̐';
-                i++;
-            } else if (!CONSONANTS[after] && !VOWELS[after] && after !== undefined) {
-                result += 'a';
-            } else if (after === undefined) {
-                // Конец слова — НЕ добавляем 'a' (schwa deletion в хинди)
-            } else {
-                result += 'a';
-            }
-            continue;
-        }
-
-        if (char === 'ं') {
-            const nextCons = text[i + 1];
-            result += ANUSVARA_MAP[nextCons] || 'ṃ';
-            i++;
-            continue;
-        }
-
-        if (char === 'ः') { result += 'ḥ'; i++; continue; }
-        if (char === 'ँ') { result += 'm̐'; i++; continue; }
-        if (MATRAS[char]) { result += MATRAS[char]; i++; continue; }
-        if (char === '्' || char === '़') { i++; continue; }
-
-        result += char;
-        i++;
-    }
-    return result;
-}
-
 /** Имя человека с автотранслитерацией для не-русского языка */
 function getPersonName(person, lang = currentLang) {
     if (!person) return '—';
@@ -283,183 +214,19 @@ function getPersonName(person, lang = currentLang) {
     return lang === 'ru' ? name : transliterate(name);
 }
 
-/**
- * Склонение слов для разных языков
- * @param {number} n - число
- * @param {Object} forms - формы слова { ru: ['рецепт', 'рецепта', 'рецептов'], en: ['recipe', 'recipes'], hi: 'व्यंजन' }
- * @returns {string} - "5 рецептов"
- */
-function pluralize(n, forms) {
-    const lang = currentLang;
-    const langForms = forms[lang] || forms.ru;
-
-    // Хинди: не склоняется
-    if (typeof langForms === 'string') {
-        return `${n} ${langForms}`;
-    }
-
-    // Английский: singular/plural
-    if (lang === 'en' || langForms.length === 2) {
-        return `${n} ${n === 1 ? langForms[0] : langForms[1]}`;
-    }
-
-    // Русский: one/few/many
-    const mod10 = n % 10;
-    const mod100 = n % 100;
-
-    if (mod10 === 1 && mod100 !== 11) {
-        return `${n} ${langForms[0]}`;
-    }
-    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) {
-        return `${n} ${langForms[1]}`;
-    }
-    return `${n} ${langForms[2]}`;
-}
-
-/** Debounce функция для оптимизации частых вызовов */
-function debounce(fn, delay = 300) {
-    let timer;
-    return (...args) => {
-        clearTimeout(timer);
-        timer = setTimeout(() => fn(...args), delay);
-    };
-}
-
-/** Экранирование HTML для защиты от XSS */
-function escapeHtml(str) {
-    if (str == null) return '';
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-}
-
-/**
- * Автоперевод текста через MyMemory API
- * @param {string} text - текст для перевода
- * @param {string} from - исходный язык (ru, en, hi)
- * @param {string} to - целевой язык (ru, en, hi)
- * @returns {Promise<string>} - переведённый текст
- */
-async function translate(text, from = 'ru', to = 'en') {
-    if (!text || !text.trim()) return '';
-
-    try {
-        const response = await fetch(
-            `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${from}|${to}`
-        );
-        const data = await response.json();
-
-        if (data.responseStatus === 200 && data.responseData?.translatedText) {
-            // MyMemory иногда возвращает текст в верхнем регистре при ошибке
-            const result = data.responseData.translatedText;
-            if (result === text.toUpperCase()) {
-                console.warn('Translation may have failed:', result);
-                return text;
-            }
-            return result;
-        }
-
-        console.error('Translation error:', data);
-        return text;
-    } catch (error) {
-        console.error('Translation fetch error:', error);
-        return text;
-    }
-}
-
-/**
- * Настройка автоперевода для полей формы
- * При вводе текста в поле _ru автоматически переводит в _en и _hi
- * @param {string} formSelector - селектор формы или контейнера
- * @param {string[]} fieldPrefixes - массив префиксов полей (например: ['name', 'description'])
- */
-function setupAutoTranslate(formSelector, fieldPrefixes = ['name']) {
-    const form = $(formSelector);
-    if (!form) return;
-
-    // Храним информацию о том, какие поля были автозаполнены
-    const autoFilledFields = new Set();
-
-    fieldPrefixes.forEach(prefix => {
-        const ruField = form.querySelector(`[name="${prefix}_ru"]`);
-        if (!ruField) return;
-
-        const enField = form.querySelector(`[name="${prefix}_en"]`);
-        const hiField = form.querySelector(`[name="${prefix}_hi"]`);
-
-        // Отмечаем поля как вручную заполненные при фокусе и изменении
-        [enField, hiField].forEach(field => {
-            if (!field) return;
-            field.addEventListener('input', () => {
-                if (field.value.trim()) {
-                    autoFilledFields.delete(field.name);
-                }
-            });
-        });
-
-        // Debounced автоперевод при вводе в русское поле
-        const debouncedTranslate = debounce(async () => {
-            const ruText = ruField.value.trim();
-            if (!ruText) return;
-
-            // Показываем индикатор загрузки
-            const showLoading = (field) => {
-                if (field && !field.value.trim()) {
-                    field.classList.add('opacity-50');
-                    field.placeholder = '...';
-                }
-            };
-            const hideLoading = (field, placeholder = '') => {
-                if (field) {
-                    field.classList.remove('opacity-50');
-                    field.placeholder = placeholder;
-                }
-            };
-
-            // Переводим на английский если поле пустое или было автозаполнено
-            if (enField && (!enField.value.trim() || autoFilledFields.has(enField.name))) {
-                showLoading(enField);
-                const enText = await translate(ruText, 'ru', 'en');
-                if (enText && enText !== ruText) {
-                    enField.value = enText;
-                    autoFilledFields.add(enField.name);
-                }
-                hideLoading(enField);
-            }
-
-            // Переводим на хинди если поле пустое или было автозаполнено
-            if (hiField && (!hiField.value.trim() || autoFilledFields.has(hiField.name))) {
-                showLoading(hiField);
-                const hiText = await translate(ruText, 'ru', 'hi');
-                if (hiText && hiText !== ruText) {
-                    hiField.value = hiText;
-                    autoFilledFields.add(hiField.name);
-                }
-                hideLoading(hiField);
-            }
-        }, 800);
-
-        ruField.addEventListener('input', debouncedTranslate);
-    });
-}
-
-/**
- * Сбрасывает состояние автоперевода (вызывать при открытии модалки)
- */
-function resetAutoTranslate() {
-    // Метод для внешнего вызова - сброс происходит автоматически при setupAutoTranslate
-}
-
 // ==================== TRANSLATIONS ====================
 async function loadTranslations() {
-    const { data, error } = await db.from('translations').select('key, ru, en, hi');
-    if (error) {
-        console.error('Error loading translations:', error);
-        return;
-    }
+    const data = await Cache.getOrLoad('translations', async () => {
+        const { data, error } = await db.from('translations').select('key, ru, en, hi');
+        if (error) {
+            console.error('Error loading translations:', error);
+            return null;
+        }
+        return data;
+    });
+
+    if (!data) return;
+
     // Преобразуем массив в объект { key: { ru, en, hi } }
     translations = {};
     data.forEach(row => {
@@ -867,8 +634,13 @@ function selectLocation(slug, isInitial = false) {
 }
 
 async function loadLocations() {
-    const { data, error } = await db.from('locations').select('*');
-    if (error) { console.error('Error loading locations:', error); return; }
+    const data = await Cache.getOrLoad('locations', async () => {
+        const { data, error } = await db.from('locations').select('*');
+        if (error) { console.error('Error loading locations:', error); return null; }
+        return data;
+    });
+
+    if (!data) return;
     locations = data;
     buildLocationOptions();
     selectLocation(currentLocation, true); // isInitial = true, чтобы не вызывать колбэк при загрузке

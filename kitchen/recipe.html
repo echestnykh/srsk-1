@@ -255,6 +255,10 @@
 
     <div id="footer-placeholder"></div>
 
+    <script src="../js/cache.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/translit.js"></script>
+    <script src="../js/auto-translate.js"></script>
     <script src="../js/layout.js"></script>
     <script>
         // ==================== STATE ====================
@@ -308,9 +312,12 @@
         }
 
         async function loadUnits() {
-            const { data, error } = await Layout.db.from('units').select('*').order('sort_order');
-            if (error) { console.error('Error loading units:', error); return; }
-            units = data || [];
+            units = await Cache.getOrLoad('units', async () => {
+                const { data, error } = await Layout.db.from('units').select('*').order('sort_order');
+                if (error) { console.error('Error loading units:', error); return null; }
+                return data;
+            });
+            units = units || [];
         }
 
         async function loadDensities() {

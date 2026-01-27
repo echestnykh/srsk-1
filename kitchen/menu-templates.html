@@ -284,6 +284,10 @@
         <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
 
+    <script src="../js/cache.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/translit.js"></script>
+    <script src="../js/auto-translate.js"></script>
     <script src="../js/layout.js"></script>
     <script>
         // ==================== STATE ====================
@@ -375,17 +379,25 @@
             recipes = recipesData || [];
 
             // Load categories
-            const { data: categoriesData } = await Layout.db
-                .from('recipe_categories')
-                .select('*')
-                .order('sort_order');
-            categories = categoriesData || [];
+            categories = await Cache.getOrLoad('recipe_categories', async () => {
+                const { data, error } = await Layout.db
+                    .from('recipe_categories')
+                    .select('*')
+                    .order('sort_order');
+                if (error) { console.error('Error loading recipe_categories:', error); return null; }
+                return data;
+            });
+            categories = categories || [];
 
             // Load units
-            const { data: unitsData } = await Layout.db
-                .from('units')
-                .select('*');
-            units = unitsData || [];
+            units = await Cache.getOrLoad('units', async () => {
+                const { data, error } = await Layout.db
+                    .from('units')
+                    .select('*');
+                if (error) { console.error('Error loading units:', error); return null; }
+                return data;
+            });
+            units = units || [];
 
             // Load retreats
             const { data: retreatsData } = await Layout.db

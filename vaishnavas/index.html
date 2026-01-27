@@ -132,6 +132,9 @@
             </div>
         </div>
 
+        <!-- Pagination -->
+        <div id="paginationContainer"></div>
+
     </main>
 
     <div id="footer-placeholder"></div>
@@ -187,13 +190,18 @@
         <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
 
+    <script src="../js/cache.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/translit.js"></script>
+    <script src="../js/auto-translate.js"></script>
     <script src="../js/layout.js"></script>
     <script src="../js/vaishnavas-utils.js"></script>
     <script>
         const V = VaishnavasUtils;
         let people = [];
         let stays = {};
-        const state = { currentFilter: 'all', searchQuery: '', sortField: 'name', sortDirection: 'asc' };
+        let totalCount = 0;
+        const state = { currentFilter: 'all', searchQuery: '', sortField: 'name', sortDirection: 'asc', currentPage: 1 };
         const today = new Date().toISOString().split('T')[0];
 
         async function init() {
@@ -210,11 +218,11 @@
             await Layout.init({ module: 'housing', menuId: 'vaishnavas', itemId });
 
             Layout.showLoader();
-            await Promise.all([loadPeople(), loadStaysData()]);
+            await Promise.all([loadPeople(), loadStaysData(), loadFilterCounts()]);
             Layout.hideLoader();
 
-            V.setupSearch(state, renderPeople);
-            V.setupFilters(state, renderPeople, { updateUrl: true });
+            V.setupSearch(state, loadPeople);
+            V.setupFilters(state, loadPeople, { updateUrl: true });
             V.updateSortIcons(state);
 
             document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -227,15 +235,58 @@
             });
         }
 
-        async function loadPeople() {
-            const { data, error } = await Layout.db
-                .from('vaishnavas')
-                .select('id, first_name, last_name, spiritual_name, phone, email, country, spiritual_teacher, is_team_member, departments(id, name_ru, name_en, name_hi, color)')
-                .eq('is_deleted', false)
-                .order('spiritual_name', { ascending: true, nullsFirst: false });
+        async function loadFilterCounts() {
+            const [allRes, teamRes, guestsRes, presentStays] = await Promise.all([
+                Layout.db.from('vaishnavas').select('id', { count: 'exact', head: true }).eq('is_deleted', false),
+                Layout.db.from('vaishnavas').select('id', { count: 'exact', head: true }).eq('is_deleted', false).eq('is_team_member', true),
+                Layout.db.from('vaishnavas').select('id', { count: 'exact', head: true }).eq('is_deleted', false).or('is_team_member.is.null,is_team_member.eq.false'),
+                V.loadStays()
+            ]);
 
+            document.getElementById('countAll').textContent = allRes.count || 0;
+            document.getElementById('countTeam').textContent = teamRes.count || 0;
+            document.getElementById('countGuests').textContent = guestsRes.count || 0;
+
+            // Считаем присутствующих из stays
+            const presentIds = new Set();
+            const stayData = presentStays;
+            for (const [vid, personStays] of Object.entries(stayData)) {
+                if (personStays.some(s => s.start_date <= today && s.end_date >= today)) {
+                    presentIds.add(vid);
+                }
+            }
+            document.getElementById('countPresent').textContent = presentIds.size;
+        }
+
+        async function loadPeople() {
+            let query = Layout.db
+                .from('vaishnavas')
+                .select('id, first_name, last_name, spiritual_name, phone, email, country, spiritual_teacher, is_team_member, departments(id, name_ru, name_en, name_hi, color)', { count: 'exact' })
+                .eq('is_deleted', false);
+
+            // Фильтр
+            if (state.currentFilter === 'team') {
+                query = query.eq('is_team_member', true);
+            } else if (state.currentFilter === 'guests') {
+                query = query.or('is_team_member.is.null,is_team_member.eq.false');
+            }
+            // present фильтр обрабатывается клиентски через stays
+
+            // Серверный поиск
+            query = V.applyServerSearch(query, state.searchQuery);
+
+            // Серверная сортировка
+            query = V.applyServerSort(query, state);
+
+            // Пагинация
+            const from = (state.currentPage - 1) * V.PAGE_SIZE;
+            const to = from + V.PAGE_SIZE - 1;
+            query = query.range(from, to);
+
+            const { data, error, count } = await query;
             if (error) { console.error('Error loading people:', error); return; }
             people = data || [];
+            totalCount = count || 0;
             renderPeople();
         }
 
@@ -244,34 +295,23 @@
         }
 
         function toggleSort(field) {
-            V.toggleSort(state, field, renderPeople);
-        }
-
-        function updateCounts() {
-            document.getElementById('countAll').textContent = people.length;
-            document.getElementById('countTeam').textContent = people.filter(p => p.is_team_member).length;
-            document.getElementById('countGuests').textContent = people.filter(p => !p.is_team_member).length;
-            document.getElementById('countPresent').textContent = people.filter(p => p.is_team_member && V.isPresent(p.id, stays, today)).length;
+            V.toggleSort(state, field, loadPeople);
         }
 
         function renderPeople() {
             const tbody = document.getElementById('peopleTable');
             const emptyState = document.getElementById('emptyState');
-            updateCounts();
 
-            let filtered = people.filter(person => {
-                if (!V.matchesSearch(person, state.searchQuery)) return false;
-                if (state.currentFilter === 'team') return person.is_team_member;
-                if (state.currentFilter === 'guests') return !person.is_team_member;
-                if (state.currentFilter === 'present') return person.is_team_member && V.isPresent(person.id, stays, today);
-                return true;
-            });
-
-            V.sortPeople(filtered, state);
+            // Для фильтра "present" дополнительно фильтруем клиентски
+            let filtered = people;
+            if (state.currentFilter === 'present') {
+                filtered = people.filter(p => p.is_team_member && V.isPresent(p.id, stays, today));
+            }
 
             if (filtered.length === 0) {
                 tbody.innerHTML = '';
                 emptyState.classList.remove('hidden');
+                document.getElementById('paginationContainer').innerHTML = '';
                 return;
             }
             emptyState.classList.add('hidden');
@@ -282,6 +322,8 @@
                     isPresent: person.is_team_member && V.isPresent(person.id, stays, today)
                 })
             ).join('');
+
+            V.renderPagination('paginationContainer', state, totalCount, loadPeople);
         }
 
         function openAddModal() { V.openAddModal(); }
@@ -289,7 +331,8 @@
         function saveNewPerson(event) { V.saveNewPerson(event); }
 
         window.onLanguageChange = function(lang) {
-            renderPeople();
+            loadPeople();
+            loadFilterCounts();
             Layout.updateAllTranslations();
         };
 

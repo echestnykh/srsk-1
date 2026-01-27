@@ -124,6 +124,9 @@
             </div>
         </div>
 
+        <!-- Pagination -->
+        <div id="paginationContainer"></div>
+
     </main>
 
     <div id="footer-placeholder"></div>
@@ -174,13 +177,18 @@
         <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
 
+    <script src="../js/cache.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/translit.js"></script>
+    <script src="../js/auto-translate.js"></script>
     <script src="../js/layout.js"></script>
     <script src="../js/vaishnavas-utils.js"></script>
     <script>
         const V = VaishnavasUtils;
         let people = [];
         let stays = {};
-        const state = { currentFilter: 'all', searchQuery: '', sortField: 'name', sortDirection: 'asc' };
+        let totalCount = 0;
+        const state = { currentFilter: 'all', searchQuery: '', sortField: 'name', sortDirection: 'asc', currentPage: 1 };
         const today = new Date().toISOString().split('T')[0];
 
         async function init() {
@@ -190,21 +198,29 @@
             await Promise.all([loadPeople(), loadStaysData()]);
             Layout.hideLoader();
 
-            V.setupSearch(state, renderPeople);
-            V.setupFilters(state, renderPeople);
+            V.setupSearch(state, loadPeople);
+            V.setupFilters(state, loadPeople);
             V.updateSortIcons(state);
         }
 
         async function loadPeople() {
-            const { data, error } = await Layout.db
+            let query = Layout.db
                 .from('vaishnavas')
-                .select('id, first_name, last_name, spiritual_name, phone, email, country, spiritual_teacher, is_team_member, departments(id, name_ru, name_en, name_hi, color)')
+                .select('id, first_name, last_name, spiritual_name, phone, email, country, spiritual_teacher, is_team_member, departments(id, name_ru, name_en, name_hi, color)', { count: 'exact' })
                 .eq('is_deleted', false)
-                .eq('is_team_member', true)
-                .order('spiritual_name', { ascending: true, nullsFirst: false });
+                .eq('is_team_member', true);
 
+            query = V.applyServerSearch(query, state.searchQuery);
+            query = V.applyServerSort(query, state);
+
+            const from = (state.currentPage - 1) * V.PAGE_SIZE;
+            const to = from + V.PAGE_SIZE - 1;
+            query = query.range(from, to);
+
+            const { data, error, count } = await query;
             if (error) { console.error('Error loading people:', error); return; }
             people = data || [];
+            totalCount = count || 0;
             renderPeople();
         }
 
@@ -213,11 +229,11 @@
         }
 
         function toggleSort(field) {
-            V.toggleSort(state, field, renderPeople);
+            V.toggleSort(state, field, loadPeople);
         }
 
         function updateCounts() {
-            document.getElementById('countAll').textContent = people.length;
+            document.getElementById('countAll').textContent = totalCount;
             document.getElementById('countPresent').textContent = people.filter(p => V.isPresent(p.id, stays, today)).length;
         }
 
@@ -226,17 +242,16 @@
             const emptyState = document.getElementById('emptyState');
             updateCounts();
 
-            let filtered = people.filter(person => {
-                if (!V.matchesSearch(person, state.searchQuery)) return false;
-                if (state.currentFilter === 'present') return V.isPresent(person.id, stays, today);
-                return true;
-            });
-
-            V.sortPeople(filtered, state);
+            // Для фильтра "present" дополнительно фильтруем клиентски
+            let filtered = people;
+            if (state.currentFilter === 'present') {
+                filtered = people.filter(p => V.isPresent(p.id, stays, today));
+            }
 
             if (filtered.length === 0) {
                 tbody.innerHTML = '';
                 emptyState.classList.remove('hidden');
+                document.getElementById('paginationContainer')?.innerHTML && (document.getElementById('paginationContainer').innerHTML = '');
                 return;
             }
             emptyState.classList.add('hidden');
@@ -247,6 +262,8 @@
                     isPresent: V.isPresent(person.id, stays, today)
                 })
             ).join('');
+
+            V.renderPagination('paginationContainer', state, totalCount, loadPeople);
         }
 
         function openAddModal() { V.openAddModal(); }
@@ -254,7 +271,7 @@
         function saveNewPerson(event) { V.saveNewPerson(event, { isTeamMember: true }); }
 
         window.onLanguageChange = function(lang) {
-            renderPeople();
+            loadPeople();
             Layout.updateAllTranslations();
         };
 
