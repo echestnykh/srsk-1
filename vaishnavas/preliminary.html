@@ -14,13 +14,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/common.css">
     <style>
-        .status-pending { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
-        .status-confirmed { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+        .status-guest { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
         .status-team { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
         .status-cancelled { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
-        .status-no_response { background: #f3f4f6; color: #6b7280; border-color: #d1d5db; }
 
-        select.status-pending, select.status-confirmed, select.status-team, select.status-cancelled, select.status-no_response {
+        select.status-guest, select.status-team, select.status-cancelled {
             font-weight: 500;
             font-size: 0.75rem;
             height: 1.75rem;
@@ -177,8 +175,7 @@
                 </div>
                 <div class="flex flex-wrap items-center gap-1">
                     <button class="btn btn-xs filter-btn active" data-filter="all" data-i18n="all">Все</button>
-                    <button class="btn btn-xs btn-ghost filter-btn" data-filter="confirmed" data-i18n="status_confirmed">Подтверждено</button>
-                    <button class="btn btn-xs btn-ghost filter-btn" data-filter="pending" data-i18n="status_pending">Планирует</button>
+                    <button class="btn btn-xs btn-ghost filter-btn" data-filter="guest" data-i18n="status_guest">Гость</button>
                     <button class="btn btn-xs btn-ghost filter-btn" data-filter="team" data-i18n="status_team">Команда</button>
                     <button class="btn btn-xs btn-ghost filter-btn" data-filter="cancelled" data-i18n="status_cancelled">Отказ</button>
                 </div>
@@ -2383,7 +2380,7 @@
                 retreat_id: retreatId,
                 vaishnava_id: vaishnavId,
                 registration_date: parsed.registrationDate,
-                status: 'pending',
+                status: 'guest',
                 companions: parsed.companions,
                 accommodation_wishes: parsed.accommodationWishes,
                 payment_notes: parsed.paymentNotes,
