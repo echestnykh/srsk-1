@@ -221,18 +221,15 @@
             opacity: 0.5;
             margin-bottom: 4px;
         }
-        .status-confirmed { color: #10b981; }
-        .status-pending { color: #f59e0b; }
+        .status-guest { color: #10b981; }
         .status-cancelled { color: #ef4444; }
         .status-team { color: #8b5cf6; }
 
         /* Status dropdown styles */
-        select.status-pending { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
-        select.status-confirmed { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+        select.status-guest { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
         select.status-team { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
         select.status-cancelled { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
-        select.status-no_response { background: #f3f4f6; color: #6b7280; border-color: #d1d5db; }
-        select.status-pending, select.status-confirmed, select.status-team, select.status-cancelled, select.status-no_response {
+        select.status-guest, select.status-team, select.status-cancelled {
             font-weight: 500;
             font-size: 0.75rem;
             height: 1.75rem;
@@ -659,11 +656,9 @@
                 <div class="form-control">
                     <label class="label"><span class="label-text font-medium">Статус</span></label>
                     <select id="editRegStatus" class="select select-bordered">
-                        <option value="pending">Планирует</option>
-                        <option value="confirmed">Подтверждён</option>
-                        <option value="team">Команда</option>
-                        <option value="cancelled">Отказ</option>
-                        <option value="no_response">Нет ответа</option>
+                        <option value="guest" data-i18n="status_guest">Гость</option>
+                        <option value="team" data-i18n="status_team">Команда</option>
+                        <option value="cancelled" data-i18n="status_cancelled">Отказ</option>
                     </select>
                 </div>
 
@@ -1432,7 +1427,7 @@
             document.getElementById('editRegId').value = registrationId;
 
             // Статус
-            document.getElementById('editRegStatus').value = reg.status || 'pending';
+            document.getElementById('editRegStatus').value = reg.status || 'guest';
 
             // Трансферы
             const transfers = reg.guest_transfers || [];
@@ -1847,11 +1842,9 @@
                 const actionsHtml = `
                     <div class="detail-section border-t pt-3 mt-3 flex items-center gap-3">
                         <select class="select select-xs status-${reg.status}" style="min-width: 0; padding-right: 1.5rem;" onchange="updateRegistrationStatus('${reg.id}', this.value, this)" onclick="event.stopPropagation()">
-                            <option value="pending" ${reg.status === 'pending' ? 'selected' : ''}>Планирует</option>
-                            <option value="confirmed" ${reg.status === 'confirmed' ? 'selected' : ''}>Подтверждён</option>
+                            <option value="guest" ${reg.status === 'guest' ? 'selected' : ''}>Гость</option>
                             <option value="team" ${reg.status === 'team' ? 'selected' : ''}>Команда</option>
                             <option value="cancelled" ${reg.status === 'cancelled' ? 'selected' : ''}>Отказ</option>
-                            <option value="no_response" ${reg.status === 'no_response' ? 'selected' : ''}>Нет ответа</option>
                         </select>
                         <button class="btn btn-xs btn-outline gap-1" onclick="event.stopPropagation(); openPlacementModal('${reg.id}')">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
