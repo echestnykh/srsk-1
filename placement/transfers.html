@@ -130,7 +130,7 @@
         <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
 
-    <!-- Модалка просмотра информации о такси -->
+    <!-- Модалка просмотра/редактирования информации о такси -->
     <dialog id="taxiDetailsModal" class="modal">
         <div class="modal-box max-w-sm">
             <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
@@ -144,18 +144,17 @@
                 <span>Такси заказано</span>
             </h3>
             <input type="hidden" id="taxiDetailsTransferId">
-            <div class="space-y-3">
-                <div>
-                    <div class="text-xs opacity-50 mb-1">Информация о водителе</div>
-                    <div id="taxiDetailsDriver" class="whitespace-pre-wrap">—</div>
-                </div>
-                <div>
-                    <div class="text-xs opacity-50 mb-1">Заказал</div>
-                    <div id="taxiDetailsOrderedBy">—</div>
-                </div>
+            <div class="form-control mb-3">
+                <label class="label"><span class="label-text">Информация о водителе</span></label>
+                <textarea id="taxiDetailsDriver" class="textarea textarea-bordered" rows="3" placeholder="Имя, телефон, марка авто..."></textarea>
+            </div>
+            <div class="form-control mb-4">
+                <label class="label"><span class="label-text">Кто заказал:</span></label>
+                <input type="text" id="taxiDetailsOrderedBy" class="input input-bordered" placeholder="Кто заказывает">
             </div>
             <div class="modal-action">
                 <button class="btn btn-ghost" onclick="document.getElementById('taxiDetailsModal').close()">Закрыть</button>
+                <button class="btn btn-primary" onclick="saveEditedTaxiDetails()">Сохранить</button>
                 <button class="btn btn-error btn-outline" onclick="cancelTaxiFromDetails()">Отменить такси</button>
             </div>
         </div>
@@ -489,9 +488,44 @@
             const transfer = transfers.find(t => t.id == transferId);
             if (!transfer) return;
             document.getElementById('taxiDetailsTransferId').value = transferId;
-            document.getElementById('taxiDetailsDriver').textContent = transfer.taxi_driver_info || '—';
-            document.getElementById('taxiDetailsOrderedBy').textContent = transfer.taxi_ordered_by || '—';
+            document.getElementById('taxiDetailsDriver').value = transfer.taxi_driver_info || '';
+            document.getElementById('taxiDetailsOrderedBy').value = transfer.taxi_ordered_by || '';
             document.getElementById('taxiDetailsModal').showModal();
+        }
+
+        async function saveEditedTaxiDetails() {
+            const transferId = document.getElementById('taxiDetailsTransferId').value;
+            const driverInfo = document.getElementById('taxiDetailsDriver').value.trim();
+            const orderedBy = document.getElementById('taxiDetailsOrderedBy').value.trim();
+
+            if (!orderedBy) {
+                alert(t('specify_your_name'));
+                return;
+            }
+
+            const { error } = await Layout.db
+                .from('guest_transfers')
+                .update({
+                    taxi_driver_info: driverInfo || null,
+                    taxi_ordered_by: orderedBy
+                })
+                .eq('id', transferId);
+
+            if (error) {
+                console.error('Error updating taxi details:', error);
+                alert(t('error_saving') + ': ' + error.message);
+                return;
+            }
+
+            document.getElementById('taxiDetailsModal').close();
+
+            // Обновляем локальные данные
+            const t = transfers.find(t => t.id == transferId);
+            if (t) {
+                t.taxi_driver_info = driverInfo || null;
+                t.taxi_ordered_by = orderedBy;
+            }
+            renderTransfers();
         }
 
         async function cancelTaxiFromDetails() {
