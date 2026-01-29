@@ -452,8 +452,12 @@
             return baseAmount * multiplier;
         }
 
-        function formatAmount(amount) {
-            // Округление в большую сторону до 2 знаков после запятой
+        function formatAmount(amount, unit) {
+            // g, ml, tsp, tbsp — округление вверх до 1 знака после запятой
+            // остальные — до 2 знаков
+            if (['g', 'ml', 'tsp', 'tbsp'].includes(unit)) {
+                return Math.ceil(amount * 10) / 10;
+            }
             return Math.ceil(amount * 100) / 100;
         }
 
@@ -479,7 +483,7 @@
                 const unit = ing.unit;
 
                 // Выводим в той единице, которая указана в рецепте
-                const displayAmount = formatAmount(calculatedRaw);
+                const displayAmount = formatAmount(calculatedRaw, unit);
                 const displayUnit = unit;
 
                 // Альтернатива в скобках (граммы для ложек/стаканов/литров)
@@ -488,7 +492,7 @@
                     const grams = toGrams(calculatedRaw, unit, product.id);
                     if (grams !== null) {
                         const smart = formatSmart(grams, 'g');
-                        altText = ` <span class="opacity-50">(${formatAmount(smart.amount)} ${getUnitShort(smart.unit)})</span>`;
+                        altText = ` <span class="opacity-50">(${formatAmount(smart.amount, smart.unit)} ${getUnitShort(smart.unit)})</span>`;
                     }
                 }
 

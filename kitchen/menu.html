@@ -2030,9 +2030,14 @@
         }
 
         function formatIngredientAmount(amount, unit) {
-            // Округление в большую сторону до 2 знаков после запятой
-            // Единица измерения сохраняется из рецепта (без автоконвертации)
-            const val = Math.ceil(amount * 100) / 100;
+            // g, ml, tsp, tbsp — округление вверх до 1 знака после запятой
+            // остальные — до 2 знаков
+            let val;
+            if (['g', 'ml', 'tsp', 'tbsp'].includes(unit)) {
+                val = Math.ceil(amount * 10) / 10;
+            } else {
+                val = Math.ceil(amount * 100) / 100;
+            }
             return { value: val, unit: unit };
         }
 
