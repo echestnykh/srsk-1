@@ -228,15 +228,6 @@
             return UNITS[unit]?.[Layout.currentLang] || unit;
         }
 
-        // Конвертация из базовых единиц в единицы продукта
-        function convertFromBase(quantity, unit) {
-            if (!unit) return quantity;
-            const u = unit.toLowerCase();
-            if (u === 'kg') return quantity / 1000;
-            if (u === 'l') return quantity / 1000;
-            return quantity;
-        }
-
         // ==================== CONFIRM DIALOG ====================
         let confirmResolve = null;
 
@@ -646,8 +637,8 @@
                 const product = item.product;
                 if (!product) return '';
 
-                const expected = convertFromBase(item.expected_quantity, product.unit);
-                const actual = item.actual_quantity !== null ? convertFromBase(item.actual_quantity, product.unit) : null;
+                const expected = item.expected_quantity || 0;
+                const actual = item.actual_quantity;
                 const diff = actual !== null ? actual - expected : null;
 
                 let diffClass = '';
@@ -696,25 +687,23 @@
             const item = currentItems[idx];
             if (!item) return;
 
-            // Convert to base units for storage
-            let baseValue = null;
+            // Сохраняем в единицах продукта (без конвертации)
+            let actualValue = null;
             if (value !== '' && value !== null) {
                 const numValue = parseFloat(value);
                 if (!isNaN(numValue)) {
-                    if (unit === 'kg') baseValue = numValue * 1000;
-                    else if (unit === 'l') baseValue = numValue * 1000;
-                    else baseValue = numValue;
+                    actualValue = numValue;
                 }
             }
 
             // Update in DB
             await Layout.db
                 .from('stock_inventory_items')
-                .update({ actual_quantity: baseValue })
+                .update({ actual_quantity: actualValue })
                 .eq('id', item.id);
 
             // Update local
-            currentItems[idx].actual_quantity = baseValue;
+            currentItems[idx].actual_quantity = actualValue;
             updateStats();
             renderCountingItems();
         }
