@@ -109,22 +109,57 @@
 
     </main>
 
-    <!-- Модалка информации о такси -->
-    <dialog id="taxiInfoModal" class="modal">
+    <!-- Модалка заказа такси -->
+    <dialog id="taxiModal" class="modal">
         <div class="modal-box max-w-sm">
-            <h3 class="font-bold text-lg mb-4">🚕 <span data-i18n="taxi_ordered">Такси заказано</span></h3>
-            <div class="space-y-3">
-                <div>
-                    <div class="text-xs opacity-50 mb-1" data-i18n="driver_info">Информация о водителе</div>
-                    <div id="taxiInfoDriver" class="whitespace-pre-wrap">—</div>
-                </div>
-                <div>
-                    <div class="text-xs opacity-50 mb-1" data-i18n="ordered_by">Заказал</div>
-                    <div id="taxiInfoOrderedBy">—</div>
-                </div>
+            <form method="dialog">
+                <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+            </form>
+            <h3 class="font-bold text-lg mb-4">Заказ такси</h3>
+            <input type="hidden" id="taxiTransferId">
+            <div class="form-control mb-3">
+                <label class="label"><span class="label-text">Информация о водителе</span></label>
+                <textarea id="taxiDriverInfo" class="textarea textarea-bordered" rows="3" placeholder="Имя, телефон, марка авто..."></textarea>
+            </div>
+            <div class="form-control mb-4">
+                <label class="label"><span class="label-text">Кто заказал:</span></label>
+                <input type="text" id="taxiOrderedBy" class="input input-bordered" placeholder="Кто заказывает">
             </div>
             <div class="modal-action">
-                <form method="dialog"><button class="btn btn-ghost" data-i18n="close">Закрыть</button></form>
+                <button class="btn btn-primary" onclick="saveTaxiOrder()">Сохранить</button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+
+    <!-- Модалка просмотра/редактирования информации о такси -->
+    <dialog id="taxiDetailsModal" class="modal">
+        <div class="modal-box max-w-sm">
+            <form method="dialog">
+                <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+            </form>
+            <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-success" viewBox="0 0 103.07 59.75" fill="currentColor">
+                    <path d="M5.75,53.47c-1.68-1.71-2.63-4.23-2.68-6.64,2.97-10.49,6.26-20.89,9.36-31.35,1.71-5.78,1.81-10.95,9.24-12.11h58.86c3.74.23,7.15,2.76,8.35,6.35.33,1,.31,1.98.58,2.89,3.38,11.42,6.9,22.8,10.18,34.25-.11,4.72-3.5,8.64-8.16,9.3H11.55c-2.09-.16-4.35-1.22-5.8-2.7ZM21.72,9.78c-2.2.69-1.86,2.64-2.36,4.28-3.3,10.95-6.61,21.9-9.85,32.87-.47,2.23,1.92,3.11,3.77,3.19h76.19c1.99-.17,3.63-.69,3.83-2.97-3.25-10.64-6.4-21.3-9.61-31.95-.48-1.59-.56-4.58-2.24-5.26l-59.73-.16Z"/>
+                    <polygon points="60.75 20.68 63.64 26.16 67.25 20.68 72.58 20.68 66.57 29.82 72.29 38.86 66.96 38.86 63.64 33.67 61.04 38.86 55.27 38.86 60.98 29.81 55.27 20.68 60.75 20.68"/>
+                    <path d="M37.96,38.86l6.09-18.15,4.45-.05,6.48,18.2h-4.76l-1.27-3.29-4.91-.14-.89,3.43h-5.19ZM48.06,31.93c-.5-1.5-.78-3.12-1.3-4.61-.1-.28-.03-.66-.42-.58l-1.45,5.19h3.17Z"/>
+                    <polygon points="39.12 20.68 39.12 25.01 33.92 25.01 33.92 38.86 28.73 38.86 28.73 25.01 23.54 25.01 23.54 20.68 39.12 20.68"/>
+                    <rect x="74.03" y="20.68" width="5.19" height="18.18"/>
+                </svg>
+                <span>Такси заказано</span>
+            </h3>
+            <input type="hidden" id="taxiDetailsTransferId">
+            <div class="form-control mb-3">
+                <label class="label"><span class="label-text">Информация о водителе</span></label>
+                <textarea id="taxiDetailsDriver" class="textarea textarea-bordered" rows="3" placeholder="Имя, телефон, марка авто..."></textarea>
+            </div>
+            <div class="form-control mb-4">
+                <label class="label"><span class="label-text">Кто заказал:</span></label>
+                <input type="text" id="taxiDetailsOrderedBy" class="input input-bordered" placeholder="Кто заказывает">
+            </div>
+            <div class="modal-action">
+                <button class="btn btn-primary" onclick="saveEditedTaxiDetails()">Сохранить</button>
+                <button class="btn btn-error btn-outline" onclick="cancelTaxiFromDetails()">Отменить такси</button>
             </div>
         </div>
         <form method="dialog" class="modal-backdrop"><button>close</button></form>
@@ -625,7 +660,7 @@
                     <td class="text-sm">${genderAge || '—'}</td>
                     <td class="text-sm text-center">
                         <div class="font-semibold">${estimatedCheckout ? formatTime(estimatedCheckout) : '—'}</div>
-                        ${needsTransfer ? (taxiOrdered ? `<div class="badge badge-success badge-xs gap-1 mt-1"><svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 103.07 59.75" fill="currentColor"><path d="M5.75,53.47c-1.68-1.71-2.63-4.23-2.68-6.64,2.97-10.49,6.26-20.89,9.36-31.35,1.71-5.78,1.81-10.95,9.24-12.11h58.86c3.74.23,7.15,2.76,8.35,6.35.33,1,.31,1.98.58,2.89,3.38,11.42,6.9,22.8,10.18,34.25-.11,4.72-3.5,8.64-8.16,9.3H11.55c-2.09-.16-4.35-1.22-5.8-2.7ZM21.72,9.78c-2.2.69-1.86,2.64-2.36,4.28-3.3,10.95-6.61,21.9-9.85,32.87-.47,2.23,1.92,3.11,3.77,3.19h76.19c1.99-.17,3.63-.69,3.83-2.97-3.25-10.64-6.4-21.3-9.61-31.95-.48-1.59-.56-4.58-2.24-5.26l-59.73-.16Z"/><polygon points="60.75 20.68 63.64 26.16 67.25 20.68 72.58 20.68 66.57 29.82 72.29 38.86 66.96 38.86 63.64 33.67 61.04 38.86 55.27 38.86 60.98 29.81 55.27 20.68 60.75 20.68"/><path d="M37.96,38.86l6.09-18.15,4.45-.05,6.48,18.2h-4.76l-1.27-3.29-4.91-.14-.89,3.43h-5.19ZM48.06,31.93c-.5-1.5-.78-3.12-1.3-4.61-.1-.28-.03-.66-.42-.58l-1.45,5.19h3.17Z"/><polygon points="39.12 20.68 39.12 25.01 33.92 25.01 33.92 38.86 28.73 38.86 28.73 25.01 23.54 25.01 23.54 20.68 39.12 20.68"/><rect x="74.03" y="20.68" width="5.19" height="18.18"/></svg>${t('ordered')}</div>` : `<div class="badge badge-warning badge-xs gap-1 mt-1"><svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 103.07 59.75" fill="currentColor"><path d="M5.75,53.47c-1.68-1.71-2.63-4.23-2.68-6.64,2.97-10.49,6.26-20.89,9.36-31.35,1.71-5.78,1.81-10.95,9.24-12.11h58.86c3.74.23,7.15,2.76,8.35,6.35.33,1,.31,1.98.58,2.89,3.38,11.42,6.9,22.8,10.18,34.25-.11,4.72-3.5,8.64-8.16,9.3H11.55c-2.09-.16-4.35-1.22-5.8-2.7ZM21.72,9.78c-2.2.69-1.86,2.64-2.36,4.28-3.3,10.95-6.61,21.9-9.85,32.87-.47,2.23,1.92,3.11,3.77,3.19h76.19c1.99-.17,3.63-.69,3.83-2.97-3.25-10.64-6.4-21.3-9.61-31.95-.48-1.59-.56-4.58-2.24-5.26l-59.73-.16Z"/><polygon points="60.75 20.68 63.64 26.16 67.25 20.68 72.58 20.68 66.57 29.82 72.29 38.86 66.96 38.86 63.64 33.67 61.04 38.86 55.27 38.86 60.98 29.81 55.27 20.68 60.75 20.68"/><path d="M37.96,38.86l6.09-18.15,4.45-.05,6.48,18.2h-4.76l-1.27-3.29-4.91-.14-.89,3.43h-5.19ZM48.06,31.93c-.5-1.5-.78-3.12-1.3-4.61-.1-.28-.03-.66-.42-.58l-1.45,5.19h3.17Z"/><polygon points="39.12 20.68 39.12 25.01 33.92 25.01 33.92 38.86 28.73 38.86 28.73 25.01 23.54 25.01 23.54 20.68 39.12 20.68"/><rect x="74.03" y="20.68" width="5.19" height="18.18"/></svg>${t('needs_transfer')}</div>`) : ''}
+                        ${needsTransfer ? (taxiOrdered ? `<div class="badge badge-success badge-xs gap-1 mt-1 cursor-pointer" onclick="event.stopPropagation(); showTaxiDetails('${departure.id}')"><svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 103.07 59.75" fill="currentColor"><path d="M5.75,53.47c-1.68-1.71-2.63-4.23-2.68-6.64,2.97-10.49,6.26-20.89,9.36-31.35,1.71-5.78,1.81-10.95,9.24-12.11h58.86c3.74.23,7.15,2.76,8.35,6.35.33,1,.31,1.98.58,2.89,3.38,11.42,6.9,22.8,10.18,34.25-.11,4.72-3.5,8.64-8.16,9.3H11.55c-2.09-.16-4.35-1.22-5.8-2.7ZM21.72,9.78c-2.2.69-1.86,2.64-2.36,4.28-3.3,10.95-6.61,21.9-9.85,32.87-.47,2.23,1.92,3.11,3.77,3.19h76.19c1.99-.17,3.63-.69,3.83-2.97-3.25-10.64-6.4-21.3-9.61-31.95-.48-1.59-.56-4.58-2.24-5.26l-59.73-.16Z"/><polygon points="60.75 20.68 63.64 26.16 67.25 20.68 72.58 20.68 66.57 29.82 72.29 38.86 66.96 38.86 63.64 33.67 61.04 38.86 55.27 38.86 60.98 29.81 55.27 20.68 60.75 20.68"/><path d="M37.96,38.86l6.09-18.15,4.45-.05,6.48,18.2h-4.76l-1.27-3.29-4.91-.14-.89,3.43h-5.19ZM48.06,31.93c-.5-1.5-.78-3.12-1.3-4.61-.1-.28-.03-.66-.42-.58l-1.45,5.19h3.17Z"/><polygon points="39.12 20.68 39.12 25.01 33.92 25.01 33.92 38.86 28.73 38.86 28.73 25.01 23.54 25.01 23.54 20.68 39.12 20.68"/><rect x="74.03" y="20.68" width="5.19" height="18.18"/></svg>${t('ordered')}</div>` : `<div class="badge badge-warning badge-xs gap-1 mt-1 cursor-pointer" onclick="event.stopPropagation(); openTaxiModal('${departure.id}')"><svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 103.07 59.75" fill="currentColor"><path d="M5.75,53.47c-1.68-1.71-2.63-4.23-2.68-6.64,2.97-10.49,6.26-20.89,9.36-31.35,1.71-5.78,1.81-10.95,9.24-12.11h58.86c3.74.23,7.15,2.76,8.35,6.35.33,1,.31,1.98.58,2.89,3.38,11.42,6.9,22.8,10.18,34.25-.11,4.72-3.5,8.64-8.16,9.3H11.55c-2.09-.16-4.35-1.22-5.8-2.7ZM21.72,9.78c-2.2.69-1.86,2.64-2.36,4.28-3.3,10.95-6.61,21.9-9.85,32.87-.47,2.23,1.92,3.11,3.77,3.19h76.19c1.99-.17,3.63-.69,3.83-2.97-3.25-10.64-6.4-21.3-9.61-31.95-.48-1.59-.56-4.58-2.24-5.26l-59.73-.16Z"/><polygon points="60.75 20.68 63.64 26.16 67.25 20.68 72.58 20.68 66.57 29.82 72.29 38.86 66.96 38.86 63.64 33.67 61.04 38.86 55.27 38.86 60.98 29.81 55.27 20.68 60.75 20.68"/><path d="M37.96,38.86l6.09-18.15,4.45-.05,6.48,18.2h-4.76l-1.27-3.29-4.91-.14-.89,3.43h-5.19ZM48.06,31.93c-.5-1.5-.78-3.12-1.3-4.61-.1-.28-.03-.66-.42-.58l-1.45,5.19h3.17Z"/><polygon points="39.12 20.68 39.12 25.01 33.92 25.01 33.92 38.86 28.73 38.86 28.73 25.01 23.54 25.01 23.54 20.68 39.12 20.68"/><rect x="74.03" y="20.68" width="5.19" height="18.18"/></svg>${t('needs_transfer')}</div>`) : ''}
                     </td>
                     <td class="text-sm text-center">
                         <div>${flightTime ? formatDateTime(flightTime) : '—'}</div>
@@ -679,11 +714,9 @@
             }
             if (departure?.needs_transfer === 'yes') {
                 if (departure.taxi_status === 'ordered') {
-                    const driverInfo = departure.taxi_driver_info ? departure.taxi_driver_info.replace(/'/g, '&#39;').replace(/"/g, '&quot;') : '';
-                    const orderedBy = departure.taxi_ordered_by ? departure.taxi_ordered_by.replace(/'/g, '&#39;').replace(/"/g, '&quot;') : '';
-                    infoParts.push(`<span class="badge badge-success badge-sm gap-1 cursor-pointer" onclick="event.preventDefault(); showTaxiInfo('${driverInfo}', '${orderedBy}')">🚕 ${t('ordered')}</span>`);
+                    infoParts.push(`<span class="badge badge-success badge-sm gap-1 cursor-pointer" onclick="event.preventDefault(); showTaxiDetails('${departure.id}')">🚕 ${t('ordered')}</span>`);
                 } else {
-                    infoParts.push(`<span class="badge badge-warning badge-sm gap-1">🚕 ${t('needs_transfer')}</span>`);
+                    infoParts.push(`<span class="badge badge-warning badge-sm gap-1 cursor-pointer" onclick="event.preventDefault(); openTaxiModal('${departure.id}')">🚕 ${t('needs_transfer')}</span>`);
                 }
             }
             if (accommodation) {
@@ -842,10 +875,134 @@
         }
 
         // ==================== ТАКСИ ====================
-        function showTaxiInfo(driverInfo, orderedBy) {
-            document.getElementById('taxiInfoDriver').textContent = driverInfo || '—';
-            document.getElementById('taxiInfoOrderedBy').textContent = orderedBy || '—';
-            document.getElementById('taxiInfoModal').showModal();
+        function openTaxiModal(transferId) {
+            document.getElementById('taxiTransferId').value = transferId;
+            document.getElementById('taxiDriverInfo').value = '';
+            document.getElementById('taxiOrderedBy').value = localStorage.getItem('srsk_taxi_name') || '';
+            document.getElementById('taxiModal').showModal();
+        }
+
+        async function saveTaxiOrder() {
+            const transferId = document.getElementById('taxiTransferId').value;
+            const driverInfo = document.getElementById('taxiDriverInfo').value.trim();
+            const orderedBy = document.getElementById('taxiOrderedBy').value.trim();
+
+            if (!orderedBy) {
+                Layout.showNotification(t('specify_your_name'), 'warning');
+                return;
+            }
+
+            localStorage.setItem('srsk_taxi_name', orderedBy);
+
+            const { error } = await Layout.db
+                .from('guest_transfers')
+                .update({
+                    taxi_status: 'ordered',
+                    taxi_driver_info: driverInfo || null,
+                    taxi_ordered_by: orderedBy
+                })
+                .eq('id', transferId);
+
+            if (error) {
+                Layout.handleError(error, 'Сохранение заказа такси');
+                return;
+            }
+
+            document.getElementById('taxiModal').close();
+
+            // Обновляем локальные данные
+            registrations.forEach(reg => {
+                const departure = (reg.guest_transfers || []).find(t => t.id === transferId);
+                if (departure) {
+                    departure.taxi_status = 'ordered';
+                    departure.taxi_driver_info = driverInfo || null;
+                    departure.taxi_ordered_by = orderedBy;
+                }
+            });
+            renderTable();
+        }
+
+        function showTaxiDetails(transferId) {
+            let transfer = null;
+            registrations.forEach(reg => {
+                const departure = (reg.guest_transfers || []).find(t => t.id === transferId);
+                if (departure) transfer = departure;
+            });
+            if (!transfer) return;
+
+            document.getElementById('taxiDetailsTransferId').value = transferId;
+            document.getElementById('taxiDetailsDriver').value = transfer.taxi_driver_info || '';
+            document.getElementById('taxiDetailsOrderedBy').value = transfer.taxi_ordered_by || '';
+            document.getElementById('taxiDetailsModal').showModal();
+        }
+
+        async function saveEditedTaxiDetails() {
+            const transferId = document.getElementById('taxiDetailsTransferId').value;
+            const driverInfo = document.getElementById('taxiDetailsDriver').value.trim();
+            const orderedBy = document.getElementById('taxiDetailsOrderedBy').value.trim();
+
+            if (!orderedBy) {
+                Layout.showNotification(t('specify_your_name'), 'warning');
+                return;
+            }
+
+            const { error } = await Layout.db
+                .from('guest_transfers')
+                .update({
+                    taxi_driver_info: driverInfo || null,
+                    taxi_ordered_by: orderedBy
+                })
+                .eq('id', transferId);
+
+            if (error) {
+                Layout.handleError(error, 'Обновление информации о такси');
+                return;
+            }
+
+            document.getElementById('taxiDetailsModal').close();
+
+            // Обновляем локальные данные
+            registrations.forEach(reg => {
+                const departure = (reg.guest_transfers || []).find(t => t.id === transferId);
+                if (departure) {
+                    departure.taxi_driver_info = driverInfo || null;
+                    departure.taxi_ordered_by = orderedBy;
+                }
+            });
+            renderTable();
+        }
+
+        async function cancelTaxiFromDetails() {
+            const transferId = document.getElementById('taxiDetailsTransferId').value;
+            document.getElementById('taxiDetailsModal').close();
+            await cancelTaxi(transferId);
+        }
+
+        async function cancelTaxi(transferId) {
+            const { error } = await Layout.db
+                .from('guest_transfers')
+                .update({
+                    taxi_status: null,
+                    taxi_driver_info: null,
+                    taxi_ordered_by: null
+                })
+                .eq('id', transferId);
+
+            if (error) {
+                Layout.handleError(error, 'Отмена такси');
+                return;
+            }
+
+            // Обновляем локальные данные
+            registrations.forEach(reg => {
+                const departure = (reg.guest_transfers || []).find(t => t.id === transferId);
+                if (departure) {
+                    departure.taxi_status = null;
+                    departure.taxi_driver_info = null;
+                    departure.taxi_ordered_by = null;
+                }
+            });
+            renderTable();
         }
 
         // ==================== INIT ====================
