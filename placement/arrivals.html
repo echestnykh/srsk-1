@@ -209,7 +209,7 @@
                 `)
                 .eq('retreat_id', retreatId)
                 .eq('is_deleted', false)
-                .in('status', ['pending', 'confirmed', 'team']);
+                .in('status', ['guest', 'team']);
 
             if (regResult.error) {
                 Layout.hideLoader();
