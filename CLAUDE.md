@@ -43,6 +43,10 @@ npx serve .
 
 ### Core Files
 
+- **js/config.js** — Централизованная конфигурация (подключать ПЕРВЫМ):
+  - `CONFIG.SUPABASE_URL` и `CONFIG.SUPABASE_ANON_KEY`
+  - Создан для устранения дублирования credentials
+
 - **js/layout.js** — Единая точка входа для всех страниц:
   - Хедер, футер, навигация
   - Переключение языков и локаций
@@ -51,10 +55,18 @@ npx serve .
   - Утилиты: `Layout.getName()`, `Layout.pluralize()`, `Layout.debounce()`, `Layout.escapeHtml()`
   - Прелоадер: `Layout.showLoader()`, `Layout.hideLoader()`
   - Обработка ошибок: `Layout.handleError(error, context)` — toast-уведомление + console.error
+  - Уведомления: `Layout.showNotification(message, type)` — type: 'info', 'success', 'warning', 'error'
   - Форматирование количеств: `Layout.formatQuantity(amount, unit)` — округление вверх
     - g, ml, tsp, tbsp → до 1 знака после запятой
     - kg, l, pcs, cup → до 2 знаков после запятой
   - Обёрнут в IIFE для изоляции переменных
+
+- **js/utils.js** — Вспомогательные утилиты:
+  - `Utils.isValidColor(color)` — валидация hex-цветов (#RRGGBB)
+
+- **js/cache.js** — Клиентский кэш с localStorage:
+  - `Cache.getOrLoad(key, loadFn, ttl)` — получить из кэша или загрузить
+  - `Cache.invalidate(key)` — сбросить кэш для конкретного ключа
 
 - **js/vaishnavas-utils.js** — Общие функции для vaishnavas/index.html, team.html, guests.html:
   - Поиск, сортировка, фильтрация списков людей
@@ -78,6 +90,9 @@ npx serve .
     <div id="header-placeholder"></div>
     <main>...</main>
     <div id="footer-placeholder"></div>
+    <script src="../js/config.js"></script> <!-- ОБЯЗАТЕЛЬНО ПЕРВЫМ -->
+    <script src="../js/cache.js"></script>
+    <script src="../js/utils.js"></script>
     <script src="../js/layout.js"></script>
     <script src="../js/vaishnavas-utils.js"></script> <!-- только для vaishnavas/ -->
     <script>
@@ -100,6 +115,8 @@ npx serve .
 - `data-i18n="key"` атрибут для автоматического перевода элементов
 - `data-i18n-placeholder="key"` для placeholder'ов
 - `window.onLanguageChange(lang)` — колбэк при смене языка
+- **Кэширование:** переводы кэшируются в localStorage через `Cache.getOrLoad('translations', ...)`
+- **Автоинвалидация:** если в кэше отсутствуют новые ключи (проверяется список), кэш автоматически инвалидируется
 
 ### Database Tables
 
@@ -126,8 +143,12 @@ npx serve .
 
 Housing (модуль проживания):
 - `buildings`, `building_types` — здания
+  - `is_temporary` + `available_from`/`available_until` — временные здания с датами
+  - `is_temporary` + NULL dates — временные здания без ограничения (доступно всегда)
+  - `sort_order` группировка: 1-10 постоянные, 50-59 временные без дат, 100+ временные с датами
 - `rooms`, `room_types` — комнаты
 - `residents`, `resident_categories` — проживающие (связь через `vaishnava_id`)
+  - `room_id` может быть NULL = "Самостоятельно" (гость живет вне ашрама)
 - `bookings` — бронирования
 - `room_cleanings`, `cleaning_tasks` — уборка
 - `floor_plans` — планы этажей (SVG)
@@ -184,13 +205,19 @@ const { data, error } = await Layout.db
     .order('name_ru');
 ```
 
-### Обработка ошибок
+### Обработка ошибок и уведомлений
 ```javascript
-// Унифицированная обработка — toast + console.error
+// Унифицированная обработка ошибок — toast + console.error
 if (error) {
     Layout.handleError(error, 'Загрузка рецептов');
     return;
 }
+
+// Успешные операции и информирование
+Layout.showNotification('Данные сохранены', 'success');
+Layout.showNotification('Проверьте заполнение полей', 'warning');
+
+// НЕ ИСПОЛЬЗОВАТЬ alert() — заменять на Layout.showNotification()
 ```
 
 ## Menu Structure
@@ -228,7 +255,30 @@ if (error) {
 
 3. **Трёхязычность** — все тексты должны иметь переводы (ru, en, hi).
 
-4. **Поле поиска с крестиком** — все поля поиска должны иметь кнопку очистки (крестик), которая появляется при вводе текста и очищает поле по клику:
+4. **Безопасность от XSS**:
+   - НЕ ИСПОЛЬЗОВАТЬ `innerHTML` с пользовательскими данными
+   - Использовать DOM API: `textContent`, `createElement()`, `appendChild()`
+   - Для HTML из БД использовать `Layout.escapeHtml()`
+   - Валидировать цвета перед вставкой в style: `Utils.isValidColor(color)`
+
+5. **Inline onclick запрещены** — использовать event delegation вместо inline обработчиков:
+   ```html
+   <!-- НЕ ИСПОЛЬЗОВАТЬ -->
+   <button onclick="doSomething()">Click</button>
+
+   <!-- ИСПОЛЬЗОВАТЬ -->
+   <button data-action="do-something">Click</button>
+   ```
+   ```javascript
+   document.addEventListener('click', (e) => {
+       const action = e.target.closest('[data-action]');
+       if (action?.dataset.action === 'do-something') {
+           doSomething();
+       }
+   });
+   ```
+
+6. **Поле поиска с крестиком** — все поля поиска должны иметь кнопку очистки (крестик), которая появляется при вводе текста и очищает поле по клику:
 ```html
 <div class="relative w-full sm:w-64">
     <input type="text" id="searchInput" class="input input-bordered w-full pl-10 pr-8" placeholder="Поиск..." oninput="onSearchInput(this.value)" />
@@ -261,7 +311,9 @@ Supabase Storage buckets с публичным доступом:
 
 ## Common Issues
 
-1. **Конфликт имён** — layout.js обёрнут в IIFE, но если объявить `const t` на странице до вызова `Layout.t`, может быть конфликт. Используйте `const t = key => Layout.t(key);` после загрузки layout.js.
+1. **Конфликт имён переменной `t`** — layout.js обёрнут в IIFE, но если объявить `const t` на странице до вызова `Layout.t`, может быть конфликт.
+   - Используйте `const t = key => Layout.t(key);` после загрузки layout.js
+   - В циклах/функциях где переменная `t` используется для других целей (например, transfer объект), используйте `Layout.t()` напрямую
 
 2. **RLS на Supabase** — при update/insert с `.select().single()` может вернуть ошибку если RLS не настроен. Используйте `.select()` и берите `result.data?.[0]`.
 
@@ -269,7 +321,22 @@ Supabase Storage buckets с публичным доступом:
 
 4. **Skeleton loaders** — HTML содержит skeleton-карточки, которые заменяются после загрузки данных.
 
-5. **N+1 запросы** — избегать циклов с await внутри. Загружать все данные одним запросом с `.in()` и группировать на клиенте:
+5. **Кэш переводов** — после добавления новых переводов в БД кэш может быть устаревшим:
+   - Автоматическая инвалидация работает только для известных ключей (см. `loadTranslations()` в layout.js)
+   - Вручную: `Cache.invalidate('translations'); location.reload();` в консоли
+   - Или обновление с очисткой: `Ctrl+Shift+R`
+
+6. **Browser back-forward cache (bfcache)** — при навигации "Назад" страница восстанавливается из кэша без выполнения JS:
+   ```javascript
+   window.addEventListener('pageshow', (event) => {
+       if (event.persisted) {
+           // Перерисовать UI с актуальными данными
+           renderTable();
+       }
+   });
+   ```
+
+7. **N+1 запросы** — избегать циклов с await внутри. Загружать все данные одним запросом с `.in()` и группировать на клиенте:
 ```javascript
 // Плохо: N+1 запросов
 for (const booking of bookings) {
