@@ -187,13 +187,24 @@ function renderPersonRow(person, opts = {}) {
         badgeHtml += '<span class="badge badge-success badge-xs ml-1">Здесь</span>';
     }
 
+    // Аватар: фото или инициалы
+    const photoUrl = person.photo_url;
+    const initials = (person.spiritual_name || displayName)
+        .split(' ')
+        .map(w => w[0])
+        .join('')
+        .substring(0, 2)
+        .toUpperCase();
+
+    const avatarHtml = photoUrl
+        ? `<img src="${e(photoUrl)}" class="w-10 h-10 rounded-full object-cover" alt="" onerror="this.outerHTML='<div class=\\"w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold\\">${initials}</div>'">`
+        : `<div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold">${initials}</div>`;
+
     return `
         <tr class="hover cursor-pointer" onclick="window.location.href='person.html?id=${e(person.id)}'">
             <td>
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-base-200 flex items-center justify-center shrink-0">
-                        ${AVATAR_PLACEHOLDER}
-                    </div>
+                    ${avatarHtml}
                     <div class="min-w-0">
                         <div class="font-medium truncate">${e(displayName)}</div>
                         ${badgeHtml}
