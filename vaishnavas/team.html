@@ -98,11 +98,8 @@
                                 <span class="sort-icon" data-sort="department">↕</span>
                             </div>
                         </th>
-                        <th class="cursor-pointer hover:bg-base-200 select-none w-1/6" onclick="toggleSort('country')">
-                            <div class="flex items-center gap-1">
-                                <span data-i18n="country">Страна</span>
-                                <span class="sort-icon" data-sort="country">↕</span>
-                            </div>
+                        <th class="w-1/5">
+                            <span>В ШРСК</span>
                         </th>
                         <th class="cursor-pointer hover:bg-base-200 select-none w-1/5" onclick="toggleSort('teacher')">
                             <div class="flex items-center gap-1">
@@ -242,6 +239,26 @@
             document.getElementById('countPresent').textContent = people.filter(p => V.isPresent(p.id, stays, today)).length;
         }
 
+        function getStayStatus(personId) {
+            const personStays = stays[personId] || [];
+
+            // Проверяем присутствие сейчас
+            const currentStay = personStays.find(s => s.start_date <= today && s.end_date >= today);
+            if (currentStay) {
+                return 'Находится в ШРСК';
+            }
+
+            // Проверяем будущие записи
+            const futureStays = personStays.filter(s => s.start_date > today).sort((a, b) => a.start_date.localeCompare(b.start_date));
+            if (futureStays.length > 0) {
+                const date = new Date(futureStays[0].start_date);
+                const formatted = date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+                return `Планирует приехать ${formatted}`;
+            }
+
+            return '';
+        }
+
         function renderTeamRow(person, opts = {}) {
             const e = Layout.escapeHtml;
             const displayName = [person.first_name, person.last_name].filter(Boolean).join(' ') || Layout.t('no_name');
@@ -294,7 +311,7 @@
                         </div>
                     </td>
                     <td>${deptHtml}</td>
-                    <td class="truncate">${e(person.country || '')}</td>
+                    <td class="text-sm">${e(getStayStatus(person.id))}</td>
                     <td class="truncate">${e(person.spiritual_teacher || '')}</td>
                     <td class="truncate text-sm opacity-60">${e(person.phone || '')}</td>
                     <td>
