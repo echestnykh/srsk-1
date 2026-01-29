@@ -835,9 +835,20 @@
                     aVal = aTransfer?.flight_datetime || '9999';
                     bVal = bTransfer?.flight_datetime || '9999';
                 } else if (sortField === 'notes') {
-                    // Сортировка по локальным заметкам
-                    aVal = (getLocalNotes(a.id) || '').toLowerCase();
-                    bVal = (getLocalNotes(b.id) || '').toLowerCase();
+                    // Сортировка по локальным заметкам - пустые заметки всегда внизу
+                    const aNotes = getLocalNotes(a.id);
+                    const bNotes = getLocalNotes(b.id);
+
+                    // Если оба пустые - не меняем порядок
+                    if (!aNotes && !bNotes) return 0;
+                    // Если только a пустое - оно всегда в конец (независимо от направления)
+                    if (!aNotes) return 1;
+                    // Если только b пустое - оно всегда в конец
+                    if (!bNotes) return -1;
+
+                    // Оба не пустые - сортируем нормально
+                    aVal = aNotes.toLowerCase();
+                    bVal = bNotes.toLowerCase();
                 } else if (sortField === 'building') {
                     // Сортировка по названию здания
                     const aBuilding = buildings.find(bldg => bldg.id === a.resident?.rooms?.building_id);
@@ -959,7 +970,7 @@
 
                 return `
                     <tr class="hover align-top">
-                        <td class="cursor-pointer" onclick="window.location.href='person.html?id=${v?.id}'">
+                        <td class="cursor-pointer ${buildingId === 'self' ? 'bg-error/20' : (buildingId && roomId) ? 'bg-success/20' : ''}" onclick="window.location.href='person.html?id=${v?.id}'">
                             <div class="flex gap-3 items-center">
                                 ${photoUrl
                                     ? `<img src="${e(photoUrl)}" class="guest-photo" alt="" data-initials="${initialsUpper}" onerror="replaceWithPlaceholder(this)" onclick="event.stopPropagation(); Layout.openPhotoModal('${e(photoUrl)}')">`
@@ -996,13 +1007,14 @@
                         </td>
                         <td class="text-sm">
                             <textarea
-                                class="textarea textarea-xs textarea-bordered w-full"
-                                rows="2"
+                                class="textarea textarea-xs textarea-bordered w-full auto-resize-textarea"
+                                rows="1"
                                 placeholder="${t('preliminary_notes_placeholder')}"
+                                oninput="autoResizeTextarea(this)"
                                 onchange="saveLocalNotes('${reg.id}', this.value)"
                                 onclick="event.stopPropagation()">${e(localNotes || '')}</textarea>
                         </td>
-                        <td class="text-sm ${buildingId === 'self' ? 'bg-error/20' : ''}">
+                        <td class="text-sm ${buildingId === 'self' ? 'bg-error/20' : buildingId ? 'bg-success/20' : ''}">
                             <select class="select select-xs select-bordered w-full"
                                 onchange="onBuildingChange('${reg.id}', this.value)"
                                 onclick="event.stopPropagation()">
@@ -1011,7 +1023,7 @@
                                 <option value="self" ${buildingId === 'self' ? 'selected' : ''}>${t('self_accommodation')}</option>
                             </select>
                         </td>
-                        <td class="text-sm ${buildingId === 'self' ? 'bg-error/20' : ''}">
+                        <td class="text-sm ${buildingId === 'self' ? 'bg-error/20' : roomId ? 'bg-success/20' : ''}">
                             <select class="select select-xs select-bordered w-full ${buildingId === 'self' ? 'hidden' : ''}"
                                 id="room_select_${reg.id}"
                                 onchange="onRoomChange('${reg.id}', this.value)"
@@ -1023,6 +1035,13 @@
                     </tr>
                 `;
             }).join('');
+
+            // Автоматическая подстройка высоты для всех textarea с заметками
+            setTimeout(() => {
+                document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
+                    autoResizeTextarea(textarea);
+                });
+            }, 0);
         }
 
         // ==================== NOTES (LOCAL STORAGE) ====================
@@ -1038,6 +1057,12 @@
             } else {
                 localStorage.removeItem(key);
             }
+        }
+
+        // Автоматическая подстройка высоты textarea
+        function autoResizeTextarea(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
         }
 
         // ==================== BUILDING & ROOM SELECTION ====================
