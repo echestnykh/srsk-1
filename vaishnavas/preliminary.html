@@ -915,14 +915,15 @@
                 const initials = spiritualName
                     ? spiritualName.split(' ').map(w => w[0]).join('').substring(0, 2)
                     : name.split(' ').map(w => w[0]).join('').substring(0, 2);
+                const initialsUpper = initials.toUpperCase();
 
                 return `
                     <tr class="hover align-top">
                         <td class="cursor-pointer" onclick="window.location.href='person.html?id=${v?.id}'">
                             <div class="flex gap-3 items-center">
                                 ${photoUrl
-                                    ? `<img src="${photoUrl}" class="guest-photo" alt="">`
-                                    : `<div class="guest-photo-placeholder">${initials.toUpperCase()}</div>`
+                                    ? `<img src="${photoUrl}" class="guest-photo" alt="" onerror="this.outerHTML='<div class=\\"guest-photo-placeholder\\">${initialsUpper}</div>'">`
+                                    : `<div class="guest-photo-placeholder">${initialsUpper}</div>`
                                 }
                                 <div>
                                     ${spiritualName ? `<div class="font-medium">${e(spiritualName)}</div>` : ''}
