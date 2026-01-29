@@ -365,7 +365,7 @@ function getHeaderHTML() {
                                 <img src="https://i.pravatar.cc/150?img=5" alt="User" class="w-full h-full object-cover" />
                             </div>
                             <!-- TODO: заменить на данные из auth -->
-                            <span class="font-medium" id="userName">Ганга деви даси</span>
+                            <span class="font-medium" id="userName" data-i18n="user">Пользователь</span>
                         </div>
                         <div class="md:hidden join">
                             <button class="join-item btn btn-sm lang-btn ${currentLang === 'ru' ? 'active' : ''}" data-lang="ru">RU</button>
