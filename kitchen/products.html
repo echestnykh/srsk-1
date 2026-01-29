@@ -98,14 +98,20 @@
                                     <span id="sort-icon-unit" class="opacity-40">↕</span>
                                 </div>
                             </th>
+                            <th class="bg-base-100 w-12 text-center cursor-pointer select-none hover:bg-base-200 transition-colors" onclick="toggleSort('ekadashi')" title="Экадаши">
+                                <div class="flex items-center justify-center gap-1">
+                                    <span>Э</span>
+                                    <span id="sort-icon-ekadashi" class="opacity-40">↕</span>
+                                </div>
+                            </th>
                             <th class="bg-base-100 w-20"></th>
                         </tr>
                     </thead>
                     <tbody id="productsTable">
                         <!-- Skeleton rows -->
-                        <tr><td colspan="4"><div class="skeleton h-6 w-full my-2"></div></td></tr>
-                        <tr><td colspan="4"><div class="skeleton h-6 w-full my-2"></div></td></tr>
-                        <tr><td colspan="4"><div class="skeleton h-6 w-full my-2"></div></td></tr>
+                        <tr><td colspan="5"><div class="skeleton h-6 w-full my-2"></div></td></tr>
+                        <tr><td colspan="5"><div class="skeleton h-6 w-full my-2"></div></td></tr>
+                        <tr><td colspan="5"><div class="skeleton h-6 w-full my-2"></div></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -181,6 +187,15 @@
                     <label class="label"><span class="label-text font-medium" data-i18n="purchase_url">Ссылка на покупку</span></label>
                     <input type="url" name="purchase_url" class="input input-bordered w-full" placeholder="https://amazon.in/..." />
                     <label class="label"><span class="label-text-alt opacity-60" data-i18n="purchase_url_hint">Amazon, магазин и т.д.</span></label>
+                </div>
+
+                <!-- Экадаши -->
+                <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-3">
+                        <input type="checkbox" name="ekadashi" class="checkbox checkbox-primary" checked />
+                        <span class="label-text font-medium" data-i18n="ekadashi_suitable">Подходит для Экадаши</span>
+                    </label>
+                    <label class="label pt-0"><span class="label-text-alt opacity-60" data-i18n="ekadashi_hint">Без зерновых и бобовых</span></label>
                 </div>
 
                 <div class="modal-action">
@@ -354,7 +369,7 @@
         }
 
         function updateSortIcons() {
-            const columns = ['name', 'category', 'unit'];
+            const columns = ['name', 'category', 'unit', 'ekadashi'];
             columns.forEach(col => {
                 const icon = Layout.$(`#sort-icon-${col}`);
                 if (!icon) return;
@@ -387,6 +402,9 @@
                         const unitNameA = unitA ? Layout.getName(unitA) : a.unit || '';
                         const unitNameB = unitB ? Layout.getName(unitB) : b.unit || '';
                         cmp = unitNameA.localeCompare(unitNameB, lang);
+                        break;
+                    case 'ekadashi':
+                        cmp = (a.ekadashi === b.ekadashi) ? 0 : (a.ekadashi ? -1 : 1);
                         break;
                 }
                 return cmp * mult;
@@ -453,7 +471,7 @@
             countEl.textContent = Layout.pluralize(filtered.length, PRODUCT_FORMS);
 
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="text-center py-12 opacity-50">
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-12 opacity-50">
                     <div class="text-4xl mb-2">📦</div>
                     <div>${t('no_products') || 'Продукты не найдены'}</div>
                 </td></tr>`;
@@ -489,6 +507,9 @@
                                 <span>${unitShort}</span>
                                 ${product.waste_percent ? `<span class="badge badge border-base-300 badge-sm" title="${t('waste_percent')}">${product.waste_percent}%</span>` : ''}
                             </div>
+                        </td>
+                        <td class="text-center">
+                            ${product.ekadashi ? '<span class="text-success" title="Подходит для Экадаши">✓</span>' : '<span class="text-error opacity-50" title="Не подходит для Экадаши">✗</span>'}
                         </td>
                         <td>
                             <div class="flex gap-1">
@@ -542,6 +563,7 @@
             toggleWastePercentField(product.category_id);
             Layout.$('input[name="waste_percent"]').value = product.waste_percent || '';
             Layout.$('input[name="purchase_url"]').value = product.purchase_url || '';
+            Layout.$('input[name="ekadashi"]').checked = product.ekadashi !== false;
 
             Layout.setupAutoTranslate('#editForm', ['name']);
             editModal.showModal();
@@ -567,7 +589,8 @@
                 translit: formData.get('translit') || null,
                 unit: formData.get('unit'),
                 waste_percent: shouldSaveWaste && wastePercentValue ? parseFloat(wastePercentValue) : null,
-                purchase_url: purchaseUrl || null
+                purchase_url: purchaseUrl || null,
+                ekadashi: formData.get('ekadashi') === 'on'
             };
 
             let error;
