@@ -193,7 +193,9 @@
             await Layout.init({ module: 'housing', menuId: 'vaishnavas', itemId: 'vaishnavas_team' });
 
             Layout.showLoader();
-            await Promise.all([loadPeople(), loadStaysData()]);
+            // Сначала загружаем stays, потом people - чтобы при рендеринге stays был уже заполнен
+            await loadStaysData();
+            await loadPeople();
             Layout.hideLoader();
 
             V.setupSearch(state, loadPeople);
@@ -245,7 +247,7 @@
             // Проверяем присутствие сейчас
             const currentStay = personStays.find(s => s.start_date <= today && s.end_date >= today);
             if (currentStay) {
-                return 'Находится в ШРСК';
+                return '<span class="text-success font-medium">Находится в ШРСК</span>';
             }
 
             // Проверяем будущие записи
@@ -270,11 +272,8 @@
             const mainName = spiritualName || displayName;
             const subName = spiritualName ? displayName : '';
 
-            // Бейдж присутствия
+            // Бейдж присутствия убран - статус отображается в колонке "В ШРСК"
             let badgeHtml = '';
-            if (present) {
-                badgeHtml = '<span class="badge badge-success badge-xs ml-2">Здесь</span>';
-            }
 
             // Аватар: фото или инициалы
             const photoUrl = person.photo_url;
