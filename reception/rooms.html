@@ -568,8 +568,45 @@
                 return;
             }
 
+            // Проверка на дубликаты номеров внутри списка
+            const numberCounts = {};
+            const duplicates = [];
+            roomsToAdd.forEach(room => {
+                numberCounts[room.number] = (numberCounts[room.number] || 0) + 1;
+                if (numberCounts[room.number] > 1 && !duplicates.includes(room.number)) {
+                    duplicates.push(room.number);
+                }
+            });
+
+            if (duplicates.length > 0) {
+                Layout.showNotification(
+                    `${t('duplicate_room_numbers') || 'Дубликаты номеров'}: ${duplicates.join(', ')}`,
+                    'warning'
+                );
+                return;
+            }
+
             try {
                 Layout.showLoader();
+
+                // Проверить существующие комнаты
+                const numbers = roomsToAdd.map(r => r.number);
+                const { data: existing } = await Layout.db
+                    .from('rooms')
+                    .select('number')
+                    .eq('building_id', buildingId)
+                    .in('number', numbers);
+
+                if (existing && existing.length > 0) {
+                    const existingNumbers = existing.map(r => r.number).join(', ');
+                    Layout.showNotification(
+                        `${t('rooms_already_exist') || 'Комнаты уже существуют'}: ${existingNumbers}`,
+                        'warning'
+                    );
+                    Layout.hideLoader();
+                    return;
+                }
+
                 const { error } = await Layout.db.from('rooms').insert(roomsToAdd);
                 if (error) throw error;
 
