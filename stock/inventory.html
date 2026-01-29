@@ -592,10 +592,10 @@
                 if (diff !== null) {
                     if (diff > 0) {
                         diffClass = 'text-warning font-medium';
-                        diffText = `+${diff.toFixed(2)}`;
+                        diffText = `+${Layout.formatQuantity(diff, product.unit)}`;
                     } else if (diff < 0) {
                         diffClass = 'text-error font-medium';
-                        diffText = diff.toFixed(2);
+                        diffText = Layout.formatQuantity(diff, product.unit);
                     } else {
                         diffClass = 'text-success';
                         diffText = '✓';
@@ -610,7 +610,7 @@
                             <div class="font-medium">${Layout.getName(product)}</div>
                             <div class="text-xs opacity-50">${product.product_categories?.emoji || ''} ${Layout.getName(product.product_categories)}</div>
                         </td>
-                        <td class="text-center opacity-60">${expected.toFixed(2)} ${localizeUnit(product.unit)}</td>
+                        <td class="text-center opacity-60">${Layout.formatQuantity(expected, product.unit)} ${localizeUnit(product.unit)}</td>
                         <td class="text-center">
                             ${isEditable ? `
                                 <input type="number"
@@ -620,7 +620,7 @@
                                        step="0.01"
                                        onchange="updateActual(${realIdx}, this.value, '${product.unit}')" />
                             ` : `
-                                <span>${actual !== null ? actual.toFixed(2) : '—'} ${actual !== null ? localizeUnit(product.unit) : ''}</span>
+                                <span>${actual !== null ? Layout.formatQuantity(actual, product.unit) : '—'} ${actual !== null ? localizeUnit(product.unit) : ''}</span>
                             `}
                         </td>
                         <td class="text-center ${diffClass}">${diffText}</td>

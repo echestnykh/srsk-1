@@ -2030,15 +2030,8 @@
         }
 
         function formatIngredientAmount(amount, unit) {
-            // g, ml, tsp, tbsp — округление вверх до 1 знака после запятой
-            // остальные — до 2 знаков
-            let val;
-            if (['g', 'ml', 'tsp', 'tbsp'].includes(unit)) {
-                val = Math.ceil(amount * 10) / 10;
-            } else {
-                val = Math.ceil(amount * 100) / 100;
-            }
-            return { value: val, unit: unit };
+            // Используем общую функцию из Layout
+            return { value: Layout.formatQuantity(amount, unit), unit: unit };
         }
 
         function printMealDetails() {

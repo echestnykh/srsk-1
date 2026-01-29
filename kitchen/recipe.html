@@ -452,14 +452,8 @@
             return baseAmount * multiplier;
         }
 
-        function formatAmount(amount, unit) {
-            // g, ml, tsp, tbsp — округление вверх до 1 знака после запятой
-            // остальные — до 2 знаков
-            if (['g', 'ml', 'tsp', 'tbsp'].includes(unit)) {
-                return Math.ceil(amount * 10) / 10;
-            }
-            return Math.ceil(amount * 100) / 100;
-        }
+        // Используем общую функцию из Layout
+        const formatAmount = Layout.formatQuantity;
 
         function renderIngredients() {
             const tbody = Layout.$('#ingredientsTable');

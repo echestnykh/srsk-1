@@ -833,6 +833,16 @@ function handleError(error, context = '') {
     setTimeout(() => toast.remove(), 5000);
 }
 
+// Форматирование количества с округлением вверх
+// g, ml, tsp, tbsp — до 1 знака после запятой
+// остальные (kg, l, pcs, cup) — до 2 знаков
+function formatQuantity(amount, unit) {
+    if (['g', 'ml', 'tsp', 'tbsp'].includes(unit)) {
+        return Math.ceil(amount * 10) / 10;
+    }
+    return Math.ceil(amount * 100) / 100;
+}
+
 // Экспортируем в глобальную область
 window.Layout = {
     init: initLayout,
@@ -855,6 +865,7 @@ window.Layout = {
     showLoader,
     hideLoader,
     handleError,
+    formatQuantity,
     get currentLang() { return currentLang; },
     get currentLocation() { return currentLocation; },
     get currentModule() { return currentModule; },

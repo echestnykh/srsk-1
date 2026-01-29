@@ -399,9 +399,9 @@
             pcs: { ru: 'шт', en: 'pcs', hi: 'पीस', toGrams: 1 }
         };
 
-        function formatQty(num) {
-            if (num === Math.floor(num)) return num.toString();
-            return num.toFixed(1).replace(/\.0$/, '');
+        function formatQty(num, unit) {
+            // Используем общую функцию из Layout
+            return Layout.formatQuantity(num, unit);
         }
 
         function localizeUnit(unit) {
@@ -741,14 +741,14 @@
                                 ${Layout.getName(cat) || '—'}
                             </span>
                         </td>
-                        <td class="text-right">${formatQty(item.needed)} ${unit}</td>
-                        <td class="text-right opacity-60">${formatQty(item.in_stock)} ${unit}</td>
+                        <td class="text-right">${formatQty(item.needed, item.unit)} ${unit}</td>
+                        <td class="text-right opacity-60">${formatQty(item.in_stock, item.unit)} ${unit}</td>
                         <td class="text-right">
                             <div class="join">
                                 <input type="number"
                                     class="input input-bordered input-sm join-item w-20 text-right font-bold"
                                     style="color: var(--current-color)"
-                                    value="${formatQty(item.to_purchase)}"
+                                    value="${formatQty(item.to_purchase, item.unit)}"
                                     min="0"
                                     step="1"
                                     onchange="updateItemQuantity(${index}, this.value)"
@@ -909,7 +909,7 @@
                 const grams = item.quantity || 0;
                 const display = fromGrams(grams);
                 const name = Layout.getName(product);
-                const qty = formatQty(display.value);
+                const qty = formatQty(display.value, display.unit);
                 const unit = localizeUnit(display.unit);
                 return `${name} ${qty}${unit}`;
             }).join(', ');
@@ -1241,14 +1241,14 @@
                                     <input type="number"
                                         class="input input-bordered input-sm join-item w-20 text-right font-bold"
                                         style="color: var(--current-color)"
-                                        value="${formatQty(item.quantity)}"
+                                        value="${formatQty(item.quantity, item.unit)}"
                                         min="0"
                                         step="1"
                                         onchange="updateViewedItemQty(${index}, this.value)"
                                     />
                                     <span class="btn btn-sm join-item no-animation pointer-events-none bg-base-200">${unit}</span>
                                 </div>
-                                <span class="hidden print:inline font-bold" style="color: var(--current-color)">${formatQty(item.quantity)} ${unit}</span>
+                                <span class="hidden print:inline font-bold" style="color: var(--current-color)">${formatQty(item.quantity, item.unit)} ${unit}</span>
                             </td>
                             <td class="text-right opacity-70 no-print">${estSum}</td>
                             <td class="no-print">
@@ -1276,7 +1276,7 @@
                     const unit = localizeUnit(item.unit);
                     printHtml += `<div class="print-item">
                         <span class="print-item-name">${Layout.getName(product)}</span>
-                        <span class="print-item-qty">${formatQty(item.quantity)} ${unit}</span>
+                        <span class="print-item-qty">${formatQty(item.quantity, item.unit)} ${unit}</span>
                     </div>`;
                 });
                 printHtml += `</div>`;

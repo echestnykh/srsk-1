@@ -1378,7 +1378,7 @@
                         const display = toSmartDisplay(amountInBaseUnit, product.unit);
                         issuanceItemsList.push({
                             product_id: productId,
-                            quantity: Math.round(display.amount * 10) / 10, // Round to 1 decimal
+                            quantity: Layout.formatQuantity(display.amount, display.unit),
                             display_unit: display.unit
                         });
                     }
