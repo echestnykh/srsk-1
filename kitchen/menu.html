@@ -2030,19 +2030,10 @@
         }
 
         function formatIngredientAmount(amount, unit) {
-            let val = amount, u = unit;
-            if ((u === 'g' || u === 'kg') && val >= 1000) { val /= 1000; u = 'kg'; }
-            if ((u === 'ml' || u === 'l') && val >= 1000) { val /= 1000; u = 'l'; }
-            if (u === 'kg' && val < 1) { val *= 1000; u = 'g'; }
-            if (u === 'l' && val < 1) { val *= 1000; u = 'ml'; }
-
-            // Округление
-            if (val >= 100) val = Math.round(val);
-            else if (val >= 10) val = Math.round(val * 10) / 10;
-            else if (val >= 1) val = Math.round(val * 100) / 100;
-            else val = Math.round(val * 1000) / 1000;
-
-            return { value: val, unit: u };
+            // Округление в большую сторону до 2 знаков после запятой
+            // Единица измерения сохраняется из рецепта (без автоконвертации)
+            const val = Math.ceil(amount * 100) / 100;
+            return { value: val, unit: unit };
         }
 
         function printMealDetails() {
