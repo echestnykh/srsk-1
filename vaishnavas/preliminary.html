@@ -98,6 +98,27 @@
         .floor-plan-svg .room-marker:hover {
             filter: brightness(1.15);
         }
+
+        .guest-photo {
+            width: 50px;
+            height: 70px;
+            object-fit: cover;
+            border-radius: 0.25rem;
+            flex-shrink: 0;
+        }
+        .guest-photo-placeholder {
+            width: 50px;
+            height: 70px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 1.25rem;
+            border-radius: 0.25rem;
+            flex-shrink: 0;
+        }
         .floor-plan-svg .room-marker.disabled {
             cursor: not-allowed;
             opacity: 0.6;
@@ -677,7 +698,7 @@
         async function loadVaishnavas() {
             const { data, error } = await Layout.db
                 .from('vaishnavas')
-                .select('id, first_name, last_name, spiritual_name, phone, email, telegram, birth_date, is_team_member')
+                .select('id, first_name, last_name, spiritual_name, phone, email, telegram, birth_date, is_team_member, photo_url')
                 .eq('is_deleted', false)
                 .order('first_name');
 
@@ -889,12 +910,24 @@
                 const buildingId = resident?.rooms?.building_id || null;
                 const roomId = resident?.room_id || null;
 
+                // Фото и инициалы
+                const photoUrl = v?.photo_url;
+                const initials = spiritualName
+                    ? spiritualName.split(' ').map(w => w[0]).join('').substring(0, 2)
+                    : name.split(' ').map(w => w[0]).join('').substring(0, 2);
+
                 return `
                     <tr class="hover align-top">
                         <td class="cursor-pointer" onclick="window.location.href='person.html?id=${v?.id}'">
-                            <div>
-                                ${spiritualName ? `<div class="font-medium">${e(spiritualName)}</div>` : ''}
-                                <div class="${spiritualName ? 'text-xs opacity-60' : 'font-medium'}">${e(name)}</div>
+                            <div class="flex gap-3 items-center">
+                                ${photoUrl
+                                    ? `<img src="${photoUrl}" class="guest-photo" alt="">`
+                                    : `<div class="guest-photo-placeholder">${initials.toUpperCase()}</div>`
+                                }
+                                <div>
+                                    ${spiritualName ? `<div class="font-medium">${e(spiritualName)}</div>` : ''}
+                                    <div class="${spiritualName ? 'text-xs opacity-60' : 'font-medium'}">${e(name)}</div>
+                                </div>
                             </div>
                         </td>
                         <td class="text-sm whitespace-nowrap ${v?.gender === 'male' ? 'bg-blue-500/10' : v?.gender === 'female' ? 'bg-pink-500/10' : ''}">${genderAge}</td>
