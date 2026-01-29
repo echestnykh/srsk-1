@@ -44,19 +44,9 @@
     <main class="container mx-auto px-4 py-6 flex-1">
 
         <!-- Page Header -->
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-            <div>
-                <h1 class="text-2xl font-bold" data-i18n="transfers_title">Трансферы</h1>
-                <p class="text-sm opacity-60 mt-1" data-i18n="transfers_subtitle">Заезды и выезды гостей</p>
-            </div>
-            <!-- Direction filter (only in transfers view) -->
-            <div id="directionFilter">
-                <div class="tabs tabs-boxed bg-base-100">
-                    <button class="tab tab-active" data-filter="all" onclick="setFilter('all')">Все</button>
-                    <button class="tab" data-filter="arrival" onclick="setFilter('arrival')">Заезды</button>
-                    <button class="tab" data-filter="departure" onclick="setFilter('departure')">Выезды</button>
-                </div>
-            </div>
+        <div class="mb-6">
+            <h1 class="text-2xl font-bold" data-i18n="transfers_title">Трансферы</h1>
+            <p class="text-sm opacity-60 mt-1" data-i18n="transfers_subtitle">Заезды и выезды гостей</p>
         </div>
 
         <!-- Main Tabs -->
@@ -65,13 +55,8 @@
             <button class="tab" data-view="taxi" onclick="setView('taxi')">Такси <span id="taxiCountBadge" class="badge badge-warning badge-sm ml-1 hidden">0</span></button>
         </div>
 
-        <!-- Search and Legend -->
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-            <!-- Search -->
-            <div class="w-full sm:w-auto sm:flex-1 max-w-md">
-                <input type="text" id="searchInput" class="input input-bordered w-full" placeholder="Поиск по имени, телефону, рейсу..." oninput="handleSearch()">
-            </div>
-
+        <!-- Legend, Search and Direction Filter -->
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-4">
             <!-- Legend -->
             <div class="flex gap-4 text-sm flex-shrink-0">
                 <div class="flex items-center gap-2">
@@ -85,6 +70,22 @@
                 <div class="flex items-center gap-2">
                     <div class="w-4 h-4 rounded bg-gray-100 border-l-4 border-gray-400"></div>
                     <span>&gt; 48ч</span>
+                </div>
+            </div>
+
+            <div class="flex flex-1 gap-4 items-center w-full lg:w-auto">
+                <!-- Search -->
+                <div class="flex-1 max-w-md">
+                    <input type="text" id="searchInput" class="input input-bordered w-full" placeholder="Поиск по имени, телефону, рейсу..." oninput="handleSearch()">
+                </div>
+
+                <!-- Direction filter -->
+                <div id="directionFilter" class="flex-shrink-0">
+                    <div class="tabs tabs-boxed bg-base-100">
+                        <button class="tab tab-active" data-filter="all" onclick="setFilter('all')">Все</button>
+                        <button class="tab" data-filter="arrival" onclick="setFilter('arrival')">Заезды</button>
+                        <button class="tab" data-filter="departure" onclick="setFilter('departure')">Выезды</button>
+                    </div>
                 </div>
             </div>
         </div>
