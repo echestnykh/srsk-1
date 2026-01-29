@@ -256,8 +256,17 @@
             // Проверяем будущие записи
             const futureStays = personStays.filter(s => s.start_date > today).sort((a, b) => a.start_date.localeCompare(b.start_date));
             if (futureStays.length > 0) {
-                const date = new Date(futureStays[0].start_date);
+                const nextStay = futureStays[0];
+                const date = new Date(nextStay.start_date);
                 const formatted = date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+
+                // Если есть информация о ретрите (для гостей)
+                if (nextStay.retreat) {
+                    const retreatName = Layout.getName(nextStay.retreat);
+                    return `Приедет на ретрит ${retreatName} ${formatted}`;
+                }
+
+                // Для команды просто "Планирует приехать"
                 return `Планирует приехать ${formatted}`;
             }
 

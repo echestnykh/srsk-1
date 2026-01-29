@@ -158,18 +158,41 @@ function sortPeople(list, state) {
     });
 }
 
-/** Загрузка проживаний (stays) */
+/** Загрузка проживаний (stays) - команда + гости */
 async function loadStays() {
-    const { data } = await Layout.db
-        .from('vaishnava_stays')
-        .select('vaishnava_id, start_date, end_date')
-        .order('start_date');
+    // Загружаем периоды пребывания команды и регистрации гостей параллельно
+    const [teamStaysRes, guestRegsRes] = await Promise.all([
+        Layout.db
+            .from('vaishnava_stays')
+            .select('vaishnava_id, start_date, end_date')
+            .order('start_date'),
+        Layout.db
+            .from('retreat_registrations')
+            .select('vaishnava_id, arrival_date, departure_date, retreats(name_ru, name_en, name_hi)')
+            .not('arrival_date', 'is', null)
+            .order('arrival_date')
+    ]);
 
     const stays = {};
-    (data || []).forEach(s => {
+
+    // Добавляем периоды команды
+    (teamStaysRes.data || []).forEach(s => {
         if (!stays[s.vaishnava_id]) stays[s.vaishnava_id] = [];
-        stays[s.vaishnava_id].push(s);
+        stays[s.vaishnava_id].push({ start_date: s.start_date, end_date: s.end_date });
     });
+
+    // Добавляем регистрации гостей (arrival_date → start_date, departure_date → end_date)
+    (guestRegsRes.data || []).forEach(r => {
+        if (!stays[r.vaishnava_id]) stays[r.vaishnava_id] = [];
+        if (r.arrival_date) {
+            stays[r.vaishnava_id].push({
+                start_date: r.arrival_date,
+                end_date: r.departure_date || r.arrival_date,
+                retreat: r.retreats // информация о ретрите
+            });
+        }
+    });
+
     return stays;
 }
 
