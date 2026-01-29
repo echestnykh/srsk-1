@@ -122,7 +122,7 @@
                 <textarea id="taxiDriverInfo" class="textarea textarea-bordered" rows="3" placeholder="Имя, телефон, марка авто..."></textarea>
             </div>
             <div class="form-control mb-4">
-                <label class="label"><span class="label-text">Ваше имя</span></label>
+                <label class="label"><span class="label-text">Кто заказал:</span></label>
                 <input type="text" id="taxiOrderedBy" class="input input-bordered" placeholder="Кто заказывает">
             </div>
             <div class="modal-action">
@@ -401,7 +401,7 @@
                                 <div class="text-lg font-mono font-semibold">${formatTime(t.flight_datetime)}</div>
                                 <div class="text-xs opacity-60">${flightNumber || (isDeparture ? 'Вылет' : 'Прилёт')}</div>
                             </div>
-                            ${needsTransfer ? '<div class="badge badge-primary gap-1"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" /></svg>Трансфер</div>' : ''}
+                            ${needsTransfer ? '<div class="badge badge-primary gap-1"><svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" /></svg>Нужен трансфер</div>' : ''}
                             ${renderTaxiBadge(t)}
                         </div>
                     `;
@@ -417,7 +417,7 @@
             if (transfer.taxi_status === 'ordered') {
                 return `<div class="badge badge-success gap-1 cursor-pointer" onclick="event.stopPropagation(); showTaxiDetails('${transfer.id}')">${taxiIcon}Такси заказано</div>`;
             }
-            return `<button class="btn btn-xs btn-outline gap-1" onclick="event.stopPropagation(); openTaxiModal('${transfer.id}')">${taxiIcon}Такси</button>`;
+            return `<button class="btn btn-xs btn-outline gap-1" onclick="event.stopPropagation(); openTaxiModal('${transfer.id}')">${taxiIcon}Заказать такси</button>`;
         }
 
         function openTaxiModal(transferId) {
