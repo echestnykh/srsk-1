@@ -1139,7 +1139,7 @@
             const bedsCount = parseInt(form.beds_count.value) || 1;
 
             if (bookingSelectedBeds.size !== bedsCount) {
-                alert(`Выберите ${bedsCount} мест на плане`);
+                alert(t('select_beds_on_plan').replace('{count}', bedsCount));
                 return;
             }
 
@@ -1191,7 +1191,7 @@
 
             } catch (err) {
                 console.error('Error saving booking:', err);
-                alert('Ошибка сохранения: ' + err.message);
+                alert(t('error_saving') + ': ' + err.message);
             }
         }
 
@@ -1327,7 +1327,7 @@
 
             } catch (err) {
                 console.error('Error cancelling booking:', err);
-                alert('Ошибка отмены: ' + err.message);
+                alert(t('cancel_error') + ': ' + err.message);
             }
         }
 

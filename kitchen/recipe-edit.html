@@ -1122,7 +1122,7 @@
 
             } catch (err) {
                 console.error('Error saving recipe:', err);
-                alert('Ошибка сохранения:\n' + (err.message || JSON.stringify(err)));
+                alert(t('save_error') + ':\n' + (err.message || JSON.stringify(err)));
             }
         }
 

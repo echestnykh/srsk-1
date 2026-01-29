@@ -595,7 +595,7 @@
 
             } catch (err) {
                 console.error('Save error:', err);
-                alert('Ошибка сохранения: ' + err.message);
+                alert(t('save_error') + ': ' + err.message);
             } finally {
                 saveBtn.disabled = false;
                 saveBtn.innerHTML = `
@@ -608,7 +608,7 @@
         }
 
         async function resetPositions() {
-            if (!confirm('Сбросить все позиции комнат на этом этаже?')) return;
+            if (!confirm(t('reset_room_positions'))) return;
 
             const floorRooms = rooms.filter(r => r.floor === currentFloor);
             floorRooms.forEach(room => {

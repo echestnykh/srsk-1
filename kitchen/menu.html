@@ -1522,7 +1522,7 @@
                     .single();
 
                 if (!newMeal) {
-                    alert('Error creating meal');
+                    alert(t('error'));
                     return;
                 }
                 mealId = newMeal.id;
@@ -1542,7 +1542,7 @@
 
             if (error) {
                 console.error('Error adding dish:', error);
-                alert('Error adding dish');
+                alert(t('error'));
                 return;
             }
 
@@ -1643,12 +1643,12 @@
             const toDate = Layout.$('#templateToDate').value;
 
             if (!name) {
-                alert('Введите название шаблона');
+                alert(t('enter_template_name'));
                 return;
             }
 
             if (!fromDate || !toDate) {
-                alert('Выберите даты');
+                alert(t('select_dates'));
                 return;
             }
 
@@ -1657,7 +1657,7 @@
             const dayCount = Math.ceil((to - from) / (1000 * 60 * 60 * 24)) + 1;
 
             if (dayCount < 1) {
-                alert('Некорректный диапазон дат');
+                alert(t('invalid_date_range'));
                 return;
             }
 
@@ -1731,7 +1731,7 @@
                 await loadTemplates();
             } catch (error) {
                 console.error('Error saving template:', error);
-                alert('Ошибка сохранения шаблона');
+                alert(t('template_save_error'));
             } finally {
                 saveBtn.disabled = false;
                 saveBtn.textContent = t('save');
@@ -1910,7 +1910,7 @@
                 await loadMenuData();
             } catch (error) {
                 console.error('Error applying template:', error);
-                alert('Ошибка применения шаблона');
+                alert(t('template_apply_error'));
             } finally {
                 applyBtn.disabled = false;
                 applyBtn.textContent = t('apply_template');

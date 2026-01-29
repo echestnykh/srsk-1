@@ -1447,7 +1447,7 @@
                 renderRegistrations();
             } catch (err) {
                 console.error('Error updating status:', err);
-                alert('Ошибка обновления статуса: ' + err.message);
+                alert(t('update_status_error') + ': ' + err.message);
                 if (selectElement && oldStatus) {
                     selectElement.value = oldStatus;
                 }
@@ -1570,7 +1570,7 @@
                 editRegModal.close();
             } catch (err) {
                 console.error('Error saving registration:', err);
-                alert('Ошибка сохранения: ' + err.message);
+                alert(t('error_saving') + ': ' + err.message);
             }
         }
 
@@ -1752,7 +1752,7 @@
                 await loadRegistrations(person.id);
             } catch (err) {
                 console.error('Error saving placement:', err);
-                alert('Ошибка размещения: ' + err.message);
+                alert(t('placement_error') + ': ' + err.message);
             }
         }
 

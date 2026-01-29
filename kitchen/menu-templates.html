@@ -520,7 +520,7 @@
             const toDate = Layout.$('#importToDate').value;
 
             if (!name) {
-                alert('Введите название шаблона');
+                alert(t('enter_template_name'));
                 return;
             }
 
@@ -808,7 +808,7 @@
 
             const nameRu = Layout.$('#templateNameRu').value.trim();
             if (!nameRu) {
-                alert('Введите название шаблона');
+                alert(t('enter_template_name'));
                 return;
             }
 
@@ -901,7 +901,7 @@
                 await loadData();
             } catch (error) {
                 console.error('Error saving template:', error);
-                alert('Ошибка сохранения');
+                alert(t('save_error'));
             } finally {
                 saveBtn.disabled = false;
                 saveBtn.textContent = t('save');
@@ -1232,7 +1232,7 @@
                 showSuccess(t('template_applied'), `${formatDisplayDate(startDate)} — ${formatDisplayDate(endDate)}`);
             } catch (error) {
                 console.error('Error applying template:', error);
-                alert('Ошибка применения шаблона');
+                alert(t('template_apply_error'));
             } finally {
                 applyBtn.disabled = false;
                 applyBtn.textContent = t('apply_template');

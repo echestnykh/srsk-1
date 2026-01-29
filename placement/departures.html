@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <script src="../js/color-init.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Заезды</title>
+    <title>Выезды</title>
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.19/dist/full.min.css" rel="stylesheet" type="text/css" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config = { theme: { extend: { screens: { 'desktop': '1200px' } } } }</script>
@@ -20,8 +20,8 @@
         <!-- Page Header -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
-                <h1 class="text-2xl font-bold mb-2" data-i18n="arrivals">Заезды</h1>
-                <p class="text-sm opacity-60" data-i18n="arrivals_description">Ожидаемое время прибытия гостей</p>
+                <h1 class="text-2xl font-bold mb-2" data-i18n="departures">Выезды</h1>
+                <p class="text-sm opacity-60" data-i18n="departures_description">Ожидаемое время выезда гостей</p>
             </div>
 
             <!-- Retreat Selector -->
@@ -36,7 +36,7 @@
         <div id="statsWrapper" style="display: none;">
             <button class="flex items-center gap-2 mb-3 hover:opacity-70 transition-opacity" onclick="toggleStatsBlock()">
                 <span id="statsToggleIcon" class="text-xs">▼</span>
-                <span class="font-semibold text-sm" data-i18n="arrivals_stats">Статистика заездов</span>
+                <span class="font-semibold text-sm" data-i18n="departures_stats">Статистика выездов</span>
             </button>
 
             <!-- Stats + Chart Row -->
@@ -66,7 +66,7 @@
                 <!-- Chart (2/3) -->
                 <div class="lg:col-span-2 bg-base-100 rounded-lg shadow p-4">
                     <div class="flex items-center justify-between mb-3">
-                        <h3 class="font-semibold text-sm" data-i18n="arrival_to_srsc">Приезд в ШРСК</h3>
+                        <h3 class="font-semibold text-sm" data-i18n="departure_from_srsc">Выезд из ШРСК</h3>
                         <div class="flex items-center gap-2">
                             <button class="btn btn-xs btn-ghost" onclick="changeChartDate(-1)">←</button>
                             <input type="date" id="chartDate" class="input input-xs input-bordered w-36" onchange="updateChart()">
@@ -104,7 +104,7 @@
         <div id="tableContainer"></div>
         <div id="noData" class="hidden text-center py-12 opacity-50">
             <div class="text-4xl mb-2">✈️</div>
-            <p data-i18n="select_retreat_for_arrivals">Выберите ретрит для просмотра заездов</p>
+            <p data-i18n="select_retreat_for_departures">Выберите ретрит для просмотра выездов</p>
         </div>
 
     </main>
@@ -344,11 +344,11 @@
             const tomorrowStr = toLocalDateStr(tomorrowDate);
 
             registrations.forEach(reg => {
-                const arrival = (reg.guest_transfers || []).find(t => t.direction === 'arrival');
-                if (arrival?.flight_datetime) {
+                const departure = (reg.guest_transfers || []).find(t => t.direction === 'departure');
+                if (departure?.flight_datetime) {
                     withTime++;
-                    const estimatedDate = new Date(arrival.flight_datetime);
-                    estimatedDate.setHours(estimatedDate.getHours() + 4);
+                    const estimatedDate = new Date(departure.flight_datetime);
+                    estimatedDate.setHours(estimatedDate.getHours() - 7);
                     const estimatedStr = toLocalDateStr(estimatedDate);
 
                     if (estimatedStr === todayStr) today++;
@@ -371,7 +371,7 @@
         }
 
         // ==================== STATS BLOCK ====================
-        const STATS_COLLAPSED_KEY = 'srsk_arrivals_stats_collapsed';
+        const STATS_COLLAPSED_KEY = 'srsk_departures_stats_collapsed';
 
         function toggleStatsBlock() {
             const statsBlock = document.getElementById('statsBlock');
@@ -408,10 +408,10 @@
             }
 
             registrations.forEach(reg => {
-                const arrival = (reg.guest_transfers || []).find(t => t.direction === 'arrival');
-                if (arrival?.flight_datetime) {
-                    const estimatedDate = new Date(arrival.flight_datetime);
-                    estimatedDate.setHours(estimatedDate.getHours() + 4);
+                const departure = (reg.guest_transfers || []).find(t => t.direction === 'departure');
+                if (departure?.flight_datetime) {
+                    const estimatedDate = new Date(departure.flight_datetime);
+                    estimatedDate.setHours(estimatedDate.getHours() - 7);
                     const dateStr = toLocalDateStr(estimatedDate);
 
                     if (dateStr === selectedDate) {
@@ -565,10 +565,10 @@
             const age = v?.birth_date ? calculateAge(v.birth_date) : '';
             const genderAge = [genderLabel, age].filter(Boolean).join(', ');
 
-            const arrival = (reg.guest_transfers || []).find(t => t.direction === 'arrival');
-            const arrivalTime = arrival?.flight_datetime;
-            const estimatedArrival = arrivalTime ? addHours(arrivalTime, 4) : null;
-            const taxiOrdered = arrival?.taxi_status === 'ordered';
+            const departure = (reg.guest_transfers || []).find(t => t.direction === 'departure');
+            const flightTime = departure?.flight_datetime;
+            const estimatedCheckout = flightTime ? addHours(flightTime, -7) : null;
+            const taxiOrdered = departure?.taxi_status === 'ordered';
 
             const accommodation = v ? residentsMap.get(v.id) : null;
 
@@ -614,9 +614,11 @@
                         </div>
                     </td>
                     <td class="text-sm">${genderAge || '—'}</td>
-                    <td class="text-sm text-center">${arrivalTime ? formatDateTime(arrivalTime) : '—'}</td>
                     <td class="text-sm text-center">
-                        <div class="font-semibold">${estimatedArrival ? formatTime(estimatedArrival) : '—'}</div>
+                        <div class="font-semibold">${estimatedCheckout ? formatTime(estimatedCheckout) : '—'}</div>
+                    </td>
+                    <td class="text-sm text-center">
+                        <div>${flightTime ? formatDateTime(flightTime) : '—'}</div>
                         ${taxiOrdered ? `<div class="badge badge-success badge-xs gap-1 mt-1"><svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 103.07 59.75" fill="currentColor"><path d="M5.75,53.47c-1.68-1.71-2.63-4.23-2.68-6.64,2.97-10.49,6.26-20.89,9.36-31.35,1.71-5.78,1.81-10.95,9.24-12.11h58.86c3.74.23,7.15,2.76,8.35,6.35.33,1,.31,1.98.58,2.89,3.38,11.42,6.9,22.8,10.18,34.25-.11,4.72-3.5,8.64-8.16,9.3H11.55c-2.09-.16-4.35-1.22-5.8-2.7ZM21.72,9.78c-2.2.69-1.86,2.64-2.36,4.28-3.3,10.95-6.61,21.9-9.85,32.87-.47,2.23,1.92,3.11,3.77,3.19h76.19c1.99-.17,3.63-.69,3.83-2.97-3.25-10.64-6.4-21.3-9.61-31.95-.48-1.59-.56-4.58-2.24-5.26l-59.73-.16Z"/><polygon points="60.75 20.68 63.64 26.16 67.25 20.68 72.58 20.68 66.57 29.82 72.29 38.86 66.96 38.86 63.64 33.67 61.04 38.86 55.27 38.86 60.98 29.81 55.27 20.68 60.75 20.68"/><path d="M37.96,38.86l6.09-18.15,4.45-.05,6.48,18.2h-4.76l-1.27-3.29-4.91-.14-.89,3.43h-5.19ZM48.06,31.93c-.5-1.5-.78-3.12-1.3-4.61-.1-.28-.03-.66-.42-.58l-1.45,5.19h3.17Z"/><polygon points="39.12 20.68 39.12 25.01 33.92 25.01 33.92 38.86 28.73 38.86 28.73 25.01 23.54 25.01 23.54 20.68 39.12 20.68"/><rect x="74.03" y="20.68" width="5.19" height="18.18"/></svg>${t('taxi_ordered')}</div>` : ''}
                     </td>
                     <td class="text-sm ${accommodation?.isSelfAccommodation ? 'bg-error/20 font-medium text-error' : ''}">${accommodation?.isSelfAccommodation ? Layout.t('self_accommodation') : (accommodation ? `${accommodation.buildingName}, ${accommodation.roomNumber}` : '—')}</td>
@@ -634,9 +636,9 @@
             const age = v?.birth_date ? calculateAge(v.birth_date) : '';
             const genderAge = [genderLabel, age].filter(Boolean).join(', ');
 
-            const arrival = (reg.guest_transfers || []).find(t => t.direction === 'arrival');
-            const arrivalTime = arrival?.flight_datetime;
-            const estimatedArrival = arrivalTime ? addHours(arrivalTime, 4) : null;
+            const departure = (reg.guest_transfers || []).find(t => t.direction === 'departure');
+            const flightTime = departure?.flight_datetime;
+            const estimatedCheckout = flightTime ? addHours(flightTime, -7) : null;
 
             const accommodation = v ? residentsMap.get(v.id) : null;
 
@@ -660,13 +662,15 @@
             // Информация в строку
             const infoParts = [];
             if (genderAge) infoParts.push(genderAge);
-            if (arrivalTime) {
-                infoParts.push(`<span title="Время прилёта">✈ ${formatDateTime(arrivalTime)}</span>`);
-                infoParts.push(`<span class="font-semibold text-base-content" title="Приедет в ШРСК">→ ${formatTime(estimatedArrival)}</span>`);
+            if (estimatedCheckout) {
+                infoParts.push(`<span class="font-semibold text-base-content" title="Выезд из ШРСК">← ${formatTime(estimatedCheckout)}</span>`);
             }
-            if (arrival?.taxi_status === 'ordered') {
-                const driverInfo = arrival.taxi_driver_info ? arrival.taxi_driver_info.replace(/'/g, '&#39;').replace(/"/g, '&quot;') : '';
-                const orderedBy = arrival.taxi_ordered_by ? arrival.taxi_ordered_by.replace(/'/g, '&#39;').replace(/"/g, '&quot;') : '';
+            if (flightTime) {
+                infoParts.push(`<span title="Время вылета">✈ ${formatDateTime(flightTime)}</span>`);
+            }
+            if (departure?.taxi_status === 'ordered') {
+                const driverInfo = departure.taxi_driver_info ? departure.taxi_driver_info.replace(/'/g, '&#39;').replace(/"/g, '&quot;') : '';
+                const orderedBy = departure.taxi_ordered_by ? departure.taxi_ordered_by.replace(/'/g, '&#39;').replace(/"/g, '&quot;') : '';
                 infoParts.push(`<span class="badge badge-success badge-sm gap-1 cursor-pointer" onclick="event.preventDefault(); showTaxiInfo('${driverInfo}', '${orderedBy}')">🚕 ${t('taxi_ordered')}</span>`);
             }
             if (accommodation) {
@@ -723,15 +727,15 @@
                 return;
             }
 
-            // Группируем по дате estimated arrival
+            // Группируем по дате estimated checkout
             const groups = new Map(); // dateStr → [regs]
             const noTimeGroup = [];
 
             filtered.forEach(reg => {
-                const arrival = (reg.guest_transfers || []).find(t => t.direction === 'arrival');
-                if (arrival?.flight_datetime) {
-                    const estimatedDate = new Date(arrival.flight_datetime);
-                    estimatedDate.setHours(estimatedDate.getHours() + 4);
+                const departure = (reg.guest_transfers || []).find(t => t.direction === 'departure');
+                if (departure?.flight_datetime) {
+                    const estimatedDate = new Date(departure.flight_datetime);
+                    estimatedDate.setHours(estimatedDate.getHours() - 7);
                     const dateStr = toLocalDateStr(estimatedDate);
 
                     if (!groups.has(dateStr)) groups.set(dateStr, []);
@@ -744,11 +748,11 @@
             // Сортируем группы по дате
             const sortedDates = [...groups.keys()].sort();
 
-            // Внутри каждой группы сортируем по estimated arrival
+            // Внутри каждой группы сортируем по estimated checkout
             for (const [dateStr, regs] of groups) {
                 regs.sort((a, b) => {
-                    const aTransfer = (a.guest_transfers || []).find(t => t.direction === 'arrival');
-                    const bTransfer = (b.guest_transfers || []).find(t => t.direction === 'arrival');
+                    const aTransfer = (a.guest_transfers || []).find(t => t.direction === 'departure');
+                    const bTransfer = (b.guest_transfers || []).find(t => t.direction === 'departure');
                     return (aTransfer?.flight_datetime || '').localeCompare(bTransfer?.flight_datetime || '');
                 });
             }
@@ -771,8 +775,8 @@
                                     <tr>
                                         <th>${t('name')}</th>
                                         <th>${t('gender_age')}</th>
-                                        <th class="text-center">${t('flight_arrival')}</th>
-                                        <th class="text-center">${t('will_arrive_to_srsc')}</th>
+                                        <th class="text-center">${t('departure_from_srsc')}</th>
+                                        <th class="text-center">${t('flight_departure')}</th>
                                         <th>${t('accommodation')}</th>
                                         <th>${t('contacts')}</th>
                                     </tr>
@@ -797,7 +801,7 @@
                 html += `
                     <div class="mb-6">
                         <h3 class="font-semibold text-sm mb-2 flex items-center gap-2 text-warning">
-                            ${t('no_arrival_time')}
+                            ${t('no_departure_time')}
                             <span class="badge badge-sm badge-warning">${noTimeGroup.length}</span>
                         </h3>
                         <div class="bg-base-100 rounded-xl shadow overflow-x-auto">
@@ -806,8 +810,8 @@
                                     <tr>
                                         <th>${t('name')}</th>
                                         <th>${t('gender_age')}</th>
-                                        <th class="text-center">${t('flight_arrival')}</th>
-                                        <th class="text-center">${t('will_arrive_to_srsc')}</th>
+                                        <th class="text-center">${t('departure_from_srsc')}</th>
+                                        <th class="text-center">${t('flight_departure')}</th>
                                         <th>${t('accommodation')}</th>
                                         <th>${t('contacts')}</th>
                                     </tr>
@@ -833,7 +837,7 @@
 
         // ==================== INIT ====================
         async function init() {
-            await Layout.init({ module: 'housing', menuId: 'placement', itemId: 'arrivals' });
+            await Layout.init({ module: 'housing', menuId: 'placement', itemId: 'departures' });
             initStatsState();
             Layout.showLoader();
             await loadRetreats();

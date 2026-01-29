@@ -450,7 +450,7 @@
                 renderRooms();
             } catch (err) {
                 console.error('Error saving room:', err);
-                alert('Ошибка сохранения: ' + err.message);
+                alert(t('save_error') + ': ' + err.message);
             }
         }
 
@@ -468,7 +468,7 @@
                 renderRooms();
             } catch (err) {
                 console.error('Error deleting room:', err);
-                alert('Ошибка удаления: ' + err.message);
+                alert(t('delete_error') + ': ' + err.message);
             }
         }
 

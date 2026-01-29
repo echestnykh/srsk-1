@@ -1135,7 +1135,7 @@
 
             const reg = registrations.find(r => r.id === registrationId);
             if (!reg || !reg.vaishnava_id) {
-                alert('Ошибка: не найдена регистрация или вайшнав');
+                alert(t('registration_or_vaishnava_not_found'));
                 return;
             }
 
@@ -1168,7 +1168,7 @@
                 await loadRegistrations();
             } catch (err) {
                 console.error('Error saving room placement:', err);
-                alert('Ошибка сохранения размещения: ' + err.message);
+                alert(t('placement_error') + ': ' + err.message);
                 // Перезагрузить данные для отката изменений в UI
                 await loadRegistrations();
             }
@@ -1185,7 +1185,7 @@
                 await loadRegistrations();
             } catch (err) {
                 console.error('Error deleting resident:', err);
-                alert('Ошибка удаления размещения: ' + err.message);
+                alert(t('delete_placement_error') + ': ' + err.message);
             }
         }
 
@@ -1252,7 +1252,7 @@
 
         function openGuestModal(registrationId = null) {
             if (!retreatId) {
-                alert('Сначала выберите ретрит');
+                alert(t('select_retreat_first'));
                 return;
             }
 
@@ -1336,7 +1336,7 @@
             const form = e.target;
 
             if (!selectedVaishnavId) {
-                alert('Выберите вайшнава');
+                alert(t('select_vaishnava'));
                 return;
             }
 
@@ -1367,7 +1367,7 @@
                 await loadRegistrations();
             } catch (err) {
                 console.error('Error saving registration:', err);
-                alert('Ошибка сохранения: ' + err.message);
+                alert(t('error_saving') + ': ' + err.message);
             }
         });
 
@@ -1405,7 +1405,7 @@
                 }
             } catch (err) {
                 console.error('Error updating status:', err);
-                alert('Ошибка обновления статуса: ' + err.message);
+                alert(t('update_status_error') + ': ' + err.message);
                 // Revert select value
                 if (selectElement && oldStatus) {
                     selectElement.value = oldStatus;
@@ -1789,7 +1789,7 @@
                 await loadRegistrations();
             } catch (err) {
                 console.error('Error saving placement:', err);
-                alert('Ошибка размещения: ' + err.message);
+                alert(t('placement_error') + ': ' + err.message);
             }
         }
 
@@ -1959,7 +1959,7 @@
         // ==================== CSV IMPORT ====================
         function openImportModal() {
             if (!retreatId) {
-                alert('Сначала выберите ретрит');
+                alert(t('select_retreat_first'));
                 return;
             }
 
@@ -1994,7 +1994,7 @@
                 csvData = parseCSV(text);
 
                 if (csvData.length === 0) {
-                    alert('Файл пустой или неверный формат');
+                    alert(t('file_empty_or_invalid'));
                     return;
                 }
 
@@ -2103,12 +2103,12 @@
         // ==================== IMPORT LOGIC ====================
         async function startImport() {
             if (!retreatId) {
-                alert('Сначала выберите ретрит');
+                alert(t('select_retreat_first'));
                 return;
             }
 
             if (csvData.length === 0) {
-                alert('Сначала загрузите CSV файл');
+                alert(t('upload_csv_first'));
                 return;
             }
 

@@ -1548,7 +1548,7 @@
 
             // Проверка: должен быть либо вайшнав из БД, либо имя нового гостя
             if (!data.vaishnava_id && !data.guest_name) {
-                alert('Выберите вайшнава или введите имя нового гостя');
+                alert(t('select_vaishnava_or_enter_name'));
                 return;
             }
 
@@ -1569,7 +1569,7 @@
 
             if (error) {
                 console.error('Error saving checkin:', error);
-                alert('Ошибка при заселении: ' + error.message);
+                alert(t('checkin_error') + ': ' + error.message);
                 return;
             }
 
@@ -1612,7 +1612,7 @@
 
             if (bookingError) {
                 console.error('Error saving booking:', bookingError);
-                alert('Ошибка при бронировании: ' + bookingError.message);
+                alert(t('booking_error') + ': ' + bookingError.message);
                 return;
             }
 
@@ -1659,7 +1659,7 @@
                 });
 
                 if (error) {
-                    alert('Ошибка: ' + error.message);
+                    alert(t('error') + ': ' + error.message);
                     return;
                 }
 
@@ -1671,7 +1671,7 @@
 
             if (action === 'repair') {
                 // TODO: Закрытие на ремонт
-                alert('Функция в разработке');
+                alert(t('feature_in_development'));
             }
 
             document.getElementById('actionModal').close();
@@ -1850,7 +1850,7 @@
                 .eq('id', currentResident.id);
 
             if (error) {
-                alert('Ошибка: ' + error.message);
+                alert(t('error') + ': ' + error.message);
                 return;
             }
 
@@ -1862,7 +1862,7 @@
         // Удалить резидента
         async function deleteResident() {
             if (!currentResident) return;
-            if (!confirm('Удалить эту запись?')) return;
+            if (!confirm(t('confirm_delete_entry'))) return;
 
             const { error } = await Layout.db
                 .from('residents')
@@ -1870,7 +1870,7 @@
                 .eq('id', currentResident.id);
 
             if (error) {
-                alert('Ошибка: ' + error.message);
+                alert(t('error') + ': ' + error.message);
                 return;
             }
 
@@ -1882,7 +1882,7 @@
         // Отменить бронирование
         async function cancelBooking() {
             if (!currentResident) return;
-            if (!confirm('Отменить это бронирование?')) return;
+            if (!confirm(t('confirm_cancel_booking'))) return;
 
             const res = currentResident.rawData;
 
@@ -1893,7 +1893,7 @@
                 .eq('id', currentResident.id);
 
             if (resError) {
-                alert('Ошибка: ' + resError.message);
+                alert(t('error') + ': ' + resError.message);
                 return;
             }
 
@@ -1944,7 +1944,7 @@
             const lateCheckout = document.getElementById('editLateCheckout').checked;
 
             if (!checkIn) {
-                alert('Укажите дату заезда');
+                alert(t('specify_checkin_date'));
                 return;
             }
 
@@ -1959,7 +1959,7 @@
                 .eq('id', currentResident.id);
 
             if (error) {
-                alert('Ошибка: ' + error.message);
+                alert(t('error') + ': ' + error.message);
                 return;
             }
 
@@ -2083,7 +2083,7 @@
                 .eq('id', currentResident.id);
 
             if (error) {
-                alert('Ошибка: ' + error.message);
+                alert(t('error') + ': ' + error.message);
                 return;
             }
 
@@ -2133,7 +2133,7 @@
                     .eq('id', currentCleaning.residentId);
 
                 if (error) {
-                    alert('Ошибка: ' + error.message);
+                    alert(t('error') + ': ' + error.message);
                     return;
                 }
 
@@ -2150,7 +2150,7 @@
                 .eq('id', currentCleaning.cleaningId);
 
             if (error) {
-                alert('Ошибка: ' + error.message);
+                alert(t('error') + ': ' + error.message);
                 return;
             }
 
@@ -2165,7 +2165,7 @@
 
             const newEndDate = document.getElementById('cleaningEndDate').value;
             if (!newEndDate) {
-                alert('Выберите новую дату окончания');
+                alert(t('select_new_checkout_date'));
                 return;
             }
 
@@ -2182,7 +2182,7 @@
                     });
 
                 if (error) {
-                    alert('Ошибка: ' + error.message);
+                    alert(t('error') + ': ' + error.message);
                     return;
                 }
             } else {
@@ -2193,7 +2193,7 @@
                     .eq('id', currentCleaning.cleaningId);
 
                 if (error) {
-                    alert('Ошибка: ' + error.message);
+                    alert(t('error') + ': ' + error.message);
                     return;
                 }
             }
@@ -2215,7 +2215,7 @@
                     .eq('id', currentCleaning.residentId);
 
                 if (error) {
-                    alert('Ошибка: ' + error.message);
+                    alert(t('error') + ': ' + error.message);
                     return;
                 }
 
@@ -2232,7 +2232,7 @@
                 .eq('id', currentCleaning.cleaningId);
 
             if (error) {
-                alert('Ошибка: ' + error.message);
+                alert(t('error') + ': ' + error.message);
                 return;
             }
 

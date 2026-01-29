@@ -1377,7 +1377,7 @@
 
             } catch (err) {
                 console.error('Error completing cleaning:', err);
-                alert('Ошибка: ' + err.message);
+                alert(t('error') + ': ' + err.message);
             }
         }
 
@@ -1442,7 +1442,7 @@
 
             } catch (err) {
                 console.error('Error extending cleaning:', err);
-                alert('Ошибка: ' + err.message);
+                alert(t('error') + ': ' + err.message);
             }
         }
 
@@ -1475,7 +1475,7 @@
 
             } catch (err) {
                 console.error('Error deleting cleaning:', err);
-                alert('Ошибка: ' + err.message);
+                alert(t('error') + ': ' + err.message);
             }
         }
 

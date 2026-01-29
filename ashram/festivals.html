@@ -403,7 +403,7 @@
             };
 
             if (!data.name_ru) {
-                alert('Введите название праздника');
+                alert(t('enter_festival_name'));
                 return;
             }
 
@@ -416,7 +416,7 @@
 
             if (error) {
                 console.error('Error saving holiday:', error);
-                alert('Ошибка сохранения: ' + error.message);
+                alert(t('error_saving') + ': ' + error.message);
                 return;
             }
 
@@ -426,12 +426,12 @@
 
         async function deleteHoliday() {
             if (!editingId) return;
-            if (!confirm('Удалить этот праздник?')) return;
+            if (!confirm(t('confirm_delete_festival'))) return;
 
             const { error } = await Layout.db.from('holidays').delete().eq('id', editingId);
             if (error) {
                 console.error('Error deleting holiday:', error);
-                alert('Ошибка удаления: ' + error.message);
+                alert(t('error_deleting') + ': ' + error.message);
                 return;
             }
 

@@ -634,7 +634,7 @@
                 render();
             } catch (err) {
                 console.error('Error saving retreat:', err);
-                alert('Ошибка сохранения: ' + err.message);
+                alert(t('error_saving') + ': ' + err.message);
             }
         }
 
@@ -651,7 +651,7 @@
                 render();
             } catch (err) {
                 console.error('Error deleting retreat:', err);
-                alert('Ошибка удаления: ' + err.message);
+                alert(t('error_deleting') + ': ' + err.message);
             }
         }
 

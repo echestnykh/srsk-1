@@ -413,7 +413,7 @@
                 render();
             } catch (err) {
                 console.error('Error saving building:', err);
-                alert('Ошибка сохранения: ' + err.message);
+                alert(t('save_error') + ': ' + err.message);
             }
         }
 
@@ -432,7 +432,7 @@
                 render();
             } catch (err) {
                 console.error('Error deleting building:', err);
-                alert('Ошибка удаления: ' + err.message);
+                alert(t('delete_error') + ': ' + err.message);
             }
         }
 

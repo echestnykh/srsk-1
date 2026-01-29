@@ -452,7 +452,7 @@
             const orderedBy = document.getElementById('taxiOrderedBy').value.trim();
 
             if (!orderedBy) {
-                alert('Укажите ваше имя');
+                alert(t('specify_your_name'));
                 return;
             }
 
@@ -469,7 +469,7 @@
 
             if (error) {
                 console.error('Error saving taxi order:', error);
-                alert('Ошибка сохранения');
+                alert(t('error_saving') + ': ' + error.message);
                 return;
             }
 
@@ -512,7 +512,7 @@
 
             if (error) {
                 console.error('Error cancelling taxi:', error);
-                alert('Ошибка отмены');
+                alert(t('cancel_error') + ': ' + error.message);
                 return;
             }
 
