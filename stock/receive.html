@@ -828,13 +828,11 @@
 
             receiptItemsList = [];
             (req.purchase_request_items || []).forEach(item => {
-                const product = products.find(p => p.id === item.product_id);
-                const displayQty = convertFromBase(item.quantity, product?.unit);
-                // spent = quantity × price (price хранится за единицу)
-                const spent = displayQty * (item.price || 0);
+                // quantity уже в единицах продукта, spent = quantity × price
+                const spent = item.quantity * (item.price || 0);
                 receiptItemsList.push({
                     product_id: item.product_id,
-                    quantity: displayQty,
+                    quantity: item.quantity,
                     spent: spent
                 });
             });
@@ -906,16 +904,14 @@
                     return;
                 }
 
-                // Конвертируем количества в базовые единицы для сохранения
-                // price = spent / quantity (цена за единицу в единицах продукта)
+                // Сохраняем в единицах продукта (без конвертации)
+                // price = spent / quantity (цена за единицу)
                 const items = receiptItemsList.map(i => {
-                    const product = products.find(p => p.id === i.product_id);
-                    const baseQty = convertToBase(i.quantity, product?.unit);
                     const pricePerUnit = i.quantity > 0 ? (i.spent || 0) / i.quantity : 0;
                     return {
                         receipt_id: receipt.id,
                         product_id: i.product_id,
-                        quantity: baseQty,
+                        quantity: i.quantity,
                         price: pricePerUnit || null
                     };
                 });
@@ -926,10 +922,8 @@
                     console.error('Error saving items:', itemsError);
                 }
 
-                // Update stock quantities (в базовых единицах)
+                // Update stock quantities (в единицах продукта)
                 for (const item of receiptItemsList) {
-                    const product = products.find(p => p.id === item.product_id);
-                    const baseQty = convertToBase(item.quantity, product?.unit);
                     const pricePerUnit = item.quantity > 0 ? (item.spent || 0) / item.quantity : 0;
 
                     const { data: stockItem } = await Layout.db
@@ -941,14 +935,14 @@
 
                     if (stockItem) {
                         await Layout.db.from('stock').update({
-                            current_quantity: stockItem.current_quantity + baseQty,
+                            current_quantity: stockItem.current_quantity + item.quantity,
                             last_price: pricePerUnit || undefined
                         }).eq('id', stockItem.id);
                     } else {
                         await Layout.db.from('stock').insert({
                             location_id: locationId,
                             product_id: item.product_id,
-                            current_quantity: baseQty,
+                            current_quantity: item.quantity,
                             min_quantity: 0,
                             last_price: pricePerUnit || null
                         });
@@ -1079,13 +1073,11 @@
 
             viewingReceipt = rec;
             viewingItems = (rec.stock_receipt_items || []).map(i => {
-                const product = products.find(p => p.id === i.product_id);
-                const displayQty = convertFromBase(i.quantity, product?.unit);
-                // spent = quantity × price
-                const spent = displayQty * (i.price || 0);
+                // quantity уже в единицах продукта, spent = quantity × price
+                const spent = i.quantity * (i.price || 0);
                 return {
                     product_id: i.product_id,
-                    quantity: displayQty,
+                    quantity: i.quantity,
                     spent: spent
                 };
             });
@@ -1157,15 +1149,13 @@
             // Delete old items
             await Layout.db.from('stock_receipt_items').delete().eq('receipt_id', viewingReceipt.id);
 
-            // Insert new items (конвертируем spent обратно в price и quantity в базовые единицы)
+            // Insert new items (сохраняем в единицах продукта)
             const items = viewingItems.map(i => {
-                const product = products.find(p => p.id === i.product_id);
-                const baseQty = convertToBase(i.quantity, product?.unit);
                 const pricePerUnit = i.quantity > 0 ? (i.spent || 0) / i.quantity : 0;
                 return {
                     receipt_id: viewingReceipt.id,
                     product_id: i.product_id,
-                    quantity: baseQty,
+                    quantity: i.quantity,
                     price: pricePerUnit || null
                 };
             });
