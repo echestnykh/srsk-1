@@ -11,6 +11,15 @@ const AVATAR_PLACEHOLDER = `<svg class="w-5 h-5 opacity-30" viewBox="0 0 122 313
 
 const PAGE_SIZE = 50;
 
+/** Заменить битое изображение на заглушку с инициалами */
+window.replacePhotoWithPlaceholder = function(img) {
+    const initials = img.dataset.initials || '?';
+    const placeholder = document.createElement('div');
+    placeholder.className = 'w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold';
+    placeholder.textContent = initials;
+    img.replaceWith(placeholder);
+};
+
 /** Имя и фамилия через пробел, или "без имени" */
 function getDisplayName(person) {
     return [person.first_name, person.last_name].filter(Boolean).join(' ') || t('no_name');
@@ -189,15 +198,15 @@ function renderPersonRow(person, opts = {}) {
 
     // Аватар: фото или инициалы
     const photoUrl = person.photo_url;
-    const initials = (person.spiritual_name || displayName)
+    const initials = e((person.spiritual_name || displayName)
         .split(' ')
         .map(w => w[0])
         .join('')
         .substring(0, 2)
-        .toUpperCase();
+        .toUpperCase());
 
     const avatarHtml = photoUrl
-        ? `<img src="${e(photoUrl)}" class="w-10 h-10 rounded-full object-cover" alt="" onerror="this.outerHTML='<div class=\\"w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold\\">${initials}</div>'">`
+        ? `<img src="${e(photoUrl)}" class="w-10 h-10 rounded-full object-cover" alt="" data-initials="${initials}" onerror="replacePhotoWithPlaceholder(this)">`
         : `<div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold">${initials}</div>`;
 
     return `

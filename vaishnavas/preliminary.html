@@ -847,6 +847,14 @@
             renderTable();
         }
 
+        function replaceWithPlaceholder(img) {
+            const initials = img.dataset.initials || '?';
+            const placeholder = document.createElement('div');
+            placeholder.className = 'guest-photo-placeholder';
+            placeholder.textContent = initials;
+            img.replaceWith(placeholder);
+        }
+
         function updateSortIcons() {
             document.querySelectorAll('.sort-icon').forEach(icon => {
                 const field = icon.dataset.sort;
@@ -922,7 +930,7 @@
                         <td class="cursor-pointer" onclick="window.location.href='person.html?id=${v?.id}'">
                             <div class="flex gap-3 items-center">
                                 ${photoUrl
-                                    ? `<img src="${e(photoUrl)}" class="guest-photo" alt="" data-initials="${initialsUpper}" onerror="this.outerHTML='<div class=\\"guest-photo-placeholder\\">'+this.dataset.initials+'</div>'">`
+                                    ? `<img src="${e(photoUrl)}" class="guest-photo" alt="" data-initials="${initialsUpper}" onerror="replaceWithPlaceholder(this)">`
                                     : `<div class="guest-photo-placeholder">${initialsUpper}</div>`
                                 }
                                 <div>
