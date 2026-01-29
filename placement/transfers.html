@@ -112,6 +112,9 @@
     <!-- Модалка заказа такси -->
     <dialog id="taxiModal" class="modal">
         <div class="modal-box max-w-sm">
+            <form method="dialog">
+                <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+            </form>
             <h3 class="font-bold text-lg mb-4">Заказ такси</h3>
             <input type="hidden" id="taxiTransferId">
             <div class="form-control mb-3">
@@ -123,7 +126,6 @@
                 <input type="text" id="taxiOrderedBy" class="input input-bordered" placeholder="Кто заказывает">
             </div>
             <div class="modal-action">
-                <button class="btn btn-ghost" onclick="closeTaxiModal()">Отмена</button>
                 <button class="btn btn-primary" onclick="saveTaxiOrder()">Сохранить</button>
             </div>
         </div>
@@ -133,6 +135,9 @@
     <!-- Модалка просмотра/редактирования информации о такси -->
     <dialog id="taxiDetailsModal" class="modal">
         <div class="modal-box max-w-sm">
+            <form method="dialog">
+                <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+            </form>
             <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-success" viewBox="0 0 103.07 59.75" fill="currentColor">
                     <path d="M5.75,53.47c-1.68-1.71-2.63-4.23-2.68-6.64,2.97-10.49,6.26-20.89,9.36-31.35,1.71-5.78,1.81-10.95,9.24-12.11h58.86c3.74.23,7.15,2.76,8.35,6.35.33,1,.31,1.98.58,2.89,3.38,11.42,6.9,22.8,10.18,34.25-.11,4.72-3.5,8.64-8.16,9.3H11.55c-2.09-.16-4.35-1.22-5.8-2.7ZM21.72,9.78c-2.2.69-1.86,2.64-2.36,4.28-3.3,10.95-6.61,21.9-9.85,32.87-.47,2.23,1.92,3.11,3.77,3.19h76.19c1.99-.17,3.63-.69,3.83-2.97-3.25-10.64-6.4-21.3-9.61-31.95-.48-1.59-.56-4.58-2.24-5.26l-59.73-.16Z"/>
@@ -153,7 +158,6 @@
                 <input type="text" id="taxiDetailsOrderedBy" class="input input-bordered" placeholder="Кто заказывает">
             </div>
             <div class="modal-action">
-                <button class="btn btn-ghost" onclick="document.getElementById('taxiDetailsModal').close()">Закрыть</button>
                 <button class="btn btn-primary" onclick="saveEditedTaxiDetails()">Сохранить</button>
                 <button class="btn btn-error btn-outline" onclick="cancelTaxiFromDetails()">Отменить такси</button>
             </div>
