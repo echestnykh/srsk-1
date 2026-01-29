@@ -177,6 +177,7 @@
         <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
 
+    <script src="../js/config.js"></script>
     <script src="../js/cache.js"></script>
     <script src="../js/utils.js"></script>
     <script src="../js/translit.js"></script>
@@ -222,7 +223,7 @@
             query = query.range(from, to);
 
             const { data, error, count } = await query;
-            if (error) { console.error('Error loading people:', error); return; }
+            if (error) { Layout.handleError(error, 'Загрузка данных'); return; }
             people = data || [];
             totalCount = count || 0;
             renderPeople();

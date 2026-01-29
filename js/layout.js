@@ -5,9 +5,8 @@
 'use strict';
 
 // ==================== CONFIG ====================
-const SUPABASE_URL = 'https://llttmftapmwebidgevmg.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsdHRtZnRhcG13ZWJpZGdldm1nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4NzQ3MTksImV4cCI6MjA4NDQ1MDcxOX0.V0J4_5AFDxHH6GsD-eh4N7fTBMjexSxAkVp2LSfgHh0';
-const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Используем централизованный CONFIG из config.js
+const db = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
 const DESKTOP_BP = 1200;
 
@@ -427,18 +426,37 @@ function getFooterHTML() {
 function buildLocationOptions() {
     const isHousing = currentModule === 'housing';
 
-    // Локации (кухни)
-    const locationsHtml = locations.map(loc =>
-        `<button class="w-full text-left px-4 py-2 hover:bg-base-200 text-base-content ${!isHousing && loc.slug === currentLocation ? 'font-medium' : ''}" data-loc="${loc.slug}">${getName(loc)}</button>`
-    ).join('');
+    $$('.location-dropdown').forEach(el => {
+        // Очищаем содержимое
+        el.replaceChildren();
 
-    // Разделитель и Проживание
-    const housingHtml = `
-        <div class="border-t border-base-200 my-1"></div>
-        <button class="w-full text-left px-4 py-2 hover:bg-base-200 text-base-content ${isHousing ? 'font-medium' : ''}" data-module="housing">${t('module_housing')}</button>
-    `;
+        // Добавляем локации (кухни)
+        locations.forEach(loc => {
+            const button = document.createElement('button');
+            button.className = 'w-full text-left px-4 py-2 hover:bg-base-200 text-base-content';
+            if (!isHousing && loc.slug === currentLocation) {
+                button.classList.add('font-medium');
+            }
+            button.dataset.loc = loc.slug;
+            button.textContent = getName(loc); // безопасно
+            el.appendChild(button);
+        });
 
-    $$('.location-dropdown').forEach(el => el.innerHTML = locationsHtml + housingHtml);
+        // Разделитель
+        const divider = document.createElement('div');
+        divider.className = 'border-t border-base-200 my-1';
+        el.appendChild(divider);
+
+        // Кнопка "Проживание"
+        const housingBtn = document.createElement('button');
+        housingBtn.className = 'w-full text-left px-4 py-2 hover:bg-base-200 text-base-content';
+        if (isHousing) {
+            housingBtn.classList.add('font-medium');
+        }
+        housingBtn.dataset.module = 'housing';
+        housingBtn.textContent = t('module_housing'); // безопасно
+        el.appendChild(housingBtn);
+    });
 }
 
 function buildMobileMenu() {
@@ -761,10 +779,10 @@ function initHeaderEvents() {
         });
     });
 
-    // Window resize
-    addEventListener('resize', () => {
+    // Window resize with debounce
+    addEventListener('resize', Utils.debounce(() => {
         initSubmenuMargins();
-    });
+    }, 300));
 }
 
 // ==================== MODULE SWITCHING ====================
@@ -829,17 +847,33 @@ async function initLayout(page = { module: null, menuId: 'kitchen', itemId: null
     return { db, currentLang, currentLocation, currentModule, locations };
 }
 
+/** Универсальная система уведомлений */
+function showNotification(message, type = 'info') {
+    const colors = {
+        info: 'alert-info',
+        success: 'alert-success',
+        warning: 'alert-warning',
+        error: 'alert-error'
+    };
+
+    const toast = document.createElement('div');
+    toast.className = 'toast toast-top toast-end z-[100]';
+    toast.innerHTML = `
+        <div class="alert ${colors[type] || colors.info} shadow-lg">
+            <span>${escapeHtml(message)}</span>
+        </div>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 5000);
+}
+
 /** Унифицированная обработка ошибок */
 function handleError(error, context = '') {
     const message = error?.message || String(error);
     console.error(`[${context}]`, error);
 
-    // Toast-уведомление пользователю
-    const toast = document.createElement('div');
-    toast.className = 'toast toast-top toast-end z-[100]';
-    toast.innerHTML = `<div class="alert alert-error shadow-lg"><span>${escapeHtml(context ? context + ': ' + message : message)}</span></div>`;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 5000);
+    // Используем showNotification для уведомления
+    showNotification(context ? `${context}: ${message}` : message, 'error');
 }
 
 // Форматирование количества с округлением вверх
@@ -884,6 +918,7 @@ window.Layout = {
     switchModule,
     showLoader,
     hideLoader,
+    showNotification,
     handleError,
     formatQuantity,
     openPhotoModal,

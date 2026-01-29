@@ -188,9 +188,13 @@ function renderPersonRow(person, opts = {}) {
 
     let badgeHtml = '';
     if (showTeamBadge && person.is_team_member) {
-        badgeHtml = dept
-            ? `<span class="badge badge-xs" style="background-color: ${e(dept.color)}20; color: ${e(dept.color)}; border-color: ${e(dept.color)}">${e(Layout.getName(dept))}</span>`
-            : '<span class="badge badge-primary badge-xs">Команда</span>';
+        if (dept) {
+            // Валидация цвета перед вставкой в style
+            const safeColor = Utils.isValidColor(dept.color) ? dept.color : '#6b7280';
+            badgeHtml = `<span class="badge badge-xs" style="background-color: ${safeColor}20; color: ${safeColor}; border-color: ${safeColor}">${e(Layout.getName(dept))}</span>`;
+        } else {
+            badgeHtml = '<span class="badge badge-primary badge-xs">Команда</span>';
+        }
     }
     if (present) {
         badgeHtml += '<span class="badge badge-success badge-xs ml-1">Здесь</span>';
@@ -325,7 +329,7 @@ async function saveNewPerson(event, opts = {}) {
     }
 
     if (!data.first_name && !data.spiritual_name) {
-        alert(t('name_or_spiritual_required') || 'Укажите имя или духовное имя');
+        Layout.showNotification(t('name_or_spiritual_required') || 'Укажите имя или духовное имя', 'warning');
         return;
     }
 
@@ -336,8 +340,7 @@ async function saveNewPerson(event, opts = {}) {
         .single();
 
     if (error) {
-        console.error('Error adding person:', error);
-        alert(t('error_saving') || 'Ошибка сохранения');
+        Layout.handleError(error, 'Сохранение');
         return;
     }
 

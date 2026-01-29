@@ -57,6 +57,12 @@ function escapeHtml(str) {
         .replace(/'/g, '&#039;');
 }
 
-window.Utils = { pluralize, debounce, escapeHtml };
+/** Валидация цвета в формате HEX (#RRGGBB) для защиты от CSS injection */
+function isValidColor(color) {
+    if (!color) return false;
+    return /^#[0-9A-Fa-f]{6}$/.test(color);
+}
+
+window.Utils = { pluralize, debounce, escapeHtml, isValidColor };
 
 })();
