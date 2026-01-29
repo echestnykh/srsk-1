@@ -262,9 +262,9 @@ Layout.showNotification('Проверьте заполнение полей', 'w
 - settings: dictionaries, translations, festivals
 
 **Housing** (проживание):
-- vaishnavas: vaishnavas_all, vaishnavas_guests, vaishnavas_team, retreat_guests
-- placement: timeline, bookings, transfers
-- reception: floor_plan, cleaning
+- vaishnavas: vaishnavas_all, vaishnavas_guests, vaishnavas_team
+- placement: retreat_guests, preliminary, arrivals, departures, transfers
+- reception: timeline, bookings, cleaning
 - ashram: retreats, festivals
 - settings: buildings, rooms, housing_dictionaries
 
@@ -408,12 +408,15 @@ const grouped = allResidents.reduce((acc, r) => { (acc[r.booking_id] ||= []).pus
 | Гости | `vaishnavas/guests.html` |
 | Профиль вайшнава | `vaishnavas/person.html` |
 | Распределение (импорт CSV) | `vaishnavas/retreat-guests.html` |
+| Предварительное размещение | `vaishnavas/preliminary.html` |
 
 ### placement/ (Размещение)
 | Термин | Файл |
 |--------|------|
-| Таймлайн | `placement/timeline.html` |
+| Таймлайн (Шахматка) | `placement/timeline.html` |
 | Бронирования | `placement/bookings.html` |
+| Заезды | `placement/arrivals.html` |
+| Выезды | `placement/departures.html` |
 | Трансферы | `placement/transfers.html` |
 
 ### reception/ (Ресепшен)
@@ -460,10 +463,10 @@ const grouped = allResidents.reduce((acc, r) => { (acc[r.booking_id] ||= []).pus
 | Пользователи | `settings/users.html` |
 
 ### Корень
-| Термин | Файл |
-|--------|------|
-| Главная | `index.html` |
-| Логин | `login.html` |
+| Термин | Файл | Особенности |
+|--------|------|-------------|
+| Главная | `index.html` | Без header/footer, встроенный переключатель языков, CSS columns для меню |
+| Логин | `login.html` | |
 
 ## View/Edit Mode Pattern
 
@@ -485,6 +488,85 @@ function enterEditMode() {
     document.getElementById('profileContainer').classList.replace('view-mode', 'edit-mode');
 }
 ```
+
+## Auto-Resizing Textarea Pattern
+
+Для textarea, которые должны автоматически растягиваться по высоте контента:
+
+```html
+<textarea
+    class="textarea textarea-xs textarea-bordered w-full auto-resize-textarea"
+    rows="1"
+    oninput="autoResizeTextarea(this)"
+    onchange="saveData(this.value)"></textarea>
+```
+
+```javascript
+// Автоматическая подстройка высоты textarea
+function autoResizeTextarea(textarea) {
+    textarea.style.height = 'auto';
+    textarea.style.height = textarea.scrollHeight + 'px';
+}
+
+// Вызвать для всех существующих textarea после рендера
+setTimeout(() => {
+    document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
+        autoResizeTextarea(textarea);
+    });
+}, 0);
+```
+
+## Color Status Indicators
+
+Паттерн цветовой индикации статуса (используется в preliminary.html):
+
+```javascript
+// Подсветка ячеек в зависимости от статуса
+const buildingId = resident?.building_id;
+const roomId = resident?.room_id;
+
+// Зеленый - заселен, красный - самостоятельное проживание, без цвета - не заселен
+const cellClass = buildingId === 'self'
+    ? 'bg-error/20'
+    : (buildingId && roomId) ? 'bg-success/20' : '';
+```
+
+```html
+<!-- Применение к ячейкам -->
+<td class="${cellClass}">...</td>
+```
+
+**Цветовая схема:**
+- 🟢 `bg-success/20` — успешное состояние (гость заселен)
+- 🔴 `bg-error/20` — проблемное состояние (самостоятельное проживание)
+- ⚪ Без цвета — нейтральное состояние (не заселен)
+- 🟡 `bg-warning/30` — предупреждение (неполные данные)
+
+## Special Sorting Logic
+
+Сортировка с выносом пустых значений в конец списка (независимо от направления):
+
+```javascript
+if (sortField === 'notes') {
+    const aNotes = getLocalNotes(a.id);
+    const bNotes = getLocalNotes(b.id);
+
+    // Если оба пустые - не меняем порядок
+    if (!aNotes && !bNotes) return 0;
+    // Если только a пустое - оно всегда в конец
+    if (!aNotes) return 1;
+    // Если только b пустое - оно всегда в конец
+    if (!bNotes) return -1;
+
+    // Оба не пустые - сортируем нормально
+    aVal = aNotes.toLowerCase();
+    bVal = bNotes.toLowerCase();
+}
+```
+
+Результат:
+- ↑ asc: 1, 2, 3, ... пустые
+- ↓ desc: 3, 2, 1, ... пустые
 
 ## CSV Import (retreat-guests.html)
 
