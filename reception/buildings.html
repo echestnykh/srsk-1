@@ -115,13 +115,23 @@
                 </div>
 
                 <div id="temporaryDatesSection" class="hidden">
-                    <label class="label"><span class="label-text font-medium" data-i18n="rental_period">Период аренды</span><span class="text-error ml-1">*</span></label>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <input type="date" name="available_from" class="input input-bordered w-full" />
-                        </div>
-                        <div>
-                            <input type="date" name="available_until" class="input input-bordered w-full" />
+                    <!-- Доступно всегда -->
+                    <div class="form-control mb-3">
+                        <label class="label cursor-pointer justify-start gap-2">
+                            <input type="checkbox" id="alwaysAvailableCheckbox" class="checkbox checkbox-sm" />
+                            <span class="label-text" data-i18n="always_available">Доступно всегда</span>
+                        </label>
+                    </div>
+
+                    <div id="datesInputSection">
+                        <label class="label"><span class="label-text font-medium" data-i18n="rental_period">Период аренды</span><span class="text-error ml-1" id="datesRequiredMark">*</span></label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <input type="date" name="available_from" id="availableFromInput" class="input input-bordered w-full" />
+                            </div>
+                            <div>
+                                <input type="date" name="available_until" id="availableUntilInput" class="input input-bordered w-full" />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -363,16 +373,36 @@
         function toggleTemporaryDates() {
             const isTemporary = Layout.$('#isTemporaryCheckbox').checked;
             const section = Layout.$('#temporaryDatesSection');
-            const form = Layout.$('#buildingForm');
 
             if (isTemporary) {
                 section.classList.remove('hidden');
-                form.available_from.required = true;
-                form.available_until.required = true;
+                toggleAlwaysAvailable(); // Update dates fields visibility
             } else {
                 section.classList.add('hidden');
-                form.available_from.required = false;
-                form.available_until.required = false;
+                Layout.$('#availableFromInput').required = false;
+                Layout.$('#availableUntilInput').required = false;
+            }
+        }
+
+        function toggleAlwaysAvailable() {
+            const alwaysAvailable = Layout.$('#alwaysAvailableCheckbox').checked;
+            const datesSection = Layout.$('#datesInputSection');
+            const fromInput = Layout.$('#availableFromInput');
+            const untilInput = Layout.$('#availableUntilInput');
+            const requiredMark = Layout.$('#datesRequiredMark');
+
+            if (alwaysAvailable) {
+                // Hide dates, make them optional, clear values
+                datesSection.classList.add('hidden');
+                fromInput.required = false;
+                untilInput.required = false;
+                fromInput.value = '';
+                untilInput.value = '';
+            } else {
+                // Show dates, make them required
+                datesSection.classList.remove('hidden');
+                fromInput.required = true;
+                untilInput.required = true;
             }
         }
 
@@ -401,11 +431,17 @@
                     form.is_temporary.checked = building.is_temporary || false;
                     form.available_from.value = building.available_from || '';
                     form.available_until.value = building.available_until || '';
+
+                    // Set "Always Available" checkbox if temporary but no dates
+                    const alwaysAvailable = building.is_temporary && !building.available_from && !building.available_until;
+                    Layout.$('#alwaysAvailableCheckbox').checked = alwaysAvailable;
+
                     deleteSection.classList.remove('hidden');
                 }
             } else {
                 title.textContent = t('add_building');
                 deleteSection.classList.add('hidden');
+                Layout.$('#alwaysAvailableCheckbox').checked = false;
             }
 
             toggleTemporaryDates();
@@ -422,6 +458,7 @@
             e.preventDefault();
             const form = Layout.$('#buildingForm');
             const isTemporary = form.is_temporary.checked;
+            const alwaysAvailable = Layout.$('#alwaysAvailableCheckbox').checked;
 
             const data = {
                 name_ru: form.name_ru.value.trim(),
@@ -433,8 +470,9 @@
                 description_ru: form.description_ru.value.trim() || null,
                 is_active: form.is_active.checked,
                 is_temporary: isTemporary,
-                available_from: isTemporary ? form.available_from.value : null,
-                available_until: isTemporary ? form.available_until.value : null
+                // If "Always Available" is checked, set dates to NULL
+                available_from: (isTemporary && !alwaysAvailable) ? form.available_from.value : null,
+                available_until: (isTemporary && !alwaysAvailable) ? form.available_until.value : null
             };
 
             try {
@@ -510,6 +548,7 @@
             // Forms
             Layout.$('#buildingForm').addEventListener('submit', saveBuilding);
             Layout.$('#isTemporaryCheckbox').addEventListener('change', toggleTemporaryDates);
+            Layout.$('#alwaysAvailableCheckbox').addEventListener('change', toggleAlwaysAvailable);
 
             updateUI();
             Layout.hideLoader();
