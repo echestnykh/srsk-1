@@ -135,11 +135,9 @@
                             <input type="date" id="issuanceDate" class="input input-bordered w-full" />
                         </div>
                         <div>
-                            <label class="label"><span class="label-text font-medium" data-i18n="issuance_purpose">Цель выдачи</span></label>
-                            <select id="issuancePurpose" class="select select-bordered w-full">
-                                <option value="cooking" data-i18n="purpose_cooking">Приготовление</option>
-                                <option value="event" data-i18n="purpose_event">Мероприятие</option>
-                                <option value="other" data-i18n="purpose_other">Другое</option>
+                            <label class="label"><span class="label-text font-medium" data-i18n="receiver">Кто получил</span></label>
+                            <select id="issuanceReceiver" class="select select-bordered w-full">
+                                <option value="" data-i18n="select_receiver">— Выберите —</option>
                             </select>
                         </div>
                     </div>
@@ -227,7 +225,7 @@
             <div class="mb-4">
                 <div class="flex gap-4 text-sm opacity-60 mb-2">
                     <span id="viewIssuanceDate"></span>
-                    <span id="viewIssuancePurpose"></span>
+                    <span id="viewIssuanceReceiver"></span>
                 </div>
             </div>
 
@@ -378,6 +376,7 @@
         let initialized = false;
         let selectedProduct = null;
         let currentProductCategory = 'all';
+        let cooks = []; // Список поваров из команды
 
         const t = key => Layout.t(key);
 
@@ -643,14 +642,11 @@
             Layout.$('#productModal').close();
         }
 
-        // Get purpose translation
-        function getPurposeText(purpose) {
-            const purposes = {
-                'cooking': tr('purpose_cooking', 'Приготовление'),
-                'event': tr('purpose_event', 'Мероприятие'),
-                'other': tr('purpose_other', 'Другое')
-            };
-            return purposes[purpose] || purpose;
+        // Получить имя получателя по ID
+        function getReceiverName(receiverId) {
+            if (!receiverId) return tr('not_specified', 'Не указан');
+            const cook = cooks.find(c => c.id === receiverId);
+            return cook ? (cook.spiritual_name || cook.name) : tr('not_specified', 'Не указан');
         }
 
         const ISSUANCE_FORMS = {
@@ -711,6 +707,27 @@
             const { data, error } = await Layout.db.from('stock').select('*').eq('location_id', locationId);
             if (error) { console.error('Error loading stock:', error); return; }
             stock = data || [];
+        }
+
+        async function loadCooks() {
+            // Загружаем членов команды из departmentов Кухня и Кафе
+            const kitchenDepts = ['36547c0b-7e4c-4bf8-a76c-cf907513f163', 'b84c4e1c-0611-4290-b3e0-ee8dbc08c8e1'];
+            const { data, error } = await Layout.db
+                .from('vaishnavas')
+                .select('id, name, spiritual_name')
+                .eq('is_team_member', true)
+                .in('department_id', kitchenDepts)
+                .order('spiritual_name');
+            if (error) { console.error('Error loading cooks:', error); return; }
+            cooks = data || [];
+            renderCooksSelect();
+        }
+
+        function renderCooksSelect() {
+            const select = Layout.$('#issuanceReceiver');
+            if (!select) return;
+            select.innerHTML = `<option value="">${tr('select_receiver', '— Выберите —')}</option>` +
+                cooks.map(c => `<option value="${c.id}">${c.spiritual_name || c.name}</option>`).join('');
         }
 
         async function loadIssuances() {
@@ -839,6 +856,15 @@
                 return;
             }
 
+            // Проверка что выбран получатель
+            const receiverId = Layout.$('#issuanceReceiver').value;
+            if (!receiverId) {
+                showAlert(tr('select_receiver_required', 'Выберите кто получил продукты'));
+                saving = false;
+                Layout.$('#saveIssuanceBtn').disabled = false;
+                return;
+            }
+
             // Check if any items exceed stock
             const overStockItems = [];
             for (const item of issuanceItemsList) {
@@ -866,7 +892,7 @@
                 const issuanceData = {
                     location_id: locationId,
                     issuance_date: Layout.$('#issuanceDate').value,
-                    purpose: Layout.$('#issuancePurpose').value,
+                    receiver_id: receiverId,
                     notes: Layout.$('#issuanceNotes').value.trim()
                 };
 
@@ -915,7 +941,7 @@
                 // Clear form and switch to saved tab
                 issuanceItemsList = [];
                 Layout.$('#issuanceDate').value = new Date().toISOString().split('T')[0];
-                Layout.$('#issuancePurpose').value = 'cooking';
+                Layout.$('#issuanceReceiver').value = '';
                 Layout.$('#issuanceNotes').value = '';
                 renderIssuanceItems();
 
@@ -974,7 +1000,7 @@
             // status: 'saved', 'archived', 'deleted'
             const items = rec.stock_issuance_items || [];
             const date = new Date(rec.issuance_date || rec.created_at).toLocaleDateString('ru-RU');
-            const purposeText = getPurposeText(rec.purpose);
+            const receiverName = getReceiverName(rec.receiver_id);
 
             const borderColor = status === 'deleted' ? 'border-red-300' : (status === 'archived' ? 'border-gray-300' : 'border-green-500');
 
@@ -1002,7 +1028,7 @@
                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
                             <div class="font-semibold text-lg">${tr('issuance', 'Выдача')} #${formatNumberWithYear(rec.number || rec.id?.slice(0,4))}</div>
-                            <div class="text-sm opacity-60">${date} · ${purposeText}</div>
+                            <div class="text-sm opacity-60">${date} · ${receiverName}</div>
                         </div>
                         <div class="flex items-center gap-4">
                             <div class="text-center">
@@ -1038,7 +1064,7 @@
 
             Layout.$('#viewIssuanceTitle').textContent = `${tr('issuance', 'Выдача')} #${formatNumberWithYear(rec.number || id.slice(0,4))}`;
             Layout.$('#viewIssuanceDate').textContent = new Date(rec.issuance_date || rec.created_at).toLocaleDateString('ru-RU');
-            Layout.$('#viewIssuancePurpose').textContent = getPurposeText(rec.purpose);
+            Layout.$('#viewIssuanceReceiver').textContent = getReceiverName(rec.receiver_id);
             Layout.$('#viewIssuanceNotes').textContent = rec.notes || '';
 
             renderViewedIssuance();
@@ -1238,7 +1264,7 @@
         function createManualIssue() {
             issuanceItemsList = [];
             Layout.$('#issuanceDate').value = new Date().toISOString().split('T')[0];
-            Layout.$('#issuancePurpose').value = 'cooking';
+            Layout.$('#issuanceReceiver').value = '';
             Layout.$('#issuanceNotes').value = '';
             renderIssuanceItems();
             showFormSection();
@@ -1414,6 +1440,7 @@
             await loadProducts();
             await loadProductCategories();
             await loadStock();
+            await loadCooks();
             await loadIssuances();
 
             renderIssuanceItems();
