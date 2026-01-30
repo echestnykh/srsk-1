@@ -699,6 +699,26 @@ async function loadLocations() {
     selectLocation(currentLocation, true); // isInitial = true, чтобы не вызывать колбэк при загрузке
 }
 
+// ==================== USER INFO ====================
+function updateUserInfo() {
+    // Обновляем аватар и имя пользователя в header
+    if (!window.currentUser) return;
+
+    const photoUrl = window.currentUser.photo_url || 'https://i.pravatar.cc/150?img=5';
+    const userName = window.currentUser.name || window.currentUser.email;
+
+    // Обновляем аватары (desktop и mobile)
+    $$('img[alt="User"]').forEach(img => {
+        img.src = photoUrl;
+    });
+
+    // Обновляем имя пользователя в мобильном меню
+    const userNameEl = $('#userName');
+    if (userNameEl) {
+        userNameEl.textContent = userName;
+    }
+}
+
 // ==================== EVENT HANDLERS ====================
 function initHeaderEvents() {
     // Mobile menu toggle
@@ -851,6 +871,7 @@ async function initLayout(page = { module: null, menuId: 'kitchen', itemId: null
     buildMobileMenu();
     buildSubmenuBar();
     initHeaderEvents();
+    updateUserInfo();
 
     // На главной странице (без menuId) скрываем селектор локаций
     if (!page.menuId) {
@@ -957,6 +978,7 @@ window.Layout = {
     formatQuantity,
     openPhotoModal,
     logout,
+    updateUserInfo,
     get currentLang() { return currentLang; },
     get currentLocation() { return currentLocation; },
     get currentModule() { return currentModule; },

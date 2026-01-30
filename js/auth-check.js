@@ -32,8 +32,30 @@
         // Пользователь авторизован - продолжаем загрузку страницы
         console.log('User authenticated:', session.user.email);
 
-        // Сохраняем информацию о пользователе глобально
-        window.currentUser = session.user;
+        // Загружаем данные вайшнава по email
+        try {
+            const { data: vaishnava, error: vError } = await db
+                .from('vaishnavas')
+                .select('id, spiritual_name, first_name, last_name, photo_url')
+                .eq('email', session.user.email)
+                .eq('is_deleted', false)
+                .single();
+
+            // Сохраняем информацию о пользователе глобально
+            window.currentUser = {
+                ...session.user,
+                vaishnava_id: vaishnava?.id,
+                name: vaishnava?.spiritual_name || vaishnava?.first_name || session.user.email,
+                photo_url: vaishnava?.photo_url
+            };
+
+            if (vError && vError.code !== 'PGRST116') {
+                console.warn('Failed to load vaishnava data:', vError);
+            }
+        } catch (err) {
+            console.warn('Failed to load vaishnava data:', err);
+            window.currentUser = session.user;
+        }
 
     } catch (err) {
         console.error('Auth check exception:', err);
