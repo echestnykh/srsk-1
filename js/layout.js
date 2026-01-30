@@ -908,6 +908,23 @@ function openPhotoModal(photoUrl) {
     }
 }
 
+// Выход из системы
+async function logout() {
+    try {
+        const { error } = await db.auth.signOut();
+        if (error) {
+            console.error('Logout error:', error);
+            showNotification('Ошибка выхода', 'error');
+            return;
+        }
+        // Редирект на страницу логина
+        window.location.href = '/login.html';
+    } catch (err) {
+        console.error('Logout exception:', err);
+        showNotification('Ошибка выхода', 'error');
+    }
+}
+
 // Экспортируем в глобальную область
 window.Layout = {
     init: initLayout,
@@ -933,6 +950,7 @@ window.Layout = {
     handleError,
     formatQuantity,
     openPhotoModal,
+    logout,
     get currentLang() { return currentLang; },
     get currentLocation() { return currentLocation; },
     get currentModule() { return currentModule; },
