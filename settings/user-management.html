@@ -133,13 +133,20 @@
         </form>
     </dialog>
 
-    <!-- Модалка выбора права -->
+    <!-- Модалка управления индивидуальными правами -->
     <dialog id="permissionSelectModal" class="modal">
-        <div class="modal-box">
-            <h3 class="font-bold text-lg mb-4" id="permissionModalTitle">Выберите право</h3>
+        <div class="modal-box max-w-4xl">
+            <h3 class="font-bold text-lg mb-4">Индивидуальные права пользователя</h3>
 
-            <div class="form-control">
-                <input type="text" id="permissionSearch" placeholder="Поиск права..." class="input input-bordered mb-2">
+            <div class="alert alert-info mb-4">
+                <div class="text-sm">
+                    <strong>Серые галочки</strong> - права из ролей. <strong>Цветные галочки</strong> - индивидуальные переопределения.
+                    <br>Установите галочку чтобы <strong>добавить</strong> право, снимите чтобы <strong>убрать</strong>.
+                </div>
+            </div>
+
+            <div class="form-control mb-4">
+                <input type="text" id="permissionSearch" placeholder="Поиск права..." class="input input-bordered">
             </div>
 
             <div class="max-h-96 overflow-y-auto">
@@ -147,7 +154,7 @@
             </div>
 
             <div class="modal-action">
-                <button class="btn" onclick="document.getElementById('permissionSelectModal').close()">Отмена</button>
+                <button class="btn" onclick="document.getElementById('permissionSelectModal').close()">Закрыть</button>
             </div>
         </div>
         <form method="dialog" class="modal-backdrop">
@@ -577,7 +584,7 @@
             }
         }
 
-        async function openAddPermissionModal() {
+        async function openPermissionsModal() {
             if (!currentUserId) return;
 
             // Загрузить все права Housing
@@ -592,8 +599,37 @@
                 return;
             }
 
-            // Отобразить в модальном окне
-            document.getElementById('permissionModalTitle').textContent = 'Добавить право';
+            // Загрузить права пользователя из ролей
+            const { data: userRoles } = await db
+                .from('user_roles')
+                .select('role_id')
+                .eq('user_id', currentUserId)
+                .eq('is_active', true);
+
+            const roleIds = userRoles ? userRoles.map(r => r.role_id) : [];
+
+            let rolePermissionCodes = [];
+            if (roleIds.length > 0) {
+                const { data: rolePerms } = await db
+                    .from('role_permissions')
+                    .select('permissions!inner(code)')
+                    .in('role_id', roleIds);
+                rolePermissionCodes = rolePerms ? rolePerms.map(rp => rp.permissions.code) : [];
+            }
+
+            // Загрузить индивидуальные права
+            const { data: customPerms } = await db
+                .from('user_permissions')
+                .select('permissions!inner(code), is_granted')
+                .eq('user_id', currentUserId);
+
+            const customPermMap = {};
+            if (customPerms) {
+                customPerms.forEach(cp => {
+                    customPermMap[cp.permissions.code] = cp.is_granted;
+                });
+            }
+
             const permissionsList = document.getElementById('permissionsList');
 
             const renderPermissions = (perms) => {
@@ -606,13 +642,28 @@
 
                 permissionsList.innerHTML = Object.entries(byCategory).map(([cat, perms]) => `
                     <div class="mb-4">
-                        <div class="text-sm font-bold opacity-60 mb-1">${cat || 'Другое'}</div>
-                        ${perms.map(p => `
-                            <div class="p-2 hover:bg-base-200 cursor-pointer rounded" onclick="addPermission('${p.id}', '${p.name_ru.replace(/'/g, "\\'")}')">
-                                <div class="font-medium">${p.name_ru}</div>
-                                <div class="text-xs opacity-60">${p.code}</div>
-                            </div>
-                        `).join('')}
+                        <div class="text-sm font-bold opacity-60 mb-2">${cat || 'Другое'}</div>
+                        ${perms.map(p => {
+                            const hasFromRole = rolePermissionCodes.includes(p.code);
+                            const hasCustom = p.code in customPermMap;
+                            const isGranted = hasCustom ? customPermMap[p.code] : hasFromRole;
+                            const isCustomOverride = hasCustom;
+
+                            return `
+                            <label class="label cursor-pointer justify-start gap-3 py-2">
+                                <input type="checkbox"
+                                       class="checkbox checkbox-sm ${isCustomOverride ? 'checkbox-primary' : ''}"
+                                       data-perm-id="${p.id}"
+                                       data-perm-code="${p.code}"
+                                       data-perm-name="${p.name_ru.replace(/"/g, '&quot;')}"
+                                       ${isGranted ? 'checked' : ''}
+                                       onchange="togglePermission(this)">
+                                <div class="flex-1">
+                                    <div class="font-medium">${p.name_ru}</div>
+                                    <div class="text-xs opacity-60">${p.code}${hasFromRole && !isCustomOverride ? ' (из роли)' : ''}${isCustomOverride ? ' (индивидуальное)' : ''}</div>
+                                </div>
+                            </label>`;
+                        }).join('')}
                     </div>
                 `).join('');
             };
@@ -620,6 +671,7 @@
             renderPermissions(allPerms);
 
             // Поиск
+            document.getElementById('permissionSearch').value = '';
             document.getElementById('permissionSearch').oninput = (e) => {
                 const query = e.target.value.toLowerCase();
                 const filtered = allPerms.filter(p =>
@@ -632,7 +684,21 @@
             document.getElementById('permissionSelectModal').showModal();
         }
 
-        async function addPermission(permId, permName) {
+        // Заменяем обе старые функции на одну
+        function openAddPermissionModal() {
+            openPermissionsModal();
+        }
+
+        function openRevokePermissionModal() {
+            openPermissionsModal();
+        }
+
+        async function togglePermission(checkbox) {
+            const permId = checkbox.dataset.permId;
+            const permCode = checkbox.dataset.permCode;
+            const permName = checkbox.dataset.permName;
+            const isGranted = checkbox.checked;
+
             try {
                 // Проверить есть ли уже такое право
                 const { data: existing } = await db
@@ -643,9 +709,9 @@
                     .maybeSingle();
 
                 if (existing) {
-                    // Обновить is_granted на true
+                    // Обновить is_granted
                     await db.from('user_permissions')
-                        .update({ is_granted: true })
+                        .update({ is_granted: isGranted })
                         .eq('user_id', currentUserId)
                         .eq('permission_id', permId);
                 } else {
@@ -653,112 +719,23 @@
                     await db.from('user_permissions').insert({
                         user_id: currentUserId,
                         permission_id: permId,
-                        is_granted: true,
+                        is_granted: isGranted,
                         granted_by: window.currentUser.id,
                         granted_at: new Date().toISOString()
                     });
                 }
 
-                document.getElementById('permissionSelectModal').close();
-                Layout.showNotification(`Право "${permName}" добавлено`, 'success');
+                // Перезагрузить чекбокс чтобы обновить стиль
+                checkbox.classList.toggle('checkbox-primary', true);
 
-                // Перезагрузить модальное окно
-                const user = allUsers.find(u => u.user_id === currentUserId);
-                if (user) openManageModal(user.id);
-            } catch (err) {
-                alert('Ошибка: ' + err.message);
-            }
-        }
-
-        async function openRevokePermissionModal() {
-            if (!currentUserId) return;
-
-            // Загрузить все права Housing
-            const { data: allPerms } = await db
-                .from('permissions')
-                .select('id, code, name_ru, category')
-                .eq('module_id', (await db.from('modules').select('id').eq('code', 'housing').single()).data.id)
-                .order('category, name_ru');
-
-            if (!allPerms || allPerms.length === 0) {
-                alert('Нет доступных прав');
-                return;
-            }
-
-            // Отобразить в модальном окне
-            document.getElementById('permissionModalTitle').textContent = 'Убрать право';
-            const permissionsList = document.getElementById('permissionsList');
-
-            const renderPermissions = (perms) => {
-                // Группировать по категориям
-                const byCategory = {};
-                perms.forEach(p => {
-                    if (!byCategory[p.category]) byCategory[p.category] = [];
-                    byCategory[p.category].push(p);
-                });
-
-                permissionsList.innerHTML = Object.entries(byCategory).map(([cat, perms]) => `
-                    <div class="mb-4">
-                        <div class="text-sm font-bold opacity-60 mb-1">${cat || 'Другое'}</div>
-                        ${perms.map(p => `
-                            <div class="p-2 hover:bg-base-200 cursor-pointer rounded" onclick="revokePermission('${p.id}', '${p.name_ru.replace(/'/g, "\\'")}')">
-                                <div class="font-medium">${p.name_ru}</div>
-                                <div class="text-xs opacity-60">${p.code}</div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `).join('');
-            };
-
-            renderPermissions(allPerms);
-
-            // Поиск
-            document.getElementById('permissionSearch').oninput = (e) => {
-                const query = e.target.value.toLowerCase();
-                const filtered = allPerms.filter(p =>
-                    p.name_ru.toLowerCase().includes(query) ||
-                    p.code.toLowerCase().includes(query)
+                Layout.showNotification(
+                    `Право "${permName}" ${isGranted ? 'добавлено' : 'убрано'}`,
+                    'success'
                 );
-                renderPermissions(filtered);
-            };
 
-            document.getElementById('permissionSelectModal').showModal();
-        }
-
-        async function revokePermission(permId, permName) {
-            try {
-                // Проверить есть ли уже такое право
-                const { data: existing } = await db
-                    .from('user_permissions')
-                    .select('*')
-                    .eq('user_id', currentUserId)
-                    .eq('permission_id', permId)
-                    .maybeSingle();
-
-                if (existing) {
-                    // Обновить is_granted на false
-                    await db.from('user_permissions')
-                        .update({ is_granted: false })
-                        .eq('user_id', currentUserId)
-                        .eq('permission_id', permId);
-                } else {
-                    // Добавить право с is_granted = false
-                    await db.from('user_permissions').insert({
-                        user_id: currentUserId,
-                        permission_id: permId,
-                        is_granted: false,
-                        granted_by: window.currentUser.id,
-                        granted_at: new Date().toISOString()
-                    });
-                }
-
-                document.getElementById('permissionSelectModal').close();
-                Layout.showNotification(`Право "${permName}" убрано`, 'success');
-
-                // Перезагрузить модальное окно
-                const user = allUsers.find(u => u.user_id === currentUserId);
-                if (user) openManageModal(user.id);
             } catch (err) {
+                // Откатить чекбокс при ошибке
+                checkbox.checked = !isGranted;
                 alert('Ошибка: ' + err.message);
             }
         }
