@@ -706,10 +706,20 @@ function updateUserInfo() {
 
     const photoUrl = window.currentUser.photo_url || 'https://i.pravatar.cc/150?img=5';
     const userName = window.currentUser.name || window.currentUser.email;
+    const vaishnavaId = window.currentUser.vaishnava_id;
 
     // Обновляем аватары (desktop и mobile)
     $$('img[alt="User"]').forEach(img => {
         img.src = photoUrl;
+
+        // Делаем аватар кликабельным
+        if (vaishnavaId && !img.parentElement.classList.contains('avatar-link')) {
+            const parent = img.parentElement;
+            parent.classList.add('avatar-link', 'cursor-pointer', 'hover:opacity-80', 'transition-opacity');
+            parent.addEventListener('click', () => {
+                window.location.href = adjustHref('vaishnavas/person.html?id=' + vaishnavaId);
+            });
+        }
     });
 
     // Обновляем имя пользователя в мобильном меню
