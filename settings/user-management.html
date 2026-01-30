@@ -700,30 +700,18 @@
             const isGranted = checkbox.checked;
 
             try {
-                // Проверить есть ли уже такое право
-                const { data: existing } = await db
-                    .from('user_permissions')
-                    .select('*')
-                    .eq('user_id', currentUserId)
-                    .eq('permission_id', permId)
-                    .maybeSingle();
+                // Использовать upsert для автоматической вставки или обновления
+                const { error } = await db.from('user_permissions').upsert({
+                    user_id: currentUserId,
+                    permission_id: permId,
+                    is_granted: isGranted,
+                    granted_by: window.currentUser.id,
+                    granted_at: new Date().toISOString()
+                }, {
+                    onConflict: 'user_id,permission_id'
+                });
 
-                if (existing) {
-                    // Обновить is_granted
-                    await db.from('user_permissions')
-                        .update({ is_granted: isGranted })
-                        .eq('user_id', currentUserId)
-                        .eq('permission_id', permId);
-                } else {
-                    // Добавить новое право
-                    await db.from('user_permissions').insert({
-                        user_id: currentUserId,
-                        permission_id: permId,
-                        is_granted: isGranted,
-                        granted_by: window.currentUser.id,
-                        granted_at: new Date().toISOString()
-                    });
-                }
+                if (error) throw error;
 
                 // Перезагрузить чекбокс чтобы обновить стиль
                 checkbox.classList.toggle('checkbox-primary', true);
