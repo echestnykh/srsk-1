@@ -143,10 +143,8 @@
     <script src="js/auto-translate.js"></script>
     <script src="js/layout.js"></script>
     <script>
-        // Supabase config
-        const SUPABASE_URL = 'https://llttmftapmwebidgevmg.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsdHRtZnRhcG13ZWJpZGdldm1nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4NzQ3MTksImV4cCI6MjA4NDQ1MDcxOX0.V0J4_5AFDxHH6GsD-eh4N7fTBMjexSxAkVp2LSfgHh0';
-        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Используем CONFIG из config.js
+        const db = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
         // State
         let currentLang = localStorage.getItem('srsk_lang') || 'ru';
@@ -247,26 +245,7 @@
                     return;
                 }
 
-                // Check if user is linked to team_member
-                const { data: teamMember, error: tmError } = await db
-                    .from('team_members')
-                    .select('id, is_active')
-                    .eq('user_id', data.user.id)
-                    .single();
-
-                if (tmError || !teamMember) {
-                    await db.auth.signOut();
-                    showError('error_user_not_linked');
-                    return;
-                }
-
-                if (teamMember.is_active === false) {
-                    await db.auth.signOut();
-                    showError('error_account_inactive');
-                    return;
-                }
-
-                // Success - redirect
+                // Success - redirect to main page or previous page
                 const redirectUrl = localStorage.getItem('srsk_redirect_after_login') || 'index.html';
                 localStorage.removeItem('srsk_redirect_after_login');
                 window.location.href = redirectUrl;
@@ -326,19 +305,11 @@
             // Check if already logged in
             const { data: { session } } = await db.auth.getSession();
             if (session) {
-                // Verify user is linked
-                const { data: teamMember } = await db
-                    .from('team_members')
-                    .select('id, is_active')
-                    .eq('user_id', session.user.id)
-                    .single();
-
-                if (teamMember && teamMember.is_active !== false) {
-                    const redirectUrl = localStorage.getItem('srsk_redirect_after_login') || 'index.html';
-                    localStorage.removeItem('srsk_redirect_after_login');
-                    window.location.href = redirectUrl;
-                    return;
-                }
+                // Already logged in - redirect to main page
+                const redirectUrl = localStorage.getItem('srsk_redirect_after_login') || 'index.html';
+                localStorage.removeItem('srsk_redirect_after_login');
+                window.location.href = redirectUrl;
+                return;
             }
 
             // Load translations from DB
