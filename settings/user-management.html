@@ -587,17 +587,33 @@
         async function openPermissionsModal() {
             if (!currentUserId) return;
 
+            // Загрузить модуль Housing
+            const { data: housingModule, error: moduleError } = await db
+                .from('modules')
+                .select('id')
+                .eq('code', 'housing')
+                .single();
+
+            if (moduleError || !housingModule) {
+                console.error('Module error:', moduleError);
+                alert('Ошибка загрузки модуля Housing');
+                return;
+            }
+
             // Загрузить все права Housing
-            const { data: allPerms } = await db
+            const { data: allPerms, error: permsError } = await db
                 .from('permissions')
                 .select('id, code, name_ru, category')
-                .eq('module_id', (await db.from('modules').select('id').eq('code', 'housing').single()).data.id)
+                .eq('module_id', housingModule.id)
                 .order('category, name_ru');
 
-            if (!allPerms || allPerms.length === 0) {
+            if (permsError || !allPerms || allPerms.length === 0) {
+                console.error('Permissions error:', permsError);
                 alert('Нет доступных прав');
                 return;
             }
+
+            console.log('Loaded permissions:', allPerms.length);
 
             // Загрузить права пользователя из ролей
             const { data: userRoles } = await db
@@ -699,6 +715,8 @@
             const permName = checkbox.dataset.permName;
             const isGranted = checkbox.checked;
 
+            console.log('togglePermission:', { permId, permCode, permName, isGranted, currentUserId });
+
             try {
                 // Использовать upsert для автоматической вставки или обновления
                 const { error } = await db.from('user_permissions').upsert({
@@ -711,7 +729,10 @@
                     onConflict: 'user_id,permission_id'
                 });
 
-                if (error) throw error;
+                if (error) {
+                    console.error('Upsert error:', error);
+                    throw error;
+                }
 
                 // Перезагрузить чекбокс чтобы обновить стиль
                 checkbox.classList.toggle('checkbox-primary', true);
