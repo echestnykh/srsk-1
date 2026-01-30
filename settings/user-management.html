@@ -519,14 +519,19 @@
         // Сохранить изменения пользователя
         async function saveUserChanges() {
             try {
-                const user = allUsers.find(u => u.id === currentUserId);
+                const user = allUsers.find(u => u.user_id === currentUserId);
+                if (!user) {
+                    alert('Пользователь не найден');
+                    return;
+                }
+
                 const isSuperuser = document.getElementById('modalIsSuperuser').checked;
 
-                // Обновить статус суперпользователя
+                // Обновить статус суперпользователя в vaishnavas
                 await db
                     .from('vaishnavas')
                     .update({ is_superuser: isSuperuser })
-                    .eq('id', currentUserId);
+                    .eq('id', user.id);
 
                 // Обновить роли
                 const checkedRoles = Array.from(document.querySelectorAll('#rolesContainer input:checked'))
@@ -567,13 +572,19 @@
             if (!confirm('Вы уверены что хотите заблокировать этого пользователя?')) return;
 
             try {
+                const user = allUsers.find(u => u.user_id === currentUserId);
+                if (!user) {
+                    alert('Пользователь не найден');
+                    return;
+                }
+
                 await db
                     .from('vaishnavas')
                     .update({
                         approval_status: 'blocked',
                         is_active: false
                     })
-                    .eq('id', currentUserId);
+                    .eq('id', user.id);
 
                 closeManageModal();
                 loadUsers();
