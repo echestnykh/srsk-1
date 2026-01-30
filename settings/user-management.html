@@ -553,7 +553,12 @@
         }
 
         // Инициализация
-        window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('DOMContentLoaded', async () => {
+            // Подождать пока auth-check.js создаст hasPermission
+            while (typeof window.hasPermission !== 'function') {
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+
             // Проверка прав доступа
             if (!window.hasPermission('manage_users') && !window.currentUser?.is_superuser) {
                 alert('У вас нет прав для доступа к этой странице');
