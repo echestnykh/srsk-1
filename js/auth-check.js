@@ -124,11 +124,6 @@
             }
         }
 
-        // DEBUG: проверить данные перед созданием currentUser
-        console.log('🔍 DEBUG vaishnava.user_type:', vaishnava.user_type);
-        console.log('🔍 DEBUG vaishnava.is_superuser:', vaishnava.is_superuser);
-        console.log('🔍 DEBUG permissions:', permissions);
-
         // Сохранить в window.currentUser
         window.currentUser = {
             ...session.user,
@@ -139,11 +134,6 @@
             is_superuser: vaishnava.is_superuser,
             permissions: permissions
         };
-
-        // DEBUG: проверить что получилось
-        console.log('🔍 DEBUG currentUser.user_type:', window.currentUser.user_type);
-        console.log('🔍 DEBUG currentUser.is_superuser:', window.currentUser.is_superuser);
-        console.log('🔍 DEBUG currentUser.permissions:', window.currentUser.permissions);
 
         // Создать глобальную функцию hasPermission()
         window.hasPermission = function(permCode) {
