@@ -203,12 +203,13 @@ Housing (модуль проживания):
 
 ### SQL Migrations
 
-Файлы в `supabase/` выполняются последовательно по номерам (001-095+):
+Файлы в `supabase/` выполняются последовательно по номерам (001-097+):
 - `001-010` — основная схема, seed-данные, рецепты
 - `011-030` — переводы, RLS-политики, склад, команда
 - `031-050` — инвентаризация, меню-шаблоны, справочники
 - `051-066` — модуль Housing (здания, комнаты, бронирования, уборка)
 - `073-095` — система управления пользователями, ролями и правами
+- `096-097` — RLS политики для управления ролями, очистка устаревших функций (2026-01-31)
 
 Применять через MCP `mcp__supabase__apply_migration` или Supabase SQL Editor.
 
@@ -437,6 +438,30 @@ const grouped = allResidents.reduce((acc, r) => { (acc[r.booking_id] ||= []).pus
    - Функции с `SECURITY DEFINER` обходят RLS, но могут вызывать проблемы в контексте политик
    - Политика `FOR ALL` работает для INSERT/UPDATE/DELETE одновременно
 
+9. **Управление ролями: ошибка "Cannot read properties of undefined"** (решено 2026-01-31):
+   - **Проблема:** В `saveUserChanges()` переменная `user` возвращалась `undefined`
+   - **Причина:** `currentUserId` хранит `user_id` (auth UUID), но поиск шел по `allUsers.find(u => u.id === currentUserId)` где `id` это `vaishnava.id`
+   - **Решение:** Изменить поиск на `allUsers.find(u => u.user_id === currentUserId)`
+   - **Файл:** `settings/user-management.html:522`
+   - Аналогично в `blockUser()` - искать по `user_id`, обновлять по `user.id`
+
+10. **403 Forbidden при добавлении ролей** (решено 2026-01-31):
+    - **Проблема:** RLS политика блокировала INSERT в `user_roles` и `user_permissions`
+    - **Причина:** Были только политики FOR SELECT, но не было политик для INSERT/UPDATE/DELETE
+    - **Решение:** Миграция 096 - добавлены политики FOR ALL для суперпользователей
+    - **Код:**
+    ```sql
+    CREATE POLICY "Superusers can manage user roles"
+    ON user_roles FOR ALL TO authenticated
+    USING (auth.uid() IN (SELECT user_id FROM superusers))
+    WITH CHECK (auth.uid() IN (SELECT user_id FROM superusers));
+    ```
+
+11. **Временные функции с хардкодом UUID** (очищено 2026-01-31):
+    - **Проблема:** Функции `check_is_superuser()` и `is_superuser()` с хардкодом UUID (миграция 088)
+    - **Решение:** Миграция 097 - удалены устаревшие функции и политики
+    - **Текущий подход:** Используется `user_is_in_superusers()` из миграции 095 + таблица `superusers` без RLS
+
 ## File Locations
 
 ```
@@ -450,7 +475,7 @@ const grouped = allResidents.reduce((acc, r) => { (acc[r.booking_id] ||= []).pus
 ├── settings/       # переводы, пользователи
 ├── css/            # common.css
 ├── js/             # layout.js, vaishnavas-utils.js, color-init.js
-├── supabase/       # SQL-миграции (001-066+)
+├── supabase/       # SQL-миграции (001-097+)
 └── docs/           # документация
 ```
 
