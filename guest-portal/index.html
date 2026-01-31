@@ -337,45 +337,41 @@
             <!-- Правая колонка: Ретрит + Трансфер -->
             <div class="md:col-span-2 flex flex-col gap-4">
 
-                <!-- Текущий ретрит -->
-                <div class="card cursor-pointer transition-all flex-1 p-0 overflow-hidden border-2 border-transparent hover:border-srsk-green" style="background: #E8F5E9;">
+                <!-- Текущий/предстоящий ретрит -->
+                <div id="retreat-block" class="hidden card cursor-pointer transition-all flex-1 p-0 overflow-hidden border-2 border-transparent hover:border-srsk-green" style="background: #E8F5E9;">
                     <div class="flex flex-col sm:flex-row h-full">
-                        <!-- Картинка ретрита на всю высоту -->
-                        <div class="w-full sm:w-56 h-48 sm:h-auto bg-gray-200 flex-shrink-0 flex items-center justify-center overflow-hidden">
-                            <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                            </svg>
+                        <!-- Картинка ретрита -->
+                        <div id="retreat-image" class="w-full sm:w-56 h-48 sm:h-auto bg-gray-200 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                            <img src="images/tilak-placeholder.svg" alt="" class="w-16 h-16 opacity-30">
                         </div>
 
                         <!-- Инфо -->
                         <div class="flex-1 p-5 flex flex-col">
-                            <div class="card-label" style="color: #147D30;">Ваш ретрит</div>
+                            <div id="retreat-label" class="card-label" style="color: #147D30;">Ваш ретрит</div>
 
-                            <div class="text-2xl font-semibold text-gray-800">Ретрит Шри Шри Радхи-Говинды</div>
-                            <div class="text-sm text-gray-500 mt-1">7 — 22 февраля 2025</div>
+                            <div id="retreat-name" class="text-2xl font-semibold text-gray-800"></div>
+                            <div id="retreat-dates" class="text-sm text-gray-500 mt-1"></div>
 
                             <!-- Краткое описание -->
-                            <p class="text-sm text-gray-600 mt-2 line-clamp-2">
-                                Фестиваль Шри Шри Радхи-Говинды — главное событие года в ашраме
-                            </p>
+                            <p id="retreat-description" class="text-sm text-gray-600 mt-2 line-clamp-2"></p>
 
-                            <div class="mt-auto pt-4 grid grid-cols-2 gap-4">
+                            <div id="retreat-accommodation" class="mt-auto pt-4 grid grid-cols-2 gap-4 hidden">
                                 <!-- Комната -->
                                 <div>
                                     <div class="text-xs text-gray-400 uppercase tracking-wide">Комната</div>
-                                    <div class="font-medium text-gray-800 mt-1">Гостевой дом, №12</div>
+                                    <div id="retreat-room" class="font-medium text-gray-800 mt-1"></div>
                                 </div>
 
                                 <!-- Сосед -->
-                                <div>
+                                <div id="retreat-roommate-block" class="hidden">
                                     <div class="text-xs text-gray-400 uppercase tracking-wide">Сосед</div>
-                                <a href="#" class="flex items-center gap-3 mt-1 hover:text-srsk-orange transition-colors">
-                                        <div class="w-10 h-10 bg-white rounded-full flex-shrink-0 flex items-center justify-center">
+                                    <a id="retreat-roommate" href="#" class="flex items-center gap-3 mt-1 hover:text-srsk-orange transition-colors">
+                                        <div id="retreat-roommate-photo" class="w-10 h-10 bg-white rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden">
                                             <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
                                             </svg>
                                         </div>
-                                        <div class="text-sm text-gray-700">Кришна Према дас</div>
+                                        <div id="retreat-roommate-name" class="text-sm text-gray-700"></div>
                                     </a>
                                 </div>
                             </div>
@@ -390,53 +386,51 @@
                     </div>
                 </div>
 
+                <!-- Заглушка если нет ретрита -->
+                <div id="no-retreat-block" class="hidden card flex-1 flex flex-col items-center justify-center text-center py-8" style="background: #F5F5F5;">
+                    <svg class="w-16 h-16 text-gray-300 mb-4" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                    </svg>
+                    <div class="text-gray-500 mb-2">Нет активных ретритов</div>
+                    <a href="#upcoming-retreats" class="text-srsk-orange hover:underline text-sm">Посмотреть ближайшие →</a>
+                </div>
+
                 <!-- Трансфер -->
-                <div class="card" style="background: #FFF3CD;">
+                <div id="transfer-block" class="hidden card" style="background: #FFF3CD;">
                     <div class="card-label" style="color: #997A00;">Трансфер</div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <!-- Прилёт -->
-                        <div class="p-4 bg-white/60 rounded-xl cursor-pointer border-2 border-transparent hover:border-amber-300 transition-all">
-                            <div class="flex items-center justify-between mb-3">
-                                <div class="flex items-center gap-2 text-sm font-medium text-gray-700">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                                    </svg>
-                                    Прилёт
-                                </div>
-                                <a href="#" class="text-xs text-srsk-orange hover:underline">Изменить</a>
+                        <div id="arrival-block" class="hidden p-4 bg-white/60 rounded-xl border-2 border-transparent">
+                            <div class="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                                </svg>
+                                Прилёт
                             </div>
 
-                            <div class="text-xl font-medium text-gray-800">25 фев, 14:30</div>
-                            <div class="text-sm text-gray-500">Рейс SU232, Дели</div>
+                            <div id="arrival-datetime" class="text-xl font-medium text-gray-800"></div>
+                            <div id="arrival-flight" class="text-sm text-gray-500"></div>
 
-                            <div class="mt-3 flex items-center gap-2">
-                                <span class="w-2 h-2 bg-srsk-green rounded-full"></span>
-                                <span class="text-sm text-srsk-green font-medium">Такси заказано</span>
-                            </div>
-                            <div class="text-xs text-gray-500 mt-1">
-                                Водитель: Раджеш, +91 98765 43210
+                            <div id="arrival-taxi" class="mt-3">
+                                <!-- Заполняется динамически -->
                             </div>
                         </div>
 
                         <!-- Вылет -->
-                        <div class="p-4 bg-white/60 rounded-xl cursor-pointer border-2 border-transparent hover:border-amber-300 transition-all">
-                            <div class="flex items-center justify-between mb-3">
-                                <div class="flex items-center gap-2 text-sm font-medium text-gray-700">
-                                    <svg class="w-4 h-4 rotate-180" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                                    </svg>
-                                    Вылет
-                                </div>
-                                <a href="#" class="text-xs text-srsk-orange hover:underline">Изменить</a>
+                        <div id="departure-block" class="hidden p-4 bg-white/60 rounded-xl border-2 border-transparent">
+                            <div class="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
+                                <svg class="w-4 h-4 rotate-180" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                                </svg>
+                                Вылет
                             </div>
 
-                            <div class="text-xl font-medium text-gray-800">6 мар, 19:00</div>
-                            <div class="text-sm text-gray-500">Рейс SU233, Дели</div>
+                            <div id="departure-datetime" class="text-xl font-medium text-gray-800"></div>
+                            <div id="departure-flight" class="text-sm text-gray-500"></div>
 
-                            <div class="mt-3 flex items-center gap-2">
-                                <span class="w-2 h-2 bg-srsk-orange rounded-full"></span>
-                                <span class="text-sm text-yellow-700 font-medium">Такси нужно — ожидает</span>
+                            <div id="departure-taxi" class="mt-3">
+                                <!-- Заполняется динамически -->
                             </div>
                         </div>
                     </div>
@@ -1153,6 +1147,125 @@
             return `${start.getDate()} ${months[start.getMonth()]} – ${end.getDate()} ${months[end.getMonth()]}`;
         }
 
+        // Форматирование даты/времени трансфера
+        function formatTransferDateTime(datetime) {
+            if (!datetime) return '';
+            const date = new Date(datetime);
+            const months = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            return `${date.getDate()} ${months[date.getMonth()]}, ${hours}:${minutes}`;
+        }
+
+        // Отобразить статус такси
+        function renderTaxiStatus(transfer) {
+            if (!transfer.needs_transfer || transfer.needs_transfer === 'no') {
+                return '<div class="text-xs text-gray-500">Трансфер не нужен</div>';
+            }
+
+            if (transfer.taxi_status === 'booked' || transfer.taxi_driver_info) {
+                return `
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 bg-srsk-green rounded-full"></span>
+                        <span class="text-sm text-srsk-green font-medium">Такси заказано</span>
+                    </div>
+                    ${transfer.taxi_driver_info ? `<div class="text-xs text-gray-500 mt-1">${transfer.taxi_driver_info}</div>` : ''}
+                `;
+            }
+
+            return `
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 bg-srsk-orange rounded-full"></span>
+                    <span class="text-sm text-yellow-700 font-medium">Такси ожидается</span>
+                </div>
+            `;
+        }
+
+        // Загрузить активный/предстоящий ретрит
+        async function loadActiveRetreat(guestId) {
+            try {
+                const data = await PortalData.loadDashboardData(guestId);
+
+                const retreatBlock = document.getElementById('retreat-block');
+                const noRetreatBlock = document.getElementById('no-retreat-block');
+                const transferBlock = document.getElementById('transfer-block');
+
+                if (!data.activeRetreat) {
+                    // Нет активного ретрита
+                    retreatBlock.classList.add('hidden');
+                    noRetreatBlock.classList.remove('hidden');
+                    transferBlock.classList.add('hidden');
+                    return;
+                }
+
+                const retreat = data.activeRetreat.retreat;
+
+                // Показываем блок ретрита
+                retreatBlock.classList.remove('hidden');
+                noRetreatBlock.classList.add('hidden');
+
+                // Заполняем данные ретрита
+                document.getElementById('retreat-label').textContent = data.isCurrentRetreat ? 'Ваш ретрит' : 'Предстоящий ретрит';
+                document.getElementById('retreat-name').textContent = retreat.name_ru;
+                document.getElementById('retreat-dates').textContent = formatRetreatDates(retreat.start_date, retreat.end_date);
+                document.getElementById('retreat-description').textContent = retreat.description_ru || '';
+
+                // Картинка
+                const imageEl = document.getElementById('retreat-image');
+                if (retreat.image_url) {
+                    imageEl.innerHTML = `<img src="${retreat.image_url}" alt="" class="w-full h-full object-cover">`;
+                }
+
+                // Размещение
+                if (data.accommodation?.room) {
+                    document.getElementById('retreat-accommodation').classList.remove('hidden');
+                    document.getElementById('retreat-room').textContent =
+                        `${data.accommodation.room.building?.name_ru || ''}, №${data.accommodation.room.number}`;
+
+                    // Сосед
+                    if (data.accommodation.roommates?.length > 0) {
+                        const roommate = data.accommodation.roommates[0];
+                        const roommateName = roommate.spiritual_name ||
+                            `${roommate.first_name || ''} ${roommate.last_name || ''}`.trim();
+
+                        document.getElementById('retreat-roommate-block').classList.remove('hidden');
+                        document.getElementById('retreat-roommate-name').textContent = roommateName;
+
+                        if (roommate.photo_url) {
+                            document.getElementById('retreat-roommate-photo').innerHTML =
+                                `<img src="${roommate.photo_url}" alt="" class="w-full h-full object-cover">`;
+                        }
+                    }
+                }
+
+                // Трансферы
+                if (data.transfers.arrival || data.transfers.departure) {
+                    transferBlock.classList.remove('hidden');
+
+                    // Прилёт
+                    if (data.transfers.arrival) {
+                        const arrival = data.transfers.arrival;
+                        document.getElementById('arrival-block').classList.remove('hidden');
+                        document.getElementById('arrival-datetime').textContent = formatTransferDateTime(arrival.flight_datetime);
+                        document.getElementById('arrival-flight').textContent = `Рейс ${arrival.flight_number || '—'}`;
+                        document.getElementById('arrival-taxi').innerHTML = renderTaxiStatus(arrival);
+                    }
+
+                    // Вылет
+                    if (data.transfers.departure) {
+                        const departure = data.transfers.departure;
+                        document.getElementById('departure-block').classList.remove('hidden');
+                        document.getElementById('departure-datetime').textContent = formatTransferDateTime(departure.flight_datetime);
+                        document.getElementById('departure-flight').textContent = `Рейс ${departure.flight_number || '—'}`;
+                        document.getElementById('departure-taxi').innerHTML = renderTaxiStatus(departure);
+                    }
+                }
+
+            } catch (e) {
+                console.error('Ошибка загрузки ретрита:', e);
+            }
+        }
+
         // Загрузить ближайшие ретриты
         async function loadUpcomingRetreats() {
             try {
@@ -1225,6 +1338,7 @@
                 initPhotoUpload();
                 loadTeachersList();
                 loadUpcomingRetreats();
+                loadActiveRetreat(guest.id);
                 document.getElementById('profile-form').addEventListener('submit', handleProfileSave);
             }
         }

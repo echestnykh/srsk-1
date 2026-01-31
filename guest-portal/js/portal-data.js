@@ -8,6 +8,90 @@
 const db = window.portalSupabase;
 
 /**
+ * Загрузить текущий или ближайший предстоящий ретрит гостя
+ * @param {string} guestId - ID гостя из vaishnavas
+ * @returns {Promise<object|null>}
+ */
+async function getCurrentOrUpcomingRetreat(guestId) {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+
+        // Сначала ищем текущий ретрит (идёт прямо сейчас)
+        let { data, error } = await db
+            .from('retreat_registrations')
+            .select(`
+                id,
+                status,
+                created_at,
+                retreat:retreats (
+                    id,
+                    name_ru,
+                    name_en,
+                    name_hi,
+                    start_date,
+                    end_date,
+                    description_ru,
+                    description_en,
+                    description_hi,
+                    image_url
+                )
+            `)
+            .eq('vaishnava_id', guestId)
+            .eq('is_deleted', false)
+            .lte('retreat.start_date', today)
+            .gte('retreat.end_date', today)
+            .limit(1)
+            .maybeSingle();
+
+        if (!error && data) {
+            data.isCurrent = true;
+            return data;
+        }
+
+        // Если текущего нет — ищем ближайший предстоящий
+        const { data: upcoming, error: upcomingError } = await db
+            .from('retreat_registrations')
+            .select(`
+                id,
+                status,
+                created_at,
+                retreat:retreats (
+                    id,
+                    name_ru,
+                    name_en,
+                    name_hi,
+                    start_date,
+                    end_date,
+                    description_ru,
+                    description_en,
+                    description_hi,
+                    image_url
+                )
+            `)
+            .eq('vaishnava_id', guestId)
+            .eq('is_deleted', false)
+            .gt('retreat.start_date', today)
+            .order('retreat(start_date)', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+
+        if (upcomingError) {
+            console.error('Ошибка загрузки ретрита:', upcomingError);
+            return null;
+        }
+
+        if (upcoming) {
+            upcoming.isCurrent = false;
+        }
+        return upcoming;
+
+    } catch (error) {
+        console.error('Ошибка загрузки ретрита:', error);
+        return null;
+    }
+}
+
+/**
  * Загрузить текущий ретрит гостя (даты пересекаются с сегодня)
  * @param {string} guestId - ID гостя из vaishnavas
  * @returns {Promise<object|null>}
@@ -66,8 +150,8 @@ async function getAccommodation(guestId, retreatId) {
             .from('residents')
             .select(`
                 id,
-                check_in_date,
-                check_out_date,
+                check_in,
+                check_out,
                 room:rooms (
                     id,
                     number,
@@ -81,7 +165,6 @@ async function getAccommodation(guestId, retreatId) {
             `)
             .eq('vaishnava_id', guestId)
             .eq('retreat_id', retreatId)
-            .eq('is_deleted', false)
             .maybeSingle();
 
         if (error) {
@@ -131,21 +214,18 @@ async function getTransfers(registrationId) {
             .from('guest_transfers')
             .select(`
                 id,
-                type,
-                date,
-                time,
+                direction,
+                flight_datetime,
                 flight_number,
-                airport,
-                station,
+                needs_transfer,
+                transfer_group,
                 notes,
-                taxi_driver,
-                taxi_phone,
-                taxi_car,
-                taxi_price,
-                status
+                taxi_status,
+                taxi_driver_info,
+                taxi_ordered_by
             `)
             .eq('registration_id', registrationId)
-            .order('date');
+            .order('flight_datetime');
 
         if (error) {
             console.error('Ошибка загрузки трансферов:', error);
@@ -155,9 +235,9 @@ async function getTransfers(registrationId) {
         const result = { arrival: null, departure: null };
 
         for (const transfer of data || []) {
-            if (transfer.type === 'arrival') {
+            if (transfer.direction === 'arrival') {
                 result.arrival = transfer;
-            } else if (transfer.type === 'departure') {
+            } else if (transfer.direction === 'departure') {
                 result.departure = transfer;
             }
         }
@@ -459,12 +539,12 @@ async function uploadPhoto(file, guestId) {
 async function loadDashboardData(guestId) {
     // Параллельная загрузка
     const [
-        currentRetreat,
+        activeRetreat,
         upcomingRetreats,
         materials,
         availableRetreats
     ] = await Promise.all([
-        getCurrentRetreat(guestId),
+        getCurrentOrUpcomingRetreat(guestId),
         getUpcomingRetreats(guestId),
         getMaterials(),
         getAvailableRetreats()
@@ -473,22 +553,23 @@ async function loadDashboardData(guestId) {
     let accommodation = null;
     let transfers = { arrival: null, departure: null };
 
-    // Если есть текущий ретрит, загружаем размещение и трансферы
-    if (currentRetreat) {
+    // Если есть активный/предстоящий ретрит, загружаем размещение и трансферы
+    if (activeRetreat) {
         [accommodation, transfers] = await Promise.all([
-            getAccommodation(guestId, currentRetreat.retreat.id),
-            getTransfers(currentRetreat.id)
+            getAccommodation(guestId, activeRetreat.retreat.id),
+            getTransfers(activeRetreat.id)
         ]);
     }
 
     return {
-        currentRetreat,
+        activeRetreat,
         accommodation,
         transfers,
         upcomingRetreats,
         materials: materials.slice(0, 6), // Только первые 6 для превью
         availableRetreats,
-        hasCurrentRetreat: !!currentRetreat
+        hasActiveRetreat: !!activeRetreat,
+        isCurrentRetreat: activeRetreat?.isCurrent || false
     };
 }
 
@@ -521,6 +602,7 @@ async function loadRetreatsData(guestId) {
 // Экспорт
 window.PortalData = {
     getCurrentRetreat,
+    getCurrentOrUpcomingRetreat,
     getAccommodation,
     getTransfers,
     getUpcomingRetreats,
