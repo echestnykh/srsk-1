@@ -612,8 +612,12 @@
                     const inStock = useKg ? stockGrams / 1000 : stockGrams;
                     const toPurchase = useKg ? toPurchaseGrams / 1000 : toPurchaseGrams;
 
+                    // Учитываем процент на очистку (овощи/фрукты)
+                    const wastePercent = product?.waste_percent || 0;
+                    const toPurchaseWithWaste = toPurchase * (1 + wastePercent / 100);
+
                     // Округляем количество для закупки (учитываем min_purchase)
-                    const roundedPurchase = roundForPurchase(toPurchase, unit, categorySlug, product?.min_purchase);
+                    const roundedPurchase = roundForPurchase(toPurchaseWithWaste, unit, categorySlug, product?.min_purchase);
 
                     // Get last price from stock (price per kg)
                     const lastPrice = stock?.last_price || null;
