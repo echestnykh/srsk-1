@@ -1022,6 +1022,31 @@
                    'Гость';
         }
 
+        // Вычислить процент заполнения профиля
+        function calculateCompleteness(guest) {
+            if (!guest) return 0;
+
+            const fields = [
+                'firstName',
+                'lastName',
+                'spiritualName',
+                'phone',
+                'telegram',
+                'country',
+                'city',
+                'photoUrl',
+                'spiritualTeacher',
+                'birthDate'
+            ];
+
+            let filled = 0;
+            for (const field of fields) {
+                if (guest[field]) filled++;
+            }
+
+            return Math.round((filled / fields.length) * 100);
+        }
+
         // Получить статус пользователя
         function getUserStatus(userType) {
             const statuses = {
@@ -1101,8 +1126,8 @@
                 tgEl.classList.add('hidden');
             }
 
-            // Заполненность профиля
-            const completeness = PortalAuth.getProfileCompleteness();
+            // Заполненность профиля (вычисляем для конкретного guest)
+            const completeness = calculateCompleteness(guest);
             document.getElementById('profile-completeness-value').textContent = `${completeness}%`;
             document.getElementById('profile-completeness-bar').style.width = `${completeness}%`;
 
