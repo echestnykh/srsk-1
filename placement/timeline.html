@@ -2636,9 +2636,12 @@
 
         // Сброс к сегодняшнему дню
         function resetToToday() {
+            const oldDate = baseDate.toISOString().split('T')[0];
             baseDate = new Date();
             baseDate.setHours(0, 0, 0, 0);
             baseDate.setDate(baseDate.getDate() - 2);
+            const newDate = baseDate.toISOString().split('T')[0];
+            console.log('Reset to today:', oldDate, '→', newDate);
             reload();
         }
 
