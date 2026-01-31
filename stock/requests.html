@@ -1539,7 +1539,11 @@
             const unit = selectedProduct.unit || 'kg';
             const stock = stockItems.find(s => s.product_id === selectedProduct.id);
             const lastPrice = stock?.last_price || null;
-            const quantityGrams = toGrams(quantity, unit);
+
+            // Учитываем процент на очистку при расчете количества для закупки
+            const wastePercent = selectedProduct.waste_percent || 0;
+            const quantityToPurchase = quantity * (1 + wastePercent / 100);
+            const quantityGrams = toGrams(quantityToPurchase, unit);
 
             if (addingToViewedRequest) {
                 // Добавляем в просматриваемую заявку
@@ -1547,7 +1551,7 @@
                     id: null, // новый элемент, будет создан при сохранении
                     product_id: selectedProduct.id,
                     product: selectedProduct,
-                    quantity: quantity,
+                    quantity: quantityToPurchase,
                     unit: unit,
                     last_price: lastPrice,
                     est_sum: lastPrice ? (quantityGrams / 1000) * lastPrice : null
@@ -1563,7 +1567,7 @@
                     product: selectedProduct,
                     needed: quantity,
                     in_stock: 0,
-                    to_purchase: quantity,
+                    to_purchase: quantityToPurchase,
                     unit: unit,
                     last_price: lastPrice,
                     est_sum: lastPrice ? (quantityGrams / 1000) * lastPrice : null

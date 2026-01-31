@@ -817,9 +817,13 @@
                 return;
             }
 
+            // Учитываем процент на очистку при выдаче
+            const wastePercent = product.waste_percent || 0;
+            const quantityToIssue = quantity * (1 + wastePercent / 100);
+
             issuanceItemsList.push({
                 product_id: productId,
-                quantity: quantity,
+                quantity: quantityToIssue,
                 display_unit: displayUnit || product.unit
             });
 
