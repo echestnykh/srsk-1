@@ -2638,7 +2638,7 @@
         }
 
         // Сброс к сегодняшнему дню
-        function resetToToday() {
+        async function resetToToday() {
             const oldDate = baseDate.toISOString().split('T')[0];
             baseDate = new Date();
             baseDate.setHours(0, 0, 0, 0);
@@ -2646,13 +2646,15 @@
             const newDate = baseDate.toISOString().split('T')[0];
             console.log('Reset to today:', oldDate, '→', newDate);
 
-            // Сбросить скролл к началу (где находится сегодняшний день)
-            const tableContainer = document.getElementById('tableContainer');
-            if (tableContainer) {
-                tableContainer.scrollLeft = 0;
-            }
+            await reload();
 
-            reload();
+            // Сбросить скролл к началу ПОСЛЕ перерисовки
+            setTimeout(() => {
+                const tableContainer = document.getElementById('tableContainer');
+                if (tableContainer) {
+                    tableContainer.scrollLeft = 0;
+                }
+            }, 100);
         }
 
         // Инициализация
