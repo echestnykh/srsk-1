@@ -429,7 +429,7 @@
             button.textContent = '...';
 
             try {
-                const translated = await window.translateText(sourceText, 'ru', lang);
+                const translated = await window.AutoTranslate.translate(sourceText, 'ru', lang);
                 if (translated) {
                     targetInput.value = translated;
                 }
