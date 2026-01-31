@@ -1545,14 +1545,107 @@
 
         // Инициализация
         async function init() {
-            const guest = await PortalAuth.checkGuestAuth();
-            if (guest) {
+            // Проверяем параметр view для просмотра чужого профиля
+            const urlParams = new URLSearchParams(window.location.search);
+            const viewId = urlParams.get('view');
+
+            if (viewId) {
+                // Режим просмотра чужого профиля
+                await loadPublicProfile(viewId);
+            } else {
+                // Обычный режим — свой профиль
+                const guest = await PortalAuth.checkGuestAuth();
+                if (guest) {
+                    populateProfile(guest);
+                    initPhotoUpload();
+                    loadTeachersList();
+                    loadUpcomingRetreats();
+                    loadActiveRetreat(guest.id);
+                    document.getElementById('profile-form').addEventListener('submit', handleProfileSave);
+                }
+            }
+        }
+
+        // Загрузить публичный профиль другого пользователя
+        async function loadPublicProfile(vaishnavId) {
+            try {
+                // Загружаем данные вайшнава
+                const { data: vaishnava, error } = await window.portalSupabase
+                    .from('vaishnavas')
+                    .select(`
+                        id,
+                        first_name,
+                        last_name,
+                        spiritual_name,
+                        phone,
+                        telegram,
+                        country,
+                        city,
+                        photo_url,
+                        spiritual_teacher,
+                        is_profile_public
+                    `)
+                    .eq('id', vaishnavId)
+                    .single();
+
+                if (error || !vaishnava) {
+                    console.error('Ошибка загрузки профиля:', error);
+                    document.body.innerHTML = '<div class="flex items-center justify-center min-h-screen text-gray-500">Профиль не найден</div>';
+                    return;
+                }
+
+                // Проверяем публичность профиля
+                if (vaishnava.is_profile_public === false) {
+                    document.body.innerHTML = '<div class="flex items-center justify-center min-h-screen text-gray-500">Профиль скрыт пользователем</div>';
+                    return;
+                }
+
+                // Скрываем скелетоны
+                document.getElementById('profile-skeleton').classList.add('hidden');
+                document.getElementById('profile-card').classList.remove('hidden');
+                document.getElementById('retreat-skeleton').classList.add('hidden');
+
+                // Заполняем профиль
+                const guest = {
+                    id: vaishnava.id,
+                    firstName: vaishnava.first_name,
+                    lastName: vaishnava.last_name,
+                    spiritualName: vaishnava.spiritual_name,
+                    phone: vaishnava.phone,
+                    telegram: vaishnava.telegram,
+                    country: vaishnava.country,
+                    city: vaishnava.city,
+                    photoUrl: vaishnava.photo_url,
+                    spiritualTeacher: vaishnava.spiritual_teacher
+                };
+
                 populateProfile(guest);
-                initPhotoUpload();
-                loadTeachersList();
+
+                // Скрываем элементы редактирования
+                document.getElementById('edit-profile-btn')?.classList.add('hidden');
+                document.getElementById('profile-completeness')?.classList.add('hidden');
+
+                // Показываем заглушку вместо ретрита
+                document.getElementById('no-retreat-block').classList.remove('hidden');
+                document.getElementById('no-retreat-block').innerHTML = `
+                    <div class="text-center py-8 text-gray-500">
+                        <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                        </svg>
+                        <div class="font-medium text-gray-700">Публичный профиль</div>
+                        <div class="text-sm">Информация о ретритах доступна только владельцу</div>
+                    </div>
+                `;
+
+                // Скрываем блок трансферов
+                document.getElementById('transfer-block')?.classList.add('hidden');
+
+                // Загружаем ближайшие ретриты
                 loadUpcomingRetreats();
-                loadActiveRetreat(guest.id);
-                document.getElementById('profile-form').addEventListener('submit', handleProfileSave);
+
+            } catch (e) {
+                console.error('Ошибка:', e);
+                document.body.innerHTML = '<div class="flex items-center justify-center min-h-screen text-gray-500">Ошибка загрузки</div>';
             }
         }
 
