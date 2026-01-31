@@ -2630,21 +2630,15 @@
 
         // Сдвиг на месяц вперёд или назад
         function shiftMonth(direction) {
-            const oldDate = baseDate.toISOString().split('T')[0];
             baseDate.setMonth(baseDate.getMonth() + direction);
-            const newDate = baseDate.toISOString().split('T')[0];
-            console.log('Shift month:', direction, oldDate, '→', newDate);
             reload();
         }
 
         // Сброс к сегодняшнему дню
         async function resetToToday() {
-            const oldDate = baseDate.toISOString().split('T')[0];
             baseDate = new Date();
             baseDate.setHours(0, 0, 0, 0);
             baseDate.setDate(baseDate.getDate() - 2);
-            const newDate = baseDate.toISOString().split('T')[0];
-            console.log('Reset to today:', oldDate, '→', newDate);
 
             await reload();
 
