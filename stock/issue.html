@@ -648,7 +648,7 @@
         function getReceiverName(receiverId) {
             if (!receiverId) return tr('not_specified', 'Не указан');
             const cook = cooks.find(c => c.id === receiverId);
-            return cook ? (cook.spiritual_name || cook.first_name || cook.name || 'Без имени') : tr('not_specified', 'Не указан');
+            return cook ? (cook.spiritual_name || cook.first_name || 'Без имени') : tr('not_specified', 'Не указан');
         }
 
         const ISSUANCE_FORMS = {
@@ -735,7 +735,7 @@
             // Загружаем членов команды из этих департаментов
             const { data, error } = await Layout.db
                 .from('vaishnavas')
-                .select('id, name, spiritual_name, first_name, last_name, department_id')
+                .select('id, spiritual_name, first_name, last_name, department_id')
                 .eq('is_team_member', true)
                 .eq('is_deleted', false)
                 .in('department_id', kitchenDeptIds)
@@ -753,7 +753,7 @@
             if (!select) return;
             select.innerHTML = `<option value="">${tr('select_receiver', '— Выберите —')}</option>` +
                 cooks.map(c => {
-                    const name = c.spiritual_name || c.first_name || c.name || 'Без имени';
+                    const name = c.spiritual_name || c.first_name || 'Без имени';
                     return `<option value="${c.id}">${name}</option>`;
                 }).join('');
         }
