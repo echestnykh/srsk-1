@@ -258,6 +258,20 @@ Housing (модуль проживания):
 Layout.getName(item)  // возвращает item.name_ru / name_en / name_hi
 ```
 
+### Отображение имени вайшнава
+**ВАЖНО:** Всегда использовать этот порядок приоритета:
+```javascript
+// Правильно: spiritual_name ИЛИ полное имя (first_name + last_name)
+const name = vaishnava.spiritual_name ||
+             `${vaishnava.first_name || ''} ${vaishnava.last_name || ''}`.trim() ||
+             'Без имени';
+
+// НЕПРАВИЛЬНО: не использовать только first_name без last_name
+const name = vaishnava.spiritual_name || vaishnava.first_name; // ❌
+```
+
+**Причина:** Если нет духовного имени, нужно показывать полное имя (Имя Фамилия), а не только имя.
+
 ### Склонение слов
 ```javascript
 const FORMS = {
