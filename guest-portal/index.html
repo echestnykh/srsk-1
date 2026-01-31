@@ -702,11 +702,12 @@
                 phoneEl.classList.add('hidden');
             }
 
-            // Telegram
+            // Telegram (данные в поле telegram, не telegram_username)
             const tgEl = document.getElementById('profile-telegram');
-            if (guest.telegramUsername) {
-                const username = guest.telegramUsername.startsWith('@') ? guest.telegramUsername : `@${guest.telegramUsername}`;
-                tgEl.href = `https://t.me/${guest.telegramUsername.replace('@', '')}`;
+            const tgHandle = guest.telegram || guest.telegramUsername;
+            if (tgHandle && tgHandle.includes('@')) {
+                const username = tgHandle.startsWith('@') ? tgHandle : `@${tgHandle}`;
+                tgEl.href = `https://t.me/${tgHandle.replace('@', '')}`;
                 tgEl.querySelector('span').textContent = username;
                 tgEl.classList.remove('hidden');
             } else {
