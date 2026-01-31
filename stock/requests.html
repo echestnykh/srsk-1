@@ -105,7 +105,7 @@
                             <th data-i18n="category">Категория</th>
                             <th class="text-right" data-i18n="needed">Нужно</th>
                             <th class="text-right" data-i18n="in_stock">На складе</th>
-                            <th class="text-right w-32" data-i18n="to_purchase">Закупить</th>
+                            <th class="text-right w-48" data-i18n="to_purchase">Закупить</th>
                             <th class="text-right" data-i18n="est_price">≈ Сумма</th>
                             <th class="w-10"></th>
                         </tr>
@@ -269,7 +269,7 @@
                     <thead class="bg-base-200">
                         <tr>
                             <th colspan="2" data-i18n="product">Продукт</th>
-                            <th class="text-right w-32" data-i18n="to_purchase">Закупить</th>
+                            <th class="text-right w-48" data-i18n="to_purchase">Закупить</th>
                             <th class="text-right" data-i18n="est_price">≈ Сумма</th>
                             <th class="w-10"></th>
                         </tr>
@@ -761,6 +761,7 @@
                                 />
                                 <span class="btn btn-sm join-item no-animation pointer-events-none bg-base-200">${unit}</span>
                             </div>
+                            ${product?.waste_percent ? `<div class="text-xs opacity-60 mt-1">(+${product.waste_percent}% на очистку)</div>` : ''}
                         </td>
                         <td class="text-right opacity-70">${estSum}</td>
                         <td>

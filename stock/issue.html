@@ -150,7 +150,7 @@
                                     <tr>
                                         <th data-i18n="product">Продукт</th>
                                         <th class="w-24" data-i18n="in_stock">На складе</th>
-                                        <th class="w-24" data-i18n="quantity">Кол-во</th>
+                                        <th class="w-40" data-i18n="quantity">Кол-во</th>
                                         <th class="w-10"></th>
                                     </tr>
                                 </thead>
@@ -234,7 +234,7 @@
                     <thead class="bg-base-200">
                         <tr>
                             <th data-i18n="product">Продукт</th>
-                            <th class="w-24" data-i18n="quantity">Кол-во</th>
+                            <th class="w-40" data-i18n="quantity">Кол-во</th>
                             <th class="w-10"></th>
                         </tr>
                     </thead>
@@ -785,6 +785,7 @@
                                 <input type="number" class="input input-bordered input-sm w-20 ${isOverStock ? 'input-error' : ''}" value="${item.quantity}" min="0" step="0.1" onchange="updateIssuanceItem(${idx}, 'quantity', this.value)" />
                                 <span class="text-xs opacity-50">${displayUnit}</span>
                             </div>
+                            ${product?.waste_percent ? `<div class="text-xs opacity-60 mt-1">(+${product.waste_percent}% на очистку)</div>` : ''}
                         </td>
                         <td>
                             <button class="btn btn-ghost btn-sm btn-square text-error" onclick="removeIssuanceItem(${idx})">
