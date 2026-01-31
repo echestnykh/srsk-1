@@ -10,6 +10,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600&display=swap" rel="stylesheet">
     <!-- Portal CSS -->
     <link rel="stylesheet" href="css/portal.css">
+    <!-- Cropper.js для редактирования фото -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.1/dist/cropper.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.1/dist/cropper.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -290,7 +293,8 @@
                         <!-- Духовный учитель -->
                         <div>
                             <label class="text-xs text-white/60 uppercase tracking-wide">Духовный учитель</label>
-                            <input type="text" id="edit-spiritualTeacher" class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:border-white/40">
+                            <input type="text" id="edit-spiritualTeacher" list="teachers-list" class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:border-white/40" autocomplete="off">
+                            <datalist id="teachers-list"></datalist>
                         </div>
 
                         <!-- Телефон -->
@@ -714,6 +718,52 @@
     </div>
     </main>
 
+    <!-- Photo Crop Modal -->
+    <div id="cropModal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+            <div class="p-4 border-b flex items-center justify-between">
+                <h3 class="font-semibold text-lg text-gray-800">Редактирование фото</h3>
+                <button type="button" onclick="closeCropModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="p-4">
+                <div class="flex flex-col md:flex-row gap-6">
+                    <!-- Crop area -->
+                    <div class="flex-1">
+                        <div class="bg-gray-100 rounded-lg overflow-hidden" style="height: 300px;">
+                            <img id="cropImage" src="" alt="" style="max-width: 100%; display: block;">
+                        </div>
+                        <!-- Zoom controls -->
+                        <div class="flex items-center justify-center gap-4 mt-4">
+                            <button type="button" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200" onclick="cropper?.zoom(-0.1)">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
+                            </button>
+                            <input type="range" id="zoomRange" min="0.1" max="3" step="0.1" value="1" class="w-32 accent-srsk-green" oninput="handleZoomRange(this.value)">
+                            <button type="button" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200" onclick="cropper?.zoom(0.1)">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            </button>
+                            <button type="button" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200" onclick="cropper?.rotate(-90)">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Preview -->
+                    <div class="flex flex-col items-center gap-2">
+                        <div class="text-sm text-gray-500">Предпросмотр</div>
+                        <div id="cropPreview" class="w-28 h-28 rounded-full overflow-hidden bg-gray-100"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t flex justify-end gap-3">
+                <button type="button" onclick="closeCropModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Отмена</button>
+                <button type="button" onclick="saveCroppedPhoto()" class="px-4 py-2 bg-srsk-green text-white rounded-lg hover:bg-srsk-green/90">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/portal-config.js"></script>
@@ -721,6 +771,7 @@
     <script src="js/portal-data.js"></script>
     <script>
         let photoFile = null;
+        let cropper = null;
         // Форматирование даты рождения
         function formatBirthDate(dateStr) {
             if (!dateStr) return '';
@@ -873,11 +924,8 @@
         function initPhotoUpload() {
             const uploadArea = document.getElementById('edit-photo-upload');
             const input = document.getElementById('edit-photo-input');
-            const preview = document.getElementById('edit-photo-preview');
-            const placeholder = document.getElementById('edit-photo-placeholder');
 
             uploadArea.addEventListener('click', (e) => {
-                // Не открывать диалог если клик был на input
                 if (e.target !== input) {
                     input.click();
                 }
@@ -899,17 +947,90 @@
                     return;
                 }
 
-                photoFile = file;
-
-                // Превью
+                // Открываем кроппер
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    preview.src = e.target.result;
-                    preview.classList.remove('hidden');
-                    placeholder.classList.add('hidden');
+                    openCropModal(e.target.result);
                 };
                 reader.readAsDataURL(file);
             });
+        }
+
+        // Открыть модальное окно кроппера
+        function openCropModal(imageSrc) {
+            const modal = document.getElementById('cropModal');
+            const cropImage = document.getElementById('cropImage');
+
+            cropImage.src = imageSrc;
+            modal.classList.remove('hidden');
+
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+
+            cropImage.onload = function() {
+                cropper = new Cropper(cropImage, {
+                    aspectRatio: 1,
+                    viewMode: 2,
+                    dragMode: 'move',
+                    autoCropArea: 0.9,
+                    restore: false,
+                    guides: true,
+                    center: true,
+                    highlight: false,
+                    cropBoxMovable: true,
+                    cropBoxResizable: false,
+                    toggleDragModeOnDblclick: false,
+                    preview: '#cropPreview',
+                    ready: () => document.getElementById('zoomRange').value = 1,
+                    zoom: (e) => {
+                        if (e.detail.ratio > 3) { e.preventDefault(); cropper.zoomTo(3); }
+                        if (e.detail.ratio < 0.1) { e.preventDefault(); cropper.zoomTo(0.1); }
+                        document.getElementById('zoomRange').value = e.detail.ratio;
+                    }
+                });
+            };
+        }
+
+        // Закрыть кроппер
+        function closeCropModal() {
+            document.getElementById('cropModal').classList.add('hidden');
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+            document.getElementById('edit-photo-input').value = '';
+        }
+
+        // Zoom slider
+        function handleZoomRange(value) {
+            if (cropper) cropper.zoomTo(parseFloat(value));
+        }
+
+        // Сохранить обрезанное фото
+        function saveCroppedPhoto() {
+            if (!cropper) return;
+
+            const canvas = cropper.getCroppedCanvas({
+                width: 300,
+                height: 300,
+                imageSmoothingEnabled: true,
+                imageSmoothingQuality: 'high'
+            });
+
+            canvas.toBlob((blob) => {
+                photoFile = new File([blob], 'photo.jpg', { type: 'image/jpeg' });
+
+                // Показываем превью
+                const preview = document.getElementById('edit-photo-preview');
+                const placeholder = document.getElementById('edit-photo-placeholder');
+                preview.src = canvas.toDataURL('image/jpeg');
+                preview.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+
+                closeCropModal();
+            }, 'image/jpeg', 0.9);
         }
 
         // Сохранение профиля
@@ -973,12 +1094,33 @@
             }
         }
 
+        // Загрузить список учителей для автокомплита
+        async function loadTeachersList() {
+            try {
+                const { data, error } = await window.portalSupabase
+                    .from('vaishnavas')
+                    .select('spiritual_teacher')
+                    .not('spiritual_teacher', 'is', null)
+                    .not('spiritual_teacher', 'eq', '');
+
+                if (error) throw error;
+
+                // Уникальные значения
+                const teachers = [...new Set(data.map(d => d.spiritual_teacher))].sort();
+                const datalist = document.getElementById('teachers-list');
+                datalist.innerHTML = teachers.map(t => `<option value="${t}">`).join('');
+            } catch (e) {
+                console.error('Ошибка загрузки учителей:', e);
+            }
+        }
+
         // Инициализация
         async function init() {
             const guest = await PortalAuth.checkGuestAuth();
             if (guest) {
                 populateProfile(guest);
                 initPhotoUpload();
+                loadTeachersList();
                 document.getElementById('profile-form').addEventListener('submit', handleProfileSave);
             }
         }
