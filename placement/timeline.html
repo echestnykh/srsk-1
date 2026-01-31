@@ -2645,6 +2645,13 @@
             baseDate.setDate(baseDate.getDate() - 2);
             const newDate = baseDate.toISOString().split('T')[0];
             console.log('Reset to today:', oldDate, '→', newDate);
+
+            // Сбросить скролл к началу (где находится сегодняшний день)
+            const tableContainer = document.getElementById('tableContainer');
+            if (tableContainer) {
+                tableContainer.scrollLeft = 0;
+            }
+
             reload();
         }
 
