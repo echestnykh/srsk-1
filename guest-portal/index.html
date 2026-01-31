@@ -1495,6 +1495,7 @@
 
                         document.getElementById('retreat-roommate-block').classList.remove('hidden');
                         document.getElementById('retreat-roommate-name').textContent = roommateName;
+                        document.getElementById('retreat-roommate').href = `index.html?view=${roommate.id}`;
 
                         if (roommate.photo_url) {
                             document.getElementById('retreat-roommate-photo').innerHTML =
