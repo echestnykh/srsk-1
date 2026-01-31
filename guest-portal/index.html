@@ -867,6 +867,7 @@
         let cropper = null;
         let currentTransfers = { arrival: null, departure: null };
         let currentRegistrationId = null;
+        let isPublicView = false; // Режим просмотра чужого профиля
 
         // Photo View Modal
         function openPhotoModal() {
@@ -1453,9 +1454,14 @@
                     document.getElementById('arrival-flight').textContent = `Рейс ${arrival.flight_number || '—'}`;
                     document.getElementById('arrival-taxi').innerHTML = renderTaxiStatus(arrival);
                 } else {
-                    document.getElementById('arrival-datetime').innerHTML = '<span class="text-base text-yellow-700">Пожалуйста, добавьте информацию</span>';
+                    const noInfoText = isPublicView ? 'Нет информации' : 'Пожалуйста, добавьте информацию';
+                    document.getElementById('arrival-datetime').innerHTML = `<span class="text-base text-gray-400">${noInfoText}</span>`;
                     document.getElementById('arrival-flight').textContent = '';
                     document.getElementById('arrival-taxi').innerHTML = '';
+                }
+                // Скрываем кнопку редактирования в публичном режиме
+                if (isPublicView) {
+                    document.getElementById('arrival-edit-btn')?.classList.add('hidden');
                 }
 
                 // Вылет
@@ -1466,9 +1472,14 @@
                     document.getElementById('departure-flight').textContent = `Рейс ${departure.flight_number || '—'}`;
                     document.getElementById('departure-taxi').innerHTML = renderTaxiStatus(departure);
                 } else {
-                    document.getElementById('departure-datetime').innerHTML = '<span class="text-base text-yellow-700">Пожалуйста, добавьте информацию</span>';
+                    const noInfoText = isPublicView ? 'Нет информации' : 'Пожалуйста, добавьте информацию';
+                    document.getElementById('departure-datetime').innerHTML = `<span class="text-base text-gray-400">${noInfoText}</span>`;
                     document.getElementById('departure-flight').textContent = '';
                     document.getElementById('departure-taxi').innerHTML = '';
+                }
+                // Скрываем кнопку редактирования в публичном режиме
+                if (isPublicView) {
+                    document.getElementById('departure-edit-btn')?.classList.add('hidden');
                 }
 
             } catch (e) {
@@ -1554,6 +1565,7 @@
 
             if (viewId) {
                 // Режим просмотра чужого профиля
+                isPublicView = true;
                 await loadPublicProfile(viewId);
             } else {
                 // Обычный режим — свой профиль
