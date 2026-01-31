@@ -737,6 +737,76 @@ if (sortField === 'notes') {
 - `"Россия Иркутск"` → страна: Россия, город: Иркутск
 - Известные страны определяются автоматически (Россия, Украина, Латвия, и т.д.)
 
+## Guest Portal (guest-portal/)
+
+Отдельный модуль — личный кабинет для гостей ашрама. Дизайн отличается от основного приложения.
+
+**URL:** https://in.rupaseva.com/guest-portal/
+
+### Технологии
+
+- **Tailwind CSS** (CDN, без DaisyUI)
+- **Supabase** (та же база данных)
+- Vanilla JS
+
+### Структура
+
+```
+guest-portal/
+├── index.html          # Dashboard (профиль + ретрит + трансферы)
+├── login.html          # Вход для гостей
+├── contacts.html       # Контакты ашрама
+├── materials.html      # Гайды и материалы
+├── retreats.html       # История ретритов
+├── css/portal.css      # Кастомные стили
+└── js/
+    ├── portal-config.js    # Supabase credentials
+    ├── portal-auth.js      # Авторизация гостей
+    ├── portal-layout.js    # Header/Footer/i18n
+    └── portal-data.js      # Загрузка данных
+```
+
+### Ключевые особенности
+
+1. **Публичный просмотр профилей** — `index.html?view=<vaishnava_id>`
+   - Хедер показывает залогиненного пользователя
+   - Профиль показывает просматриваемого
+   - Скрыты кнопки редактирования
+
+2. **Расчёт заполненности профиля**:
+   ```javascript
+   // Поля: firstName, spiritualName, phone, telegram, country, city, photoUrl, birthDate
+   // + spiritualTeacher (или noSpiritualTeacher = true)
+   // Цвета: <50% красный, 50-99% жёлтый, 100% зелёный
+   ```
+
+3. **Чекбокс "Пока нет"** для духовного учителя — блокирует поле и считается как заполненное
+
+4. **Inline редактирование трансферов** — view/edit режим на карточке
+
+### Авторизация (portal-auth.js)
+
+```javascript
+// Глобальный объект пользователя
+window.currentGuest = {
+    id, authId, email, firstName, lastName, spiritualName,
+    phone, telegram, country, city, photoUrl,
+    spiritualTeacher, noSpiritualTeacher, birthDate,
+    userType, isStaff, isProfilePublic
+};
+
+// Проверка авторизации
+const guest = await PortalAuth.checkGuestAuth();  // редиректит на login если нет сессии
+```
+
+### База данных (дополнительные поля)
+
+```sql
+-- vaishnavas
+no_spiritual_teacher BOOLEAN DEFAULT FALSE  -- флаг "Пока нет духовного учителя"
+is_profile_public BOOLEAN DEFAULT TRUE      -- публичность профиля
+```
+
 ## Documentation
 
 - **PRODUCT.md** — обзор продукта (частично устарел)
