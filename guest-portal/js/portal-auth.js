@@ -54,14 +54,16 @@ async function checkGuestAuth() {
         console.log('[Portal Auth] Vaishnava query result:', { vaishnava, userError });
 
         if (userError) {
-            console.error('[Portal Auth] Query error:', userError);
-            redirectToLogin('user_not_found');
+            const errMsg = `[Portal Auth] Query error: ${JSON.stringify(userError)}`;
+            console.error(errMsg);
+            alert(errMsg);
             return null;
         }
 
         if (!vaishnava) {
-            console.error('[Portal Auth] User not found for auth.uid:', session.user.id);
-            redirectToLogin('user_not_found');
+            const errMsg = `[Portal Auth] User not found for auth.uid: ${session.user.id}`;
+            console.error(errMsg);
+            alert(errMsg);
             return null;
         }
 
