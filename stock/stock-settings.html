@@ -157,11 +157,17 @@
                 </div>
                 <div>
                     <label class="label"><span class="label-text font-medium">Имя (English)</span></label>
-                    <input type="text" id="buyerNameEn" class="input input-bordered w-full" placeholder="Buyer name" data-auto-translate-target="name" data-auto-translate-lang="en" />
+                    <div class="join w-full">
+                        <input type="text" id="buyerNameEn" class="input input-bordered join-item flex-1" placeholder="Buyer name" data-auto-translate-target="name" data-auto-translate-lang="en" />
+                        <button type="button" class="btn join-item" onclick="translateBuyerName('en')">Auto</button>
+                    </div>
                 </div>
                 <div>
                     <label class="label"><span class="label-text font-medium">Имя (हिंदी)</span></label>
-                    <input type="text" id="buyerNameHi" class="input input-bordered w-full" placeholder="क्रेता का नाम" data-auto-translate-target="name" data-auto-translate-lang="hi" />
+                    <div class="join w-full">
+                        <input type="text" id="buyerNameHi" class="input input-bordered join-item flex-1" placeholder="क्रेता का नाम" data-auto-translate-target="name" data-auto-translate-lang="hi" />
+                        <button type="button" class="btn join-item" onclick="translateBuyerName('hi')">Auto</button>
+                    </div>
                 </div>
                 <div>
                     <label class="label"><span class="label-text font-medium">Телефон</span></label>
@@ -407,6 +413,33 @@
 
         function closeBuyerModal() {
             Layout.$('#buyerModal').close();
+        }
+
+        async function translateBuyerName(lang) {
+            const sourceText = Layout.$('#buyerNameRu').value.trim();
+            if (!sourceText) {
+                showAlert('Введите имя на русском');
+                return;
+            }
+
+            const targetInput = lang === 'en' ? Layout.$('#buyerNameEn') : Layout.$('#buyerNameHi');
+            const button = event.target;
+
+            button.disabled = true;
+            button.textContent = '...';
+
+            try {
+                const translated = await window.translateText(sourceText, 'ru', lang);
+                if (translated) {
+                    targetInput.value = translated;
+                }
+            } catch (error) {
+                console.error('Translation error:', error);
+                showAlert('Ошибка перевода');
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Auto';
+            }
         }
 
         async function saveBuyer() {
