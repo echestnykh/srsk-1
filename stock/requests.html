@@ -597,7 +597,22 @@
                 const product = products.find(p => p.id === productId);
                 const stock = stockItems.find(s => s.product_id === productId);
                 const stockGrams = toGrams(stock?.current_quantity, product?.unit);
-                const toPurchaseGrams = Math.max(0, neededGrams - stockGrams);
+
+                // Процент на очистку применяем сразу
+                const wastePercent = product?.waste_percent || 0;
+
+                // Из того что есть на складе (нечищеного), получится очищенного:
+                const stockCleanedGrams = wastePercent > 0
+                    ? stockGrams * (1 - wastePercent / 100)
+                    : stockGrams;
+
+                // Не хватает очищенного:
+                const shortageCleanedGrams = Math.max(0, neededGrams - stockCleanedGrams);
+
+                // Чтобы получить недостающее очищенное, нужно закупить нечищеного:
+                const toPurchaseGrams = wastePercent > 0
+                    ? shortageCleanedGrams / (1 - wastePercent / 100)
+                    : shortageCleanedGrams;
 
                 if (toPurchaseGrams > 0) {
                     const categorySlug = product?.product_categories?.slug;
@@ -612,15 +627,8 @@
                     const inStock = useKg ? stockGrams / 1000 : stockGrams;
                     const toPurchase = useKg ? toPurchaseGrams / 1000 : toPurchaseGrams;
 
-                    // Учитываем процент на очистку (овощи/фрукты)
-                    // Формула: нужно_очищенной / (1 - waste_percent/100)
-                    const wastePercent = product?.waste_percent || 0;
-                    const toPurchaseWithWaste = wastePercent > 0
-                        ? toPurchase / (1 - wastePercent / 100)
-                        : toPurchase;
-
                     // Округляем количество для закупки (учитываем min_purchase)
-                    const roundedPurchase = roundForPurchase(toPurchaseWithWaste, unit, categorySlug, product?.min_purchase);
+                    const roundedPurchase = roundForPurchase(toPurchase, unit, categorySlug, product?.min_purchase);
 
                     // Get last price from stock (price per kg)
                     const lastPrice = stock?.last_price || null;
