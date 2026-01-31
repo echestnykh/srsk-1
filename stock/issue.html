@@ -713,15 +713,20 @@
 
         async function loadCooks() {
             // Загружаем ID департаментов "Кухня" и "Кафе"
-            const { data: depts } = await Layout.db
+            const { data: depts, error: deptsError } = await Layout.db
                 .from('departments')
-                .select('id')
+                .select('id, name_ru')
                 .in('name_ru', ['Кухня', 'Кафе']);
+
+            console.log('Departments loaded:', depts, 'Error:', deptsError);
 
             const kitchenDeptIds = depts?.map(d => d.id) || [];
 
             if (kitchenDeptIds.length === 0) {
                 console.warn('Kitchen/Cafe departments not found');
+                // Попробуем загрузить все департаменты для отладки
+                const { data: allDepts } = await Layout.db.from('departments').select('id, name_ru');
+                console.log('All departments:', allDepts);
                 cooks = [];
                 renderCooksSelect();
                 return;
@@ -730,11 +735,13 @@
             // Загружаем членов команды из этих департаментов
             const { data, error } = await Layout.db
                 .from('vaishnavas')
-                .select('id, name, spiritual_name, first_name, last_name')
+                .select('id, name, spiritual_name, first_name, last_name, department_id')
                 .eq('is_team_member', true)
                 .eq('is_deleted', false)
                 .in('department_id', kitchenDeptIds)
                 .order('spiritual_name');
+
+            console.log('Cooks loaded:', data, 'Error:', error);
 
             if (error) { console.error('Error loading cooks:', error); return; }
             cooks = data || [];
