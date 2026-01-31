@@ -1106,14 +1106,15 @@
             document.getElementById('profile-completeness-value').textContent = `${completeness}%`;
             document.getElementById('profile-completeness-bar').style.width = `${completeness}%`;
 
-            // Имя в шапке
-            document.getElementById('header-name').textContent = getDisplayName(guest);
-            document.getElementById('mobile-name').textContent = getDisplayName(guest);
+            // Имя и фото в шапке — только если это свой профиль (не публичный просмотр)
+            if (!isPublicView) {
+                document.getElementById('header-name').textContent = getDisplayName(guest);
+                document.getElementById('mobile-name').textContent = getDisplayName(guest);
 
-            // Фото в шапке
-            if (guest.photoUrl) {
-                document.getElementById('header-photo').innerHTML =
-                    `<img src="${guest.photoUrl}" alt="" class="w-full h-full object-cover">`;
+                if (guest.photoUrl) {
+                    document.getElementById('header-photo').innerHTML =
+                        `<img src="${guest.photoUrl}" alt="" class="w-full h-full object-cover">`;
+                }
             }
         }
 
@@ -1569,6 +1570,17 @@
             if (viewId) {
                 // Режим просмотра чужого профиля
                 isPublicView = true;
+
+                // Заполняем хедер данными залогиненного пользователя
+                if (loggedInUser) {
+                    document.getElementById('header-name').textContent = getDisplayName(loggedInUser);
+                    document.getElementById('mobile-name').textContent = getDisplayName(loggedInUser);
+                    if (loggedInUser.photoUrl) {
+                        document.getElementById('header-photo').innerHTML =
+                            `<img src="${loggedInUser.photoUrl}" alt="" class="w-full h-full object-cover">`;
+                    }
+                }
+
                 await loadPublicProfile(viewId);
             } else if (loggedInUser) {
                 // Обычный режим — свой профиль
