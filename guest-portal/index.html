@@ -866,6 +866,7 @@
         let photoFile = null;
         let cropper = null;
         let currentTransfers = { arrival: null, departure: null };
+        let currentRegistrationId = null;
 
         // Photo View Modal
         function openPhotoModal() {
@@ -897,16 +898,15 @@
         // Transfer Inline Edit
         function toggleTransferEdit(direction) {
             const transfer = currentTransfers[direction];
-            if (!transfer) return;
 
             const viewEl = document.getElementById(`${direction}-view`);
             const editEl = document.getElementById(`${direction}-edit`);
             const editBtn = document.getElementById(`${direction}-edit-btn`);
 
             // Заполняем поля редактирования
-            document.getElementById(`${direction}-edit-id`).value = transfer.id;
+            document.getElementById(`${direction}-edit-id`).value = transfer?.id || '';
 
-            if (transfer.flight_datetime) {
+            if (transfer?.flight_datetime) {
                 const dt = new Date(transfer.flight_datetime);
                 const localDt = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000);
                 document.getElementById(`${direction}-edit-datetime`).value = localDt.toISOString().slice(0, 16);
@@ -914,8 +914,8 @@
                 document.getElementById(`${direction}-edit-datetime`).value = '';
             }
 
-            document.getElementById(`${direction}-edit-flight`).value = transfer.flight_number || '';
-            document.getElementById(`${direction}-edit-needs`).checked = transfer.needs_transfer === 'yes';
+            document.getElementById(`${direction}-edit-flight`).value = transfer?.flight_number || '';
+            document.getElementById(`${direction}-edit-needs`).checked = transfer?.needs_transfer === 'yes';
 
             // Переключаем режим
             viewEl.classList.add('hidden');
@@ -936,29 +936,57 @@
             const needsTransfer = document.getElementById(`${direction}-edit-needs`).checked;
 
             try {
-                const { error } = await window.portalSupabase
-                    .from('guest_transfers')
-                    .update({
-                        flight_datetime: datetime ? new Date(datetime).toISOString() : null,
-                        flight_number: flightNumber || null,
-                        needs_transfer: needsTransfer ? 'yes' : 'no'
-                    })
-                    .eq('id', transferId);
+                let savedTransfer;
 
-                if (error) throw error;
+                if (transferId) {
+                    // Обновляем существующую запись
+                    const { data, error } = await window.portalSupabase
+                        .from('guest_transfers')
+                        .update({
+                            flight_datetime: datetime ? new Date(datetime).toISOString() : null,
+                            flight_number: flightNumber || null,
+                            needs_transfer: needsTransfer ? 'yes' : 'no'
+                        })
+                        .eq('id', transferId)
+                        .select()
+                        .single();
+
+                    if (error) throw error;
+                    savedTransfer = data;
+                } else {
+                    // Создаём новую запись
+                    const { data, error } = await window.portalSupabase
+                        .from('guest_transfers')
+                        .insert({
+                            registration_id: currentRegistrationId,
+                            direction: direction,
+                            flight_datetime: datetime ? new Date(datetime).toISOString() : null,
+                            flight_number: flightNumber || null,
+                            needs_transfer: needsTransfer ? 'yes' : 'no'
+                        })
+                        .select()
+                        .single();
+
+                    if (error) throw error;
+                    savedTransfer = data;
+                }
 
                 // Обновляем локальные данные
-                currentTransfers[direction] = {
-                    ...currentTransfers[direction],
-                    flight_datetime: datetime ? new Date(datetime).toISOString() : null,
-                    flight_number: flightNumber || null,
-                    needs_transfer: needsTransfer ? 'yes' : 'no'
-                };
+                currentTransfers[direction] = savedTransfer;
 
                 // Обновляем отображение
-                document.getElementById(`${direction}-datetime`).textContent = datetime ? formatTransferDateTime(new Date(datetime).toISOString()) : '—';
-                document.getElementById(`${direction}-flight`).textContent = flightNumber ? `Рейс ${flightNumber}` : '—';
-                document.getElementById(`${direction}-taxi`).innerHTML = renderTaxiStatus(currentTransfers[direction]);
+                if (datetime) {
+                    document.getElementById(`${direction}-datetime`).textContent = formatTransferDateTime(new Date(datetime).toISOString());
+                    document.getElementById(`${direction}-flight`).textContent = flightNumber ? `Рейс ${flightNumber}` : '—';
+                    document.getElementById(`${direction}-taxi`).innerHTML = renderTaxiStatus(currentTransfers[direction]);
+                } else {
+                    document.getElementById(`${direction}-datetime`).innerHTML = '<span class="text-base text-yellow-700">Пожалуйста, добавьте информацию</span>';
+                    document.getElementById(`${direction}-flight`).textContent = '';
+                    document.getElementById(`${direction}-taxi`).innerHTML = '';
+                }
+
+                // Обновляем ID в форме (для новых записей)
+                document.getElementById(`${direction}-edit-id`).value = savedTransfer.id;
 
                 cancelTransferEdit(direction);
             } catch (err) {
@@ -1412,29 +1440,35 @@
                     }
                 }
 
-                // Трансферы
+                // Трансферы — всегда показываем блок при наличии ретрита
                 currentTransfers = data.transfers; // Сохраняем для редактирования
+                currentRegistrationId = data.activeRetreat.id; // Сохраняем ID регистрации
+                transferBlock.classList.remove('hidden');
 
-                if (data.transfers.arrival || data.transfers.departure) {
-                    transferBlock.classList.remove('hidden');
+                // Прилёт
+                const arrival = data.transfers.arrival;
+                document.getElementById('arrival-block').classList.remove('hidden');
+                if (arrival?.flight_datetime) {
+                    document.getElementById('arrival-datetime').textContent = formatTransferDateTime(arrival.flight_datetime);
+                    document.getElementById('arrival-flight').textContent = `Рейс ${arrival.flight_number || '—'}`;
+                    document.getElementById('arrival-taxi').innerHTML = renderTaxiStatus(arrival);
+                } else {
+                    document.getElementById('arrival-datetime').innerHTML = '<span class="text-base text-yellow-700">Пожалуйста, добавьте информацию</span>';
+                    document.getElementById('arrival-flight').textContent = '';
+                    document.getElementById('arrival-taxi').innerHTML = '';
+                }
 
-                    // Прилёт
-                    if (data.transfers.arrival) {
-                        const arrival = data.transfers.arrival;
-                        document.getElementById('arrival-block').classList.remove('hidden');
-                        document.getElementById('arrival-datetime').textContent = formatTransferDateTime(arrival.flight_datetime);
-                        document.getElementById('arrival-flight').textContent = `Рейс ${arrival.flight_number || '—'}`;
-                        document.getElementById('arrival-taxi').innerHTML = renderTaxiStatus(arrival);
-                    }
-
-                    // Вылет
-                    if (data.transfers.departure) {
-                        const departure = data.transfers.departure;
-                        document.getElementById('departure-block').classList.remove('hidden');
-                        document.getElementById('departure-datetime').textContent = formatTransferDateTime(departure.flight_datetime);
-                        document.getElementById('departure-flight').textContent = `Рейс ${departure.flight_number || '—'}`;
-                        document.getElementById('departure-taxi').innerHTML = renderTaxiStatus(departure);
-                    }
+                // Вылет
+                const departure = data.transfers.departure;
+                document.getElementById('departure-block').classList.remove('hidden');
+                if (departure?.flight_datetime) {
+                    document.getElementById('departure-datetime').textContent = formatTransferDateTime(departure.flight_datetime);
+                    document.getElementById('departure-flight').textContent = `Рейс ${departure.flight_number || '—'}`;
+                    document.getElementById('departure-taxi').innerHTML = renderTaxiStatus(departure);
+                } else {
+                    document.getElementById('departure-datetime').innerHTML = '<span class="text-base text-yellow-700">Пожалуйста, добавьте информацию</span>';
+                    document.getElementById('departure-flight').textContent = '';
+                    document.getElementById('departure-taxi').innerHTML = '';
                 }
 
             } catch (e) {
