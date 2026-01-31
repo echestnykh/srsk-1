@@ -167,8 +167,8 @@ npx serve .
 - `recipes`, `recipe_categories`, `recipe_ingredients` — рецепты
 - `products`, `product_categories`, `product_densities` — продукты и плотности для конвертации единиц
   - `waste_percent` — процент отходов при очистке (овощи/фрукты). Учитывается автоматически при создании заявок и выдаче
-  - **Формула:** `количество_для_закупки = нужно × (1 + waste_percent / 100)`
-  - **Пример:** нужно 10 кг картофеля (waste_percent=20) → закупать 10 × 1.2 = 12 кг
+  - **Формула:** `количество_для_закупки = нужно_очищенной / (1 - waste_percent / 100)`
+  - **Пример:** нужно 1 кг картофеля очищенного (waste_percent=20) → закупать 1 / 0.8 = 1.25 кг
 - `units` — единицы измерения (справочник)
 - `translations` — переводы интерфейса
 - `menu_days`, `menu_items`, `menu_templates` — меню
@@ -291,13 +291,18 @@ Layout.pluralize(5, FORMS)  // "5 рецептов"
 **Формула:**
 ```javascript
 const wastePercent = product.waste_percent || 0;
-const quantityToPurchase = neededQuantity * (1 + wastePercent / 100);
+const quantityToPurchase = wastePercent > 0
+    ? neededQuantity / (1 - wastePercent / 100)
+    : neededQuantity;
 ```
 
-**Пример:**
-- Рецепту нужно 10 кг очищенного картофеля
-- У картофеля `waste_percent = 20`
-- Система автоматически рассчитает для закупки: 10 × 1.2 = **12 кг**
+**Логика:** Если 80% от нечищеной массы составляет чистая (waste_percent=20%), то для получения 1 кг чищеной нужно: 1 / 0.8 = 1.25 кг нечищеной.
+
+**Примеры:**
+- Рецепту нужно 1 кг очищенного картофеля (waste_percent = 20%)
+  - Закупить: 1 / (1 - 0.20) = 1 / 0.8 = **1.25 кг**
+- Рецепту нужно 10 кг брокколи (waste_percent = 50%)
+  - Закупить: 10 / (1 - 0.50) = 10 / 0.5 = **20 кг**
 
 **Реализовано (2026-01-31):**
 - `requests.html:addProductToRequest()` — при ручном добавлении продукта

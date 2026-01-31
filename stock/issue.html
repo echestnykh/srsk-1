@@ -846,8 +846,11 @@
             }
 
             // Учитываем процент на очистку при выдаче
+            // Формула: нужно_очищенной / (1 - waste_percent/100)
             const wastePercent = product.waste_percent || 0;
-            const quantityToIssue = quantity * (1 + wastePercent / 100);
+            const quantityToIssue = wastePercent > 0
+                ? quantity / (1 - wastePercent / 100)
+                : quantity;
 
             issuanceItemsList.push({
                 product_id: productId,
@@ -1438,8 +1441,11 @@
                         const display = toSmartDisplay(amountInBaseUnit, product.unit);
 
                         // Учитываем процент на очистку (овощи/фрукты)
+                        // Формула: нужно_очищенной / (1 - waste_percent/100)
                         const wastePercent = product?.waste_percent || 0;
-                        const quantityWithWaste = display.amount * (1 + wastePercent / 100);
+                        const quantityWithWaste = wastePercent > 0
+                            ? display.amount / (1 - wastePercent / 100)
+                            : display.amount;
 
                         issuanceItemsList.push({
                             product_id: productId,

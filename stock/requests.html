@@ -613,8 +613,11 @@
                     const toPurchase = useKg ? toPurchaseGrams / 1000 : toPurchaseGrams;
 
                     // Учитываем процент на очистку (овощи/фрукты)
+                    // Формула: нужно_очищенной / (1 - waste_percent/100)
                     const wastePercent = product?.waste_percent || 0;
-                    const toPurchaseWithWaste = toPurchase * (1 + wastePercent / 100);
+                    const toPurchaseWithWaste = wastePercent > 0
+                        ? toPurchase / (1 - wastePercent / 100)
+                        : toPurchase;
 
                     // Округляем количество для закупки (учитываем min_purchase)
                     const roundedPurchase = roundForPurchase(toPurchaseWithWaste, unit, categorySlug, product?.min_purchase);
@@ -1546,8 +1549,12 @@
             const lastPrice = stock?.last_price || null;
 
             // Учитываем процент на очистку при расчете количества для закупки
+            // Формула: нужно_очищенной / (1 - waste_percent/100)
+            // Пример: 1 кг / (1 - 0.20) = 1.25 кг для 20% очисток
             const wastePercent = selectedProduct.waste_percent || 0;
-            const quantityToPurchase = quantity * (1 + wastePercent / 100);
+            const quantityToPurchase = wastePercent > 0
+                ? quantity / (1 - wastePercent / 100)
+                : quantity;
             const quantityGrams = toGrams(quantityToPurchase, unit);
 
             if (addingToViewedRequest) {
