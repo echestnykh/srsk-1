@@ -16,8 +16,8 @@ async function getCurrentOrUpcomingRetreat(guestId) {
     try {
         const today = new Date().toISOString().split('T')[0];
 
-        // Сначала ищем текущий ретрит (идёт прямо сейчас)
-        let { data, error } = await db
+        // Загружаем все регистрации пользователя
+        const { data: registrations, error } = await db
             .from('retreat_registrations')
             .select(`
                 id,
@@ -37,53 +37,39 @@ async function getCurrentOrUpcomingRetreat(guestId) {
                 )
             `)
             .eq('vaishnava_id', guestId)
-            .eq('is_deleted', false)
-            .lte('retreat.start_date', today)
-            .gte('retreat.end_date', today)
-            .limit(1)
-            .maybeSingle();
+            .eq('is_deleted', false);
 
-        if (!error && data) {
-            data.isCurrent = true;
-            return data;
-        }
-
-        // Если текущего нет — ищем ближайший предстоящий
-        const { data: upcoming, error: upcomingError } = await db
-            .from('retreat_registrations')
-            .select(`
-                id,
-                status,
-                created_at,
-                retreat:retreats (
-                    id,
-                    name_ru,
-                    name_en,
-                    name_hi,
-                    start_date,
-                    end_date,
-                    description_ru,
-                    description_en,
-                    description_hi,
-                    image_url
-                )
-            `)
-            .eq('vaishnava_id', guestId)
-            .eq('is_deleted', false)
-            .gt('retreat.start_date', today)
-            .order('retreat(start_date)', { ascending: true })
-            .limit(1)
-            .maybeSingle();
-
-        if (upcomingError) {
-            console.error('Ошибка загрузки ретрита:', upcomingError);
+        if (error) {
+            console.error('Ошибка загрузки регистраций:', error);
             return null;
         }
 
+        if (!registrations || registrations.length === 0) {
+            return null;
+        }
+
+        // Фильтруем на клиенте
+        // Сначала ищем текущий ретрит
+        const current = registrations.find(r =>
+            r.retreat && r.retreat.start_date <= today && r.retreat.end_date >= today
+        );
+
+        if (current) {
+            current.isCurrent = true;
+            return current;
+        }
+
+        // Ищем ближайший предстоящий
+        const upcoming = registrations
+            .filter(r => r.retreat && r.retreat.start_date > today)
+            .sort((a, b) => a.retreat.start_date.localeCompare(b.retreat.start_date))[0];
+
         if (upcoming) {
             upcoming.isCurrent = false;
+            return upcoming;
         }
-        return upcoming;
+
+        return null;
 
     } catch (error) {
         console.error('Ошибка загрузки ретрита:', error);
@@ -354,10 +340,10 @@ async function getAvailableRetreats() {
                 description_ru,
                 description_en,
                 description_hi,
-                is_registration_open,
-                max_guests
+                registration_open,
+                image_url
             `)
-            .eq('is_registration_open', true)
+            .eq('registration_open', true)
             .gt('start_date', today)
             .order('start_date');
 
@@ -554,7 +540,7 @@ async function loadDashboardData(guestId) {
     let transfers = { arrival: null, departure: null };
 
     // Если есть активный/предстоящий ретрит, загружаем размещение и трансферы
-    if (activeRetreat) {
+    if (activeRetreat && activeRetreat.retreat) {
         [accommodation, transfers] = await Promise.all([
             getAccommodation(guestId, activeRetreat.retreat.id),
             getTransfers(activeRetreat.id)
