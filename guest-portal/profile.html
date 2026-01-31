@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Профиль | Rupa Seva Guest Portal</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'srsk-green': '#147D30',
+                        'srsk-green-light': '#1a9e3d',
+                        'srsk-orange': '#FFBA47',
+                        'srsk-bg': '#F5F3EF'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Portal CSS -->
+    <link rel="stylesheet" href="css/portal.css">
+</head>
+<body class="bg-srsk-bg min-h-screen flex flex-col">
+
+    <div id="header-placeholder"></div>
+
+    <main class="container mx-auto px-4 py-6 flex-1">
+        <div class="max-w-2xl mx-auto">
+            <!-- Заголовок -->
+            <div class="mb-6">
+                <h1 class="text-2xl font-bold text-gray-800" data-i18n="portal_my_profile">Мой профиль</h1>
+                <p class="text-gray-500" data-i18n="portal_profile_subtitle">Управляйте своими данными</p>
+            </div>
+
+            <!-- Форма профиля -->
+            <div class="card p-6">
+                <form id="profile-form" class="space-y-6">
+
+                    <!-- Фото -->
+                    <div class="flex justify-center">
+                        <div class="photo-upload" id="photo-upload">
+                            <img id="photo-preview" src="" alt="" class="hidden">
+                            <div id="photo-placeholder" class="photo-upload-placeholder">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                </svg>
+                                <span class="text-xs" data-i18n="portal_add_photo">Добавить фото</span>
+                            </div>
+                            <div class="photo-upload-overlay">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                </svg>
+                            </div>
+                            <input type="file" id="photo-input" accept="image/*" class="hidden">
+                        </div>
+                    </div>
+
+                    <!-- Имена -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="form-group">
+                            <label class="label" data-i18n="portal_first_name">Имя</label>
+                            <input type="text" id="firstName" class="input" data-i18n-placeholder="portal_first_name_placeholder">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="label" data-i18n="portal_last_name">Фамилия</label>
+                            <input type="text" id="lastName" class="input" data-i18n-placeholder="portal_last_name_placeholder">
+                        </div>
+                    </div>
+
+                    <!-- Духовное имя -->
+                    <div class="form-group">
+                        <label class="label" data-i18n="portal_spiritual_name">Духовное имя</label>
+                        <input type="text" id="spiritualName" class="input" data-i18n-placeholder="portal_spiritual_name_placeholder">
+                    </div>
+
+                    <!-- Духовный учитель -->
+                    <div class="form-group">
+                        <label class="label" data-i18n="portal_spiritual_master">Духовный учитель</label>
+                        <input type="text" id="spiritualMaster" class="input" data-i18n-placeholder="portal_spiritual_master_placeholder">
+                    </div>
+
+                    <!-- Дикша гуру -->
+                    <div class="form-group">
+                        <label class="label" data-i18n="portal_diksha_guru">Дикша-гуру (инициирующий)</label>
+                        <input type="text" id="dikshaGuru" class="input" data-i18n-placeholder="portal_diksha_guru_placeholder">
+                    </div>
+
+                    <hr class="my-6">
+
+                    <!-- Контакты -->
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4" data-i18n="portal_contact_info">Контактная информация</h3>
+
+                    <div class="form-group">
+                        <label class="label">Email</label>
+                        <input type="email" id="email" class="input bg-gray-50" disabled>
+                        <p class="text-xs text-gray-500 mt-1" data-i18n="portal_email_hint">Email нельзя изменить</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="label" data-i18n="portal_phone">Телефон</label>
+                        <input type="tel" id="phone" class="input" placeholder="+7 999 123 4567">
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="form-group">
+                            <label class="label">WhatsApp</label>
+                            <input type="tel" id="whatsapp" class="input" placeholder="+7 999 123 4567">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="label">Telegram</label>
+                            <input type="text" id="telegram" class="input" placeholder="@username">
+                        </div>
+                    </div>
+
+                    <hr class="my-6">
+
+                    <!-- Местоположение -->
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4" data-i18n="portal_location">Местоположение</h3>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="form-group">
+                            <label class="label" data-i18n="portal_country">Страна</label>
+                            <input type="text" id="country" class="input" data-i18n-placeholder="portal_country_placeholder">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="label" data-i18n="portal_city">Город</label>
+                            <input type="text" id="city" class="input" data-i18n-placeholder="portal_city_placeholder">
+                        </div>
+                    </div>
+
+                    <!-- Кнопки -->
+                    <div class="flex flex-col sm:flex-row gap-3 pt-4">
+                        <button type="submit" id="save-btn" class="btn-primary flex-1">
+                            <span data-i18n="portal_save">Сохранить</span>
+                            <svg id="save-spinner" class="w-5 h-5 animate-spin hidden" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </button>
+                        <button type="button" id="cancel-btn" class="btn-ghost" onclick="location.href='index.html'">
+                            <span data-i18n="portal_cancel">Отмена</span>
+                        </button>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <div id="footer-placeholder"></div>
+
+    <!-- Scripts -->
+    <script src="js/portal-config.js"></script>
+    <script src="js/portal-auth.js"></script>
+    <script src="js/portal-layout.js"></script>
+    <script src="js/portal-data.js"></script>
+
+    <script>
+        const t = key => PortalLayout.t(key);
+        let photoFile = null;
+
+        async function init() {
+            PortalLayout.showLoader();
+
+            // Проверяем авторизацию
+            const guest = await PortalAuth.checkGuestAuth();
+            if (!guest) return;
+
+            // Инициализируем layout
+            await PortalLayout.init({ activeNav: 'profile' });
+
+            // Заполняем форму
+            fillForm(guest);
+
+            // Инициализируем загрузку фото
+            initPhotoUpload();
+
+            // Обработчик формы
+            document.getElementById('profile-form').addEventListener('submit', handleSave);
+
+            PortalLayout.hideLoader();
+        }
+
+        function fillForm(guest) {
+            document.getElementById('firstName').value = guest.firstName || '';
+            document.getElementById('lastName').value = guest.lastName || '';
+            document.getElementById('spiritualName').value = guest.spiritualName || '';
+            document.getElementById('spiritualMaster').value = guest.spiritualMaster || '';
+            document.getElementById('dikshaGuru').value = guest.dikshaGuru || '';
+            document.getElementById('email').value = guest.email || '';
+            document.getElementById('phone').value = guest.phone || '';
+            document.getElementById('whatsapp').value = guest.whatsapp || '';
+            document.getElementById('telegram').value = guest.telegram || '';
+            document.getElementById('country').value = guest.country || '';
+            document.getElementById('city').value = guest.city || '';
+
+            // Фото
+            if (guest.photoUrl) {
+                document.getElementById('photo-preview').src = guest.photoUrl;
+                document.getElementById('photo-preview').classList.remove('hidden');
+                document.getElementById('photo-placeholder').classList.add('hidden');
+            }
+        }
+
+        function initPhotoUpload() {
+            const uploadArea = document.getElementById('photo-upload');
+            const input = document.getElementById('photo-input');
+            const preview = document.getElementById('photo-preview');
+            const placeholder = document.getElementById('photo-placeholder');
+
+            uploadArea.addEventListener('click', () => input.click());
+
+            input.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                // Проверка размера (макс 5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    PortalLayout.showNotification(t('portal_photo_too_large'), 'error');
+                    return;
+                }
+
+                // Проверка типа
+                if (!file.type.startsWith('image/')) {
+                    PortalLayout.showNotification(t('portal_invalid_file_type'), 'error');
+                    return;
+                }
+
+                photoFile = file;
+
+                // Превью
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    preview.src = e.target.result;
+                    preview.classList.remove('hidden');
+                    placeholder.classList.add('hidden');
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function handleSave(e) {
+            e.preventDefault();
+
+            const saveBtn = document.getElementById('save-btn');
+            const spinner = document.getElementById('save-spinner');
+
+            saveBtn.disabled = true;
+            spinner.classList.remove('hidden');
+
+            try {
+                const guest = window.currentGuest;
+                let photoUrl = guest.photoUrl;
+
+                // Загружаем фото если выбрано
+                if (photoFile) {
+                    const uploadResult = await PortalData.uploadPhoto(photoFile, guest.id);
+                    if (uploadResult.success) {
+                        photoUrl = uploadResult.url;
+                    } else {
+                        PortalLayout.showNotification(t('portal_photo_upload_error'), 'error');
+                    }
+                }
+
+                // Собираем данные
+                const profileData = {
+                    firstName: document.getElementById('firstName').value.trim(),
+                    lastName: document.getElementById('lastName').value.trim(),
+                    spiritualName: document.getElementById('spiritualName').value.trim(),
+                    spiritualMaster: document.getElementById('spiritualMaster').value.trim(),
+                    dikshaGuru: document.getElementById('dikshaGuru').value.trim(),
+                    phone: document.getElementById('phone').value.trim(),
+                    whatsapp: document.getElementById('whatsapp').value.trim(),
+                    telegram: document.getElementById('telegram').value.trim(),
+                    country: document.getElementById('country').value.trim(),
+                    city: document.getElementById('city').value.trim(),
+                    photoUrl: photoUrl
+                };
+
+                // Сохраняем
+                const result = await PortalData.updateProfile(guest.id, profileData);
+
+                if (result.success) {
+                    PortalLayout.showNotification(t('portal_profile_saved'), 'success');
+                    photoFile = null;
+
+                    // Обновляем header
+                    await PortalLayout.init({ activeNav: 'profile' });
+                } else {
+                    PortalLayout.showNotification(t('portal_save_error'), 'error');
+                }
+
+            } catch (error) {
+                console.error('Ошибка сохранения:', error);
+                PortalLayout.showNotification(t('portal_save_error'), 'error');
+            } finally {
+                saveBtn.disabled = false;
+                spinner.classList.add('hidden');
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

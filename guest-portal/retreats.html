@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ретриты | Rupa Seva Guest Portal</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'srsk-green': '#147D30',
+                        'srsk-green-light': '#1a9e3d',
+                        'srsk-orange': '#FFBA47',
+                        'srsk-bg': '#F5F3EF'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Portal CSS -->
+    <link rel="stylesheet" href="css/portal.css">
+</head>
+<body class="bg-srsk-bg min-h-screen flex flex-col">
+
+    <div id="header-placeholder"></div>
+
+    <main class="container mx-auto px-4 py-6 flex-1">
+        <div class="max-w-4xl mx-auto">
+
+            <!-- Заголовок -->
+            <div class="mb-6">
+                <h1 class="text-2xl font-bold text-gray-800" data-i18n="portal_retreats_title">Мои ретриты</h1>
+                <p class="text-gray-500" data-i18n="portal_retreats_subtitle">История посещений и предстоящие поездки</p>
+            </div>
+
+            <!-- Содержимое -->
+            <div id="retreats-content"></div>
+
+        </div>
+    </main>
+
+    <div id="footer-placeholder"></div>
+
+    <!-- Scripts -->
+    <script src="js/portal-config.js"></script>
+    <script src="js/portal-auth.js"></script>
+    <script src="js/portal-layout.js"></script>
+    <script src="js/portal-data.js"></script>
+
+    <script>
+        const t = key => PortalLayout.t(key);
+        const getName = item => PortalLayout.getName(item);
+        const escapeHtml = str => PortalLayout.escapeHtml(str);
+        const formatDateRange = (start, end) => PortalLayout.formatDateRange(start, end);
+
+        async function init() {
+            PortalLayout.showLoader();
+
+            // Проверяем авторизацию
+            const guest = await PortalAuth.checkGuestAuth();
+            if (!guest) return;
+
+            // Инициализируем layout
+            await PortalLayout.init({ activeNav: 'retreats' });
+
+            // Загружаем данные
+            const data = await PortalData.loadRetreatsData(guest.id);
+
+            // Рендерим страницу
+            renderRetreats(data);
+
+            PortalLayout.hideLoader();
+        }
+
+        function renderRetreats(data) {
+            const container = document.getElementById('retreats-content');
+
+            container.innerHTML = `
+                <!-- Текущий ретрит -->
+                ${data.currentRetreat ? renderCurrentRetreat(data.currentRetreat) : ''}
+
+                <!-- Предстоящие ретриты -->
+                ${renderUpcomingRetreats(data.upcomingRetreats)}
+
+                <!-- Доступные для записи -->
+                ${renderAvailableRetreats(data.availableRetreats)}
+
+                <!-- История -->
+                ${renderPastRetreats(data.pastRetreats)}
+            `;
+        }
+
+        function renderCurrentRetreat(registration) {
+            const retreat = registration.retreat;
+
+            return `
+                <div class="card p-6 mb-6">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <div class="retreat-badge mb-2">
+                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <circle cx="10" cy="10" r="10"/>
+                                </svg>
+                                ${t('portal_current_retreat')}
+                            </div>
+                            <h2 class="text-xl font-bold text-gray-800">${escapeHtml(getName(retreat))}</h2>
+                            <p class="text-gray-500 mt-1">${formatDateRange(retreat.start_date, retreat.end_date)}</p>
+                        </div>
+                        <span class="status-badge status-active">${t('portal_status_active')}</span>
+                    </div>
+
+                    ${retreat.description_ru ? `
+                        <p class="text-gray-600 mt-4">${escapeHtml(getDescription(retreat))}</p>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        function renderUpcomingRetreats(retreats) {
+            if (retreats.length === 0) return '';
+
+            return `
+                <div class="mb-6">
+                    <h2 class="section-title">${t('portal_upcoming_retreats')}</h2>
+
+                    <div class="space-y-3">
+                        ${retreats.map(reg => `
+                            <div class="card p-4">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-12 h-12 bg-srsk-orange/20 rounded-lg flex flex-col items-center justify-center">
+                                            <span class="text-lg font-bold text-srsk-orange">${new Date(reg.retreat.start_date).getDate()}</span>
+                                            <span class="text-xs text-srsk-orange">${getMonthShort(reg.retreat.start_date)}</span>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-semibold text-gray-800">${escapeHtml(getName(reg.retreat))}</h3>
+                                            <p class="text-sm text-gray-500">${formatDateRange(reg.retreat.start_date, reg.retreat.end_date)}</p>
+                                        </div>
+                                    </div>
+                                    <span class="status-badge status-pending">${t('portal_status_registered')}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderAvailableRetreats(retreats) {
+            return `
+                <div class="mb-6">
+                    <h2 class="section-title">${t('portal_available_retreats')}</h2>
+                    <p class="section-subtitle">${t('portal_available_retreats_hint')}</p>
+
+                    ${retreats.length === 0 ? `
+                        <div class="card p-6">
+                            <div class="empty-state py-8">
+                                <svg class="empty-state-icon mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                </svg>
+                                <p>${t('portal_no_available_retreats')}</p>
+                            </div>
+                        </div>
+                    ` : `
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            ${retreats.map(retreat => `
+                                <div class="card p-4 hover:shadow-md transition-shadow">
+                                    <div class="flex items-start gap-4">
+                                        <div class="w-14 h-14 bg-srsk-green/10 rounded-lg flex flex-col items-center justify-center flex-shrink-0">
+                                            <span class="text-xl font-bold text-srsk-green">${new Date(retreat.start_date).getDate()}</span>
+                                            <span class="text-xs text-srsk-green">${getMonthShort(retreat.start_date)}</span>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <h3 class="font-semibold text-gray-800">${escapeHtml(getName(retreat))}</h3>
+                                            <p class="text-sm text-gray-500 mt-1">${formatDateRange(retreat.start_date, retreat.end_date)}</p>
+                                            ${retreat.description_ru ? `
+                                                <p class="text-sm text-gray-600 mt-2 line-clamp-2">${escapeHtml(getDescription(retreat).substring(0, 100))}...</p>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 pt-4 border-t flex justify-end">
+                                        <button class="btn-secondary text-sm py-1.5" disabled title="${t('portal_registration_coming_soon')}">
+                                            ${t('portal_register_btn')}
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+
+        function renderPastRetreats(retreats) {
+            return `
+                <div class="mb-6">
+                    <h2 class="section-title">${t('portal_past_retreats')}</h2>
+
+                    ${retreats.length === 0 ? `
+                        <div class="card p-6">
+                            <div class="empty-state py-8">
+                                <svg class="empty-state-icon mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <p>${t('portal_no_past_retreats')}</p>
+                            </div>
+                        </div>
+                    ` : `
+                        <div class="card overflow-hidden">
+                            <div class="table-container">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>${t('portal_retreat_name')}</th>
+                                            <th>${t('portal_dates')}</th>
+                                            <th>${t('portal_status')}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${retreats.map(reg => `
+                                            <tr>
+                                                <td class="font-medium">${escapeHtml(getName(reg.retreat))}</td>
+                                                <td class="text-gray-500">${formatDateRange(reg.retreat.start_date, reg.retreat.end_date)}</td>
+                                                <td>
+                                                    <span class="status-badge status-completed">${t('portal_status_completed')}</span>
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+
+        function getDescription(retreat) {
+            const lang = PortalLayout.getLang();
+            return retreat[`description_${lang}`] || retreat.description_en || retreat.description_ru || '';
+        }
+
+        function getMonthShort(dateStr) {
+            const date = new Date(dateStr);
+            const lang = PortalLayout.getLang();
+            const locale = lang === 'ru' ? 'ru-RU' : lang === 'hi' ? 'hi-IN' : 'en-US';
+            return date.toLocaleDateString(locale, { month: 'short' }).replace('.', '');
+        }
+
+        init();
+    </script>
+</body>
+</html>

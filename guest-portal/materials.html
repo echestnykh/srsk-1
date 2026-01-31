@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Материалы | Rupa Seva Guest Portal</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'srsk-green': '#147D30',
+                        'srsk-green-light': '#1a9e3d',
+                        'srsk-orange': '#FFBA47',
+                        'srsk-bg': '#F5F3EF'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Portal CSS -->
+    <link rel="stylesheet" href="css/portal.css">
+
+    <style>
+        .material-content h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .material-content h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #374151;
+            margin-top: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+        .material-content p {
+            color: #4b5563;
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+        .material-content ul {
+            list-style: disc;
+            padding-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .material-content li {
+            color: #4b5563;
+            margin-bottom: 0.5rem;
+        }
+        .material-content a {
+            color: #147D30;
+            text-decoration: underline;
+        }
+        .material-content a:hover {
+            color: #1a9e3d;
+        }
+        .material-content strong {
+            font-weight: 600;
+            color: #1f2937;
+        }
+    </style>
+</head>
+<body class="bg-srsk-bg min-h-screen flex flex-col">
+
+    <div id="header-placeholder"></div>
+
+    <main class="container mx-auto px-4 py-6 flex-1">
+        <div class="max-w-4xl mx-auto">
+
+            <!-- Список материалов -->
+            <div id="materials-list"></div>
+
+            <!-- Детальный просмотр материала -->
+            <div id="material-detail" class="hidden"></div>
+
+        </div>
+    </main>
+
+    <div id="footer-placeholder"></div>
+
+    <!-- Scripts -->
+    <script src="js/portal-config.js"></script>
+    <script src="js/portal-auth.js"></script>
+    <script src="js/portal-layout.js"></script>
+    <script src="js/portal-data.js"></script>
+
+    <script>
+        const t = key => PortalLayout.t(key);
+        const escapeHtml = str => PortalLayout.escapeHtml(str);
+        let currentSlug = null;
+
+        async function init() {
+            PortalLayout.showLoader();
+
+            // Проверяем авторизацию
+            const guest = await PortalAuth.checkGuestAuth();
+            if (!guest) return;
+
+            // Инициализируем layout
+            await PortalLayout.init({ activeNav: 'materials' });
+
+            // Проверяем URL параметры
+            const params = new URLSearchParams(window.location.search);
+            const slug = params.get('id');
+
+            if (slug) {
+                await showMaterial(slug);
+            } else {
+                await showMaterialsList();
+            }
+
+            PortalLayout.hideLoader();
+        }
+
+        async function showMaterialsList() {
+            currentSlug = null;
+            document.getElementById('material-detail').classList.add('hidden');
+            document.getElementById('materials-list').classList.remove('hidden');
+
+            const materials = await PortalData.getMaterials();
+            renderMaterialsList(materials);
+        }
+
+        async function showMaterial(slug) {
+            currentSlug = slug;
+            document.getElementById('materials-list').classList.add('hidden');
+            document.getElementById('material-detail').classList.remove('hidden');
+
+            const material = await PortalData.getMaterialBySlug(slug);
+
+            if (!material) {
+                PortalLayout.showNotification(t('portal_material_not_found'), 'error');
+                await showMaterialsList();
+                return;
+            }
+
+            renderMaterialDetail(material);
+
+            // Обновляем URL без перезагрузки
+            history.pushState({}, '', `materials.html?id=${slug}`);
+        }
+
+        function renderMaterialsList(materials) {
+            const container = document.getElementById('materials-list');
+
+            container.innerHTML = `
+                <!-- Заголовок -->
+                <div class="mb-6">
+                    <h1 class="text-2xl font-bold text-gray-800" data-i18n="portal_materials_title">Полезные материалы</h1>
+                    <p class="text-gray-500" data-i18n="portal_materials_subtitle">Информация для гостей ашрама</p>
+                </div>
+
+                <!-- Сетка карточек -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    ${materials.map(material => `
+                        <div class="material-card" onclick="showMaterial('${escapeHtml(material.slug)}')">
+                            <div class="material-icon">
+                                ${getMaterialIcon(material.icon)}
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-semibold text-gray-800">${escapeHtml(getTitle(material))}</h3>
+                                <p class="text-sm text-gray-500 mt-1 line-clamp-2">${getPreview(material)}</p>
+                            </div>
+                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </div>
+                    `).join('')}
+                </div>
+
+                ${materials.length === 0 ? `
+                    <div class="empty-state">
+                        <svg class="empty-state-icon mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                        </svg>
+                        <p>${t('portal_no_materials')}</p>
+                    </div>
+                ` : ''}
+            `;
+        }
+
+        function renderMaterialDetail(material) {
+            const container = document.getElementById('material-detail');
+            const lang = PortalLayout.getLang();
+            const content = material[`content_${lang}`] || material.content_en || material.content_ru || '';
+
+            container.innerHTML = `
+                <!-- Кнопка назад -->
+                <button onclick="goBack()" class="flex items-center gap-2 text-gray-500 hover:text-gray-700 mb-4">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                    <span data-i18n="portal_back">Назад</span>
+                </button>
+
+                <!-- Карточка материала -->
+                <div class="card">
+                    <!-- Заголовок -->
+                    <div class="p-6 border-b">
+                        <div class="flex items-center gap-4">
+                            <div class="material-icon w-12 h-12">
+                                ${getMaterialIcon(material.icon)}
+                            </div>
+                            <h1 class="text-2xl font-bold text-gray-800">${escapeHtml(getTitle(material))}</h1>
+                        </div>
+                    </div>
+
+                    <!-- Содержимое -->
+                    <div class="p-6 material-content">
+                        ${content}
+                    </div>
+                </div>
+
+                <!-- Навигация между материалами -->
+                <div class="flex justify-between mt-6">
+                    <button onclick="goBack()" class="btn-ghost">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                        </svg>
+                        <span data-i18n="portal_all_materials">Все материалы</span>
+                    </button>
+                </div>
+            `;
+        }
+
+        function goBack() {
+            history.pushState({}, '', 'materials.html');
+            showMaterialsList();
+        }
+
+        // Обработка навигации браузера
+        window.addEventListener('popstate', async () => {
+            const params = new URLSearchParams(window.location.search);
+            const slug = params.get('id');
+
+            if (slug) {
+                await showMaterial(slug);
+            } else {
+                await showMaterialsList();
+            }
+        });
+
+        function getTitle(item) {
+            const lang = PortalLayout.getLang();
+            return item[`title_${lang}`] || item.title_en || item.title_ru || '';
+        }
+
+        function getPreview(material) {
+            const lang = PortalLayout.getLang();
+            const content = material[`content_${lang}`] || material.content_en || material.content_ru || '';
+
+            // Удаляем HTML теги и берём первые 100 символов
+            const text = content.replace(/<[^>]*>/g, '').trim();
+            return text.length > 100 ? text.substring(0, 100) + '...' : text;
+        }
+
+        function getMaterialIcon(iconName) {
+            const icons = {
+                'map': '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>',
+                'book': '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>',
+                'clipboard': '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>',
+                'home': '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>',
+                'currency': '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
+                'question': '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'
+            };
+            return icons[iconName] || icons['book'];
+        }
+
+        init();
+    </script>
+</body>
+</html>
