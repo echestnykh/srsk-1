@@ -1026,9 +1026,9 @@
         function calculateCompleteness(guest) {
             if (!guest) return 0;
 
+            // Поля для расчёта (без фамилии и email)
             const fields = [
                 'firstName',
-                'lastName',
                 'spiritualName',
                 'phone',
                 'telegram',
@@ -1114,13 +1114,14 @@
                 phoneEl.classList.add('hidden');
             }
 
-            // Telegram (данные в поле telegram, не telegram_username)
+            // Telegram
             const tgEl = document.getElementById('profile-telegram');
             const tgHandle = guest.telegram || guest.telegramUsername;
-            if (tgHandle && tgHandle.includes('@')) {
-                const username = tgHandle.startsWith('@') ? tgHandle : `@${tgHandle}`;
-                tgEl.href = `https://t.me/${tgHandle.replace('@', '')}`;
-                tgEl.querySelector('span').textContent = username;
+            if (tgHandle) {
+                const cleanHandle = tgHandle.replace('@', '');
+                const displayName = `@${cleanHandle}`;
+                tgEl.href = `https://t.me/${cleanHandle}`;
+                tgEl.querySelector('span').textContent = displayName;
                 tgEl.classList.remove('hidden');
             } else {
                 tgEl.classList.add('hidden');
@@ -1646,6 +1647,7 @@
                         city,
                         photo_url,
                         spiritual_teacher,
+                        birth_date,
                         is_profile_public
                     `)
                     .eq('id', vaishnavId)
@@ -1679,7 +1681,8 @@
                     country: vaishnava.country,
                     city: vaishnava.city,
                     photoUrl: vaishnava.photo_url,
-                    spiritualTeacher: vaishnava.spiritual_teacher
+                    spiritualTeacher: vaishnava.spiritual_teacher,
+                    birthDate: vaishnava.birth_date
                 };
 
                 populateProfile(guest);
