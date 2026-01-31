@@ -19,7 +19,10 @@ async function checkGuestAuth() {
         // Проверяем сессию
         const { data: { session }, error: sessionError } = await db.auth.getSession();
 
+        console.log('[Portal Auth] Session:', session ? session.user.id : 'null');
+
         if (sessionError || !session) {
+            console.log('[Portal Auth] No session, redirecting');
             redirectToLogin('no_session');
             return null;
         }
@@ -46,10 +49,18 @@ async function checkGuestAuth() {
                 is_active
             `)
             .eq('user_id', session.user.id)
-            .single();
+            .maybeSingle();
 
-        if (userError || !vaishnava) {
-            console.error('Пользователь не найден в vaishnavas:', userError);
+        console.log('[Portal Auth] Vaishnava query result:', { vaishnava, userError });
+
+        if (userError) {
+            console.error('[Portal Auth] Query error:', userError);
+            redirectToLogin('user_not_found');
+            return null;
+        }
+
+        if (!vaishnava) {
+            console.error('[Portal Auth] User not found for auth.uid:', session.user.id);
             redirectToLogin('user_not_found');
             return null;
         }

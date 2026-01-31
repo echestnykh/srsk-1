@@ -222,13 +222,24 @@
                 }
 
                 // Проверяем пользователя
+                console.log('[Login] Checking user for auth.uid:', data.user.id);
                 const { data: vaishnava, error: userError } = await db
                     .from('vaishnavas')
                     .select('user_type, is_active')
                     .eq('user_id', data.user.id)
-                    .single();
+                    .maybeSingle();
 
-                if (userError || !vaishnava) {
+                console.log('[Login] Vaishnava result:', { vaishnava, userError });
+
+                if (userError) {
+                    console.error('[Login] Query error:', userError);
+                    await db.auth.signOut();
+                    showError('error_user_not_found');
+                    return;
+                }
+
+                if (!vaishnava) {
+                    console.error('[Login] User not found in vaishnavas');
                     await db.auth.signOut();
                     showError('error_user_not_found');
                     return;
