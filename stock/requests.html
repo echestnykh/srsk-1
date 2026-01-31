@@ -1556,13 +1556,26 @@
             const stock = stockItems.find(s => s.product_id === selectedProduct.id);
             const lastPrice = stock?.last_price || null;
 
-            // Учитываем процент на очистку при расчете количества для закупки
-            // Формула: нужно_очищенной / (1 - waste_percent/100)
-            // Пример: 1 кг / (1 - 0.20) = 1.25 кг для 20% очисток
+            // Загружаем реальный остаток со склада
+            const stockGrams = toGrams(stock?.current_quantity, selectedProduct.unit);
+            const inStockInUnit = unit === 'kg' ? stockGrams / 1000 : stockGrams;
+
+            // Процент на очистку
             const wastePercent = selectedProduct.waste_percent || 0;
+
+            // Из того что есть на складе (нечищеного) получится очищенного:
+            const stockCleaned = wastePercent > 0
+                ? inStockInUnit * (1 - wastePercent / 100)
+                : inStockInUnit;
+
+            // Не хватает очищенного:
+            const shortageCleaned = Math.max(0, quantity - stockCleaned);
+
+            // Чтобы получить недостающее очищенное, нужно закупить нечищеного:
             const quantityToPurchase = wastePercent > 0
-                ? quantity / (1 - wastePercent / 100)
-                : quantity;
+                ? shortageCleaned / (1 - wastePercent / 100)
+                : shortageCleaned;
+
             const quantityGrams = toGrams(quantityToPurchase, unit);
 
             if (addingToViewedRequest) {
@@ -1582,16 +1595,11 @@
                 renderViewedRequest();
             } else {
                 // Добавляем в новую заявку
-                // Загружаем реальный остаток со склада
-                const stock = stockItems.find(s => s.product_id === selectedProduct.id);
-                const stockGrams = toGrams(stock?.current_quantity, selectedProduct.unit);
-                const inStock = unit === 'kg' ? stockGrams / 1000 : stockGrams;
-
                 requestItems.push({
                     product_id: selectedProduct.id,
                     product: selectedProduct,
                     needed: quantity,
-                    in_stock: inStock,
+                    in_stock: inStockInUnit,
                     to_purchase: quantityToPurchase,
                     unit: unit,
                     last_price: lastPrice,
