@@ -1230,7 +1230,8 @@
 
         function openGuestPortal() {
             if (person?.id) {
-                window.open(`/guest-portal/index.html?view=${person.id}`, '_blank');
+                // Используем относительный путь от vaishnavas/
+                window.open(`../guest-portal/index.html?view=${person.id}`, '_blank');
             }
         }
 

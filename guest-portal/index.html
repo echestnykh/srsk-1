@@ -1549,6 +1549,9 @@
             const urlParams = new URLSearchParams(window.location.search);
             const viewId = urlParams.get('view');
 
+            console.log('[Portal] URL:', window.location.href);
+            console.log('[Portal] viewId:', viewId);
+
             if (viewId) {
                 // Режим просмотра чужого профиля
                 await loadPublicProfile(viewId);
