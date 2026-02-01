@@ -1744,18 +1744,6 @@
                     const clickedCol = startCol + colOffset;
                     // Конвертируем колонку обратно в день
                     clickedDayIndex = Math.floor(clickedCol / 2);
-
-                    console.log('=== CLICK DEBUG ===');
-                    console.log('clientX:', event.clientX, 'rect.left:', rect.left);
-                    console.log('clickX:', clickX, 'barWidth:', barWidth);
-                    console.log('startDay:', guestData.startDay, 'startHalf:', guestData.startHalf);
-                    console.log('endDay:', guestData.endDay, 'endHalf:', guestData.endHalf);
-                    console.log('startCol:', startCol, 'endCol:', endCol, 'totalCols:', totalCols);
-                    console.log('colOffset:', colOffset, 'clickedCol:', clickedCol);
-                    console.log('clickedDayIndex:', clickedDayIndex);
-                    const debugDate = getDateForDay(clickedDayIndex);
-                    console.log('checkoutDate would be:', `${debugDate.getFullYear()}-${String(debugDate.getMonth()+1).padStart(2,'0')}-${String(debugDate.getDate()).padStart(2,'0')}`);
-                    console.log('===================');
                 } else {
                     clickedDayIndex = guestData.endDay;
                 }
