@@ -2,7 +2,7 @@
 <html lang="ru" data-theme="light">
 <head>
     <meta charset="UTF-8">
-    <!-- v2026-01-31-fix -->
+    <!-- v2026-02-01-checkout -->
     <script src="../js/color-init.js"></script>
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -275,6 +275,19 @@
                 rgba(255,255,255,0.5) 8px
             );
             border-style: dashed;
+        }
+
+        /* Выселенный — серый */
+        .guest-bar.checked-out {
+            background: #d1d5db !important;
+            border-color: #9ca3af !important;
+            color: #6b7280;
+        }
+
+        .room-summary-bar.checked-out {
+            background: #d1d5db !important;
+            border-color: #9ca3af !important;
+            color: #6b7280;
         }
 
         /* Уборка */
@@ -932,7 +945,7 @@
                         resident_categories(id, name_ru, name_en, name_hi, color),
                         vaishnavas(id, first_name, last_name, spiritual_name),
                         bookings(id, name, contact_name)`)
-                    .in('status', ['active', 'confirmed'])
+                    .in('status', ['active', 'confirmed', 'checked_out'])
                     .lte('check_in', endDateStr)
                     .or(`check_out.is.null,check_out.gte.${startDateStr}`),
                 Layout.db.from('retreats')
@@ -1101,6 +1114,7 @@
                                 color,
                                 border,
                                 isBooking,
+                                isCheckedOut: res.status === 'checked_out',
                                 // Сырые данные для модалки
                                 rawData: res
                             };
@@ -1698,14 +1712,34 @@
 
         // Текущий резидент для модалки
         let currentResident = null;
+        // День, на который кликнули (для выселения)
+        let clickedDayIndex = null;
 
         // Открыть модалку резидента из хранилища
-        function openResidentFromMap(guestId) {
+        function openResidentFromMap(guestId, event) {
             const guestData = guestsMap.get(guestId);
             if (!guestData) {
                 console.error('Guest not found:', guestId);
                 return;
             }
+
+            // Вычисляем день клика по позиции мыши на плашке
+            if (event) {
+                const bar = event.target.closest('.guest-bar');
+                if (bar) {
+                    const rect = bar.getBoundingClientRect();
+                    const clickX = event.clientX - rect.left;
+                    const barWidth = rect.width;
+                    const totalDays = guestData.endDay - guestData.startDay + 1;
+                    const dayOffset = Math.floor((clickX / barWidth) * totalDays);
+                    clickedDayIndex = guestData.startDay + dayOffset;
+                } else {
+                    clickedDayIndex = guestData.endDay; // По умолчанию последний день
+                }
+            } else {
+                clickedDayIndex = guestData.endDay;
+            }
+
             openResidentModal(guestData, guestData.buildingName, guestData.roomName);
         }
 
@@ -1714,10 +1748,12 @@
             currentResident = guestData;
             const res = guestData.rawData;
             const isBooking = guestData.isBooking;
+            const isCheckedOut = res.status === 'checked_out';
 
             // Заголовок
-            document.getElementById('residentModalTitle').textContent =
-                isBooking ? 'Бронирование' : 'Проживание';
+            let title = isBooking ? 'Бронирование' : 'Проживание';
+            if (isCheckedOut) title = 'Выселен';
+            document.getElementById('residentModalTitle').textContent = title;
 
             // Локация
             document.getElementById('residentModalLocation').textContent =
@@ -1792,6 +1828,7 @@
 
             // Кнопки действий
             let actionsHtml = '';
+            const isCheckedOut = res.status === 'checked_out';
 
             if (isBooking) {
                 // Действия для бронирования
@@ -1813,8 +1850,8 @@
                     </svg>
                     Отменить
                 </button>`;
-            } else {
-                // Действия для заселённого гостя
+            } else if (!isCheckedOut) {
+                // Действия для заселённого гостя (не выселенного)
                 actionsHtml += `<button class="btn btn-warning" onclick="checkoutResident()">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -1834,6 +1871,7 @@
                     Перенос
                 </button>`;
             }
+            // Для выселенных (isCheckedOut) — только кнопка удаления
 
             // Кнопка удаления для всех
             actionsHtml += `<button class="btn btn-error btn-outline" onclick="deleteResident()">
@@ -1858,14 +1896,29 @@
             return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' });
         }
 
-        // Выселить резидента (установить дату выезда = сегодня)
+        // Выселить резидента (установить дату выезда = кликнутый день)
         async function checkoutResident() {
             if (!currentResident) return;
 
-            const today = new Date().toISOString().split('T')[0];
+            const res = currentResident.rawData;
+            let checkoutDate;
+
+            // Если кликнули на конкретный день — используем его
+            if (clickedDayIndex !== null && clickedDayIndex >= currentResident.startDay) {
+                checkoutDate = getDateForDay(clickedDayIndex).toISOString().split('T')[0];
+            } else {
+                // Если день не определён или некорректный — используем оригинальную дату выезда
+                checkoutDate = res.check_out;
+            }
+
+            // Финальная проверка: дата не раньше заезда и не позже оригинального выезда
+            if (!checkoutDate || checkoutDate < res.check_in) {
+                checkoutDate = res.check_out || res.check_in;
+            }
+
             const { error } = await Layout.db
                 .from('residents')
-                .update({ check_out: today, status: 'checked_out' })
+                .update({ check_out: checkoutDate, status: 'checked_out' })
                 .eq('id', currentResident.id);
 
             if (error) {
@@ -2509,6 +2562,7 @@
                                 const firstGuest = segment.guests[0];
                                 const bgColor = firstGuest?.color || '#fef08a';
                                 const isBooking = segment.guests.some(g => g.isBooking);
+                                const isCheckedOut = segment.guests.some(g => g.isCheckedOut);
                                 const isPartial = segment.count < totalBeds;
 
                                 let label = '';
@@ -2521,11 +2575,12 @@
                                 }
 
                                 const bookingClass = isBooking ? 'booking' : '';
+                                const checkedOutClass = isCheckedOut ? ' checked-out' : '';
                                 const style = isBooking
                                     ? `width: ${width}px; --bar-color: ${bgColor}; border-color: ${bgColor};`
                                     : `width: ${width}px; background: ${bgColor};`;
 
-                                html += `<div class="room-summary-bar ${bookingClass}" style="${style}">${label}</div>`;
+                                html += `<div class="room-summary-bar ${bookingClass}${checkedOutClass}" style="${style}">${label}</div>`;
                             }
                         }
 
@@ -2591,16 +2646,17 @@
                                 const endCol = guest.endDay * 2 + guest.endHalf;
                                 const spanCells = Math.max(1, endCol - startCol + 1);
                                 const width = spanCells * CELL_WIDTH - 2; // минус отступы
+                                const checkedOutClass = guest.isCheckedOut ? ' checked-out' : '';
 
                                 if (guest.isBooking) {
                                     // Бронирование — штриховка
                                     const bgColor = guest.color || '#fef08a';
-                                    html += `<div class="guest-bar booking" style="width: ${width}px; --bar-color: ${bgColor}; border-color: ${bgColor};" onclick="event.stopPropagation(); openResidentFromMap('${guest.id}')">${guest.name}</div>`;
+                                    html += `<div class="guest-bar booking${checkedOutClass}" style="width: ${width}px; --bar-color: ${bgColor}; border-color: ${bgColor};" onclick="event.stopPropagation(); openResidentFromMap('${guest.id}', event)">${guest.name}</div>`;
                                 } else {
                                     // Обычное заселение
                                     const bgColor = guest.color || '#fef08a';
                                     const borderColor = guest.border || '#facc15';
-                                    html += `<div class="guest-bar" style="width: ${width}px; background: ${bgColor}; border-color: ${borderColor};" onclick="event.stopPropagation(); openResidentFromMap('${guest.id}')">${guest.name}</div>`;
+                                    html += `<div class="guest-bar${checkedOutClass}" style="width: ${width}px; background: ${bgColor}; border-color: ${borderColor};" onclick="event.stopPropagation(); openResidentFromMap('${guest.id}', event)">${guest.name}</div>`;
                                 }
                             }
 
