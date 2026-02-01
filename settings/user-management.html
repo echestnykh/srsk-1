@@ -39,14 +39,20 @@
         </div>
 
         <!-- Поиск и фильтры -->
-        <div class="mb-4 flex gap-2">
+        <div class="mb-4 flex flex-wrap gap-2">
             <input type="text" id="searchInput" placeholder="Поиск по имени или email..."
-                   class="input input-bordered flex-1" onkeyup="filterUsers()">
+                   class="input input-bordered flex-1 min-w-48" onkeyup="filterUsers()">
             <select id="moduleFilter" class="select select-bordered" onchange="filterUsers()">
                 <option value="">Все модули</option>
                 <option value="housing">Housing</option>
                 <option value="kitchen">Kitchen</option>
             </select>
+            <button class="btn btn-outline btn-primary" onclick="sendBulkInvites()">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                Пригласить всех без аккаунта (<span id="countNoAccount">0</span>)
+            </button>
         </div>
 
         <!-- Таблица пользователей -->
@@ -251,6 +257,7 @@
             document.getElementById('countStaff').textContent = allUsers.filter(u => u.user_type === 'staff').length;
             document.getElementById('countGuest').textContent = allUsers.filter(u => u.user_type === 'guest').length;
             document.getElementById('countBlocked').textContent = allUsers.filter(u => u.approval_status === 'blocked' || !u.is_active).length;
+            document.getElementById('countNoAccount').textContent = allUsers.filter(u => !u.user_id && u.email).length;
         }
 
         // Переключение табов
@@ -340,13 +347,22 @@
                         }
                     </td>
                     <td>
-                        <div class="flex gap-1">
+                        <div class="flex gap-1 flex-wrap">
                             ${user.approval_status === 'pending'
                                 ? `
                                     <button class="btn btn-xs btn-success" onclick="approveUser('${user.id}')">Одобрить</button>
                                     <button class="btn btn-xs btn-error" onclick="rejectUser('${user.id}')">Отклонить</button>
                                 `
                                 : `<button class="btn btn-xs btn-primary" onclick="openManageModal('${user.id}')">Управление</button>`
+                            }
+                            ${!user.user_id && user.email
+                                ? `<button class="btn btn-xs btn-outline btn-secondary" onclick="sendInvite('${user.id}', '${user.email.replace(/'/g, "\\'")}')">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                    </svg>
+                                    Пригласить
+                                   </button>`
+                                : ''
                             }
                         </div>
                     </td>
@@ -758,6 +774,125 @@
                 // Откатить чекбокс при ошибке
                 checkbox.checked = !isGranted;
                 alert('Ошибка: ' + err.message);
+            }
+        }
+
+        // Отправить приглашение одному пользователю
+        async function sendInvite(vaishnavId, email) {
+            const user = allUsers.find(u => u.id === vaishnavId);
+            const userName = user?.spiritual_name || user?.first_name || email;
+
+            if (!confirm(`Отправить приглашение пользователю ${userName} (${email})?`)) {
+                return;
+            }
+
+            try {
+                const { data: { session } } = await db.auth.getSession();
+                if (!session) {
+                    alert('Сессия истекла. Перезагрузите страницу.');
+                    return;
+                }
+
+                const response = await fetch(
+                    `${window.CONFIG.SUPABASE_URL}/functions/v1/send-invite`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${session.access_token}`
+                        },
+                        body: JSON.stringify({ email, vaishnavId })
+                    }
+                );
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    if (result.alreadyHasAccount) {
+                        alert('У пользователя уже есть аккаунт');
+                        loadUsers(); // Перезагрузить список
+                    } else {
+                        throw new Error(result.error || 'Ошибка отправки');
+                    }
+                    return;
+                }
+
+                Layout.showNotification(`Приглашение отправлено на ${email}`, 'success');
+
+            } catch (err) {
+                console.error('Send invite error:', err);
+                alert('Ошибка отправки приглашения: ' + err.message);
+            }
+        }
+
+        // Массовая отправка приглашений
+        async function sendBulkInvites() {
+            const usersWithoutAccount = allUsers.filter(u => !u.user_id && u.email);
+
+            if (usersWithoutAccount.length === 0) {
+                alert('Нет пользователей без аккаунта');
+                return;
+            }
+
+            if (!confirm(`Отправить приглашения ${usersWithoutAccount.length} пользователям?\n\nЭто может занять некоторое время.`)) {
+                return;
+            }
+
+            try {
+                const { data: { session } } = await db.auth.getSession();
+                if (!session) {
+                    alert('Сессия истекла. Перезагрузите страницу.');
+                    return;
+                }
+
+                let sent = 0;
+                let errors = 0;
+                const errorList = [];
+
+                for (const user of usersWithoutAccount) {
+                    try {
+                        const response = await fetch(
+                            `${window.CONFIG.SUPABASE_URL}/functions/v1/send-invite`,
+                            {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${session.access_token}`
+                                },
+                                body: JSON.stringify({ email: user.email, vaishnavId: user.id })
+                            }
+                        );
+
+                        const result = await response.json();
+
+                        if (response.ok) {
+                            sent++;
+                        } else {
+                            errors++;
+                            errorList.push(`${user.email}: ${result.error}`);
+                        }
+
+                        // Небольшая задержка между запросами
+                        await new Promise(r => setTimeout(r, 200));
+
+                    } catch (err) {
+                        errors++;
+                        errorList.push(`${user.email}: ${err.message}`);
+                    }
+                }
+
+                let message = `Отправлено: ${sent}`;
+                if (errors > 0) {
+                    message += `\nОшибок: ${errors}`;
+                    console.error('Bulk invite errors:', errorList);
+                }
+
+                alert(message);
+                Layout.showNotification(`Приглашения отправлены: ${sent}`, sent > 0 ? 'success' : 'warning');
+
+            } catch (err) {
+                console.error('Bulk invite error:', err);
+                alert('Ошибка массовой отправки: ' + err.message);
             }
         }
 

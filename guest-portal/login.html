@@ -52,7 +52,17 @@
             <!-- Сообщение об ошибке -->
             <div id="error-alert" class="alert alert-error hidden"></div>
 
-            <!-- Форма -->
+            <!-- Переключатель режима входа -->
+            <div class="flex rounded-lg bg-gray-100 p-1 mb-4">
+                <button type="button" id="tab-password" class="flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors bg-white shadow-sm text-gray-900" onclick="switchLoginMode('password')">
+                    <span data-i18n="portal_tab_password">По паролю</span>
+                </button>
+                <button type="button" id="tab-magic" class="flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors text-gray-500" onclick="switchLoginMode('magic')">
+                    <span data-i18n="portal_tab_magic">По ссылке</span>
+                </button>
+            </div>
+
+            <!-- Форма входа по паролю -->
             <form id="login-form" class="space-y-4">
                 <div class="form-group">
                     <label class="label" data-i18n="portal_email">Email</label>
@@ -86,6 +96,40 @@
                 </button>
             </form>
 
+            <!-- Форма входа по magic link -->
+            <form id="magic-form" class="space-y-4 hidden">
+                <div class="form-group">
+                    <label class="label" data-i18n="portal_email">Email</label>
+                    <input type="email" id="magic-email" class="input" required
+                           placeholder="email@example.com"
+                           autocomplete="email">
+                </div>
+
+                <p class="text-sm text-gray-500" data-i18n="portal_magic_hint">Мы отправим ссылку для входа на вашу почту</p>
+
+                <button type="submit" id="magic-btn" class="btn-primary w-full">
+                    <span data-i18n="portal_send_link">Отправить ссылку</span>
+                    <svg id="magic-spinner" class="w-5 h-5 animate-spin hidden" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </button>
+            </form>
+
+            <!-- Сообщение об успешной отправке -->
+            <div id="magic-success" class="hidden text-center py-4">
+                <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                </div>
+                <p class="font-medium text-gray-900" data-i18n="portal_link_sent">Ссылка отправлена!</p>
+                <p class="text-sm text-gray-500 mt-1" data-i18n="portal_check_email">Проверьте вашу почту и перейдите по ссылке</p>
+                <button type="button" class="text-sm text-srsk-green mt-3 hover:underline" onclick="resetMagicForm()">
+                    <span data-i18n="portal_send_again">Отправить ещё раз</span>
+                </button>
+            </div>
+
             <!-- Разделитель -->
             <div class="relative my-6">
                 <div class="absolute inset-0 flex items-center">
@@ -113,6 +157,7 @@
 
     <!-- Scripts -->
     <script src="js/portal-config.js"></script>
+    <script src="js/portal-auth.js"></script>
     <script>
         const db = window.portalSupabase;
         let currentLang = localStorage.getItem('srsk_lang') || 'ru';
@@ -128,10 +173,19 @@
             portal_or: { ru: 'или', en: 'or', hi: 'या' },
             portal_no_account: { ru: 'Ещё нет аккаунта?', en: "Don't have an account?", hi: 'खाता नहीं है?' },
             portal_register: { ru: 'Зарегистрироваться', en: 'Register', hi: 'पंजीकरण करें' },
+            portal_tab_password: { ru: 'По паролю', en: 'Password', hi: 'पासवर्ड' },
+            portal_tab_magic: { ru: 'По ссылке', en: 'Email link', hi: 'ईमेल लिंक' },
+            portal_magic_hint: { ru: 'Мы отправим ссылку для входа на вашу почту', en: 'We will send a login link to your email', hi: 'हम आपके ईमेल पर लॉगिन लिंक भेजेंगे' },
+            portal_send_link: { ru: 'Отправить ссылку', en: 'Send link', hi: 'लिंक भेजें' },
+            portal_link_sent: { ru: 'Ссылка отправлена!', en: 'Link sent!', hi: 'लिंक भेज दिया गया!' },
+            portal_check_email: { ru: 'Проверьте вашу почту и перейдите по ссылке', en: 'Check your email and click the link', hi: 'अपना ईमेल जांचें और लिंक पर क्लिक करें' },
+            portal_send_again: { ru: 'Отправить ещё раз', en: 'Send again', hi: 'फिर से भेजें' },
             error_invalid_credentials: { ru: 'Неверный email или пароль', en: 'Invalid email or password', hi: 'गलत ईमेल या पासवर्ड' },
             error_user_not_found: { ru: 'Пользователь не найден', en: 'User not found', hi: 'उपयोगकर्ता नहीं मिला' },
+            error_not_registered: { ru: 'Этот email не зарегистрирован. Пожалуйста, зарегистрируйтесь.', en: 'This email is not registered. Please sign up.', hi: 'यह ईमेल पंजीकृत नहीं है। कृपया साइन अप करें।' },
             error_not_guest: { ru: 'Этот портал только для гостей. Команда использует основное приложение.', en: 'This portal is for guests only. Staff should use the main app.', hi: 'यह पोर्टल केवल अतिथियों के लिए है।' },
             error_account_disabled: { ru: 'Ваш аккаунт деактивирован', en: 'Your account is disabled', hi: 'आपका खाता निष्क्रिय है' },
+            error_send_failed: { ru: 'Не удалось отправить ссылку. Попробуйте позже.', en: 'Failed to send link. Please try again.', hi: 'लिंक भेजने में विफल। कृपया पुनः प्रयास करें।' },
             error_unknown: { ru: 'Произошла ошибка. Попробуйте позже.', en: 'An error occurred. Please try again.', hi: 'एक त्रुटि हुई। कृपया पुनः प्रयास करें।' }
         };
 
@@ -193,6 +247,86 @@
         // Скрыть ошибку
         function hideError() {
             document.getElementById('error-alert').classList.add('hidden');
+        }
+
+        // Переключение режима входа
+        let loginMode = 'password';
+
+        function switchLoginMode(mode) {
+            loginMode = mode;
+            hideError();
+
+            const tabPassword = document.getElementById('tab-password');
+            const tabMagic = document.getElementById('tab-magic');
+            const formPassword = document.getElementById('login-form');
+            const formMagic = document.getElementById('magic-form');
+            const magicSuccess = document.getElementById('magic-success');
+
+            if (mode === 'password') {
+                tabPassword.classList.add('bg-white', 'shadow-sm', 'text-gray-900');
+                tabPassword.classList.remove('text-gray-500');
+                tabMagic.classList.remove('bg-white', 'shadow-sm', 'text-gray-900');
+                tabMagic.classList.add('text-gray-500');
+                formPassword.classList.remove('hidden');
+                formMagic.classList.add('hidden');
+                magicSuccess.classList.add('hidden');
+            } else {
+                tabMagic.classList.add('bg-white', 'shadow-sm', 'text-gray-900');
+                tabMagic.classList.remove('text-gray-500');
+                tabPassword.classList.remove('bg-white', 'shadow-sm', 'text-gray-900');
+                tabPassword.classList.add('text-gray-500');
+                formMagic.classList.remove('hidden');
+                formPassword.classList.add('hidden');
+                magicSuccess.classList.add('hidden');
+            }
+        }
+
+        // Сброс формы magic link
+        function resetMagicForm() {
+            document.getElementById('magic-success').classList.add('hidden');
+            document.getElementById('magic-form').classList.remove('hidden');
+            document.getElementById('magic-email').value = '';
+        }
+
+        // Обработка magic link формы
+        async function handleMagicLink(e) {
+            e.preventDefault();
+            hideError();
+
+            const email = document.getElementById('magic-email').value.trim();
+            const submitBtn = document.getElementById('magic-btn');
+            const spinner = document.getElementById('magic-spinner');
+
+            submitBtn.disabled = true;
+            spinner.classList.remove('hidden');
+
+            try {
+                const result = await window.PortalAuth.sendMagicLink(email);
+
+                if (!result.success) {
+                    if (result.isNewUser) {
+                        showError('error_not_registered');
+                    } else if (result.error === 'account_disabled') {
+                        showError('error_account_disabled');
+                    } else if (result.error === 'send_failed') {
+                        showError('error_send_failed');
+                    } else {
+                        showError('error_unknown');
+                    }
+                    return;
+                }
+
+                // Успех — показываем сообщение
+                document.getElementById('magic-form').classList.add('hidden');
+                document.getElementById('magic-success').classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Magic link error:', error);
+                showError('error_unknown');
+            } finally {
+                submitBtn.disabled = false;
+                spinner.classList.add('hidden');
+            }
         }
 
         // Обработка формы
@@ -327,6 +461,7 @@
 
             // Обработчики событий
             document.getElementById('login-form').addEventListener('submit', handleLogin);
+            document.getElementById('magic-form').addEventListener('submit', handleMagicLink);
             document.getElementById('toggle-password').addEventListener('click', togglePassword);
 
             // Переключатель языка
