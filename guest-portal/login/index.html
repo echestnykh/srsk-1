@@ -455,7 +455,7 @@
                 console.log('[Login] Checking user for auth.uid:', data.user.id);
                 const { data: vaishnava, error: userError } = await db
                     .from('vaishnavas')
-                    .select('user_type, is_active, is_team')
+                    .select('user_type, is_active, is_team_member')
                     .eq('user_id', data.user.id)
                     .maybeSingle();
 
@@ -485,7 +485,7 @@
                 const redirect = new URLSearchParams(window.location.search).get('redirect');
                 if (redirect) {
                     window.location.href = redirect;
-                } else if (vaishnava.is_team) {
+                } else if (vaishnava.is_team_member) {
                     // Команда → админка (на другом домене)
                     window.location.href = 'https://srsk.rupaseva.com/';
                 } else {
@@ -529,13 +529,13 @@
                 // Проверяем есть ли пользователь в vaishnavas
                 const { data: vaishnava } = await db
                     .from('vaishnavas')
-                    .select('user_type, is_active, is_team')
+                    .select('user_type, is_active, is_team_member')
                     .eq('user_id', session.user.id)
                     .single();
 
                 if (vaishnava && vaishnava.is_active !== false) {
                     // Уже залогинен, редирект в зависимости от типа
-                    if (vaishnava.is_team) {
+                    if (vaishnava.is_team_member) {
                         window.location.href = 'https://srsk.rupaseva.com/';
                     } else {
                         window.location.href = '/';
