@@ -74,6 +74,34 @@ npx serve .
 - `mcp__supabase__get_logs` — логи сервисов
 - `mcp__supabase__get_advisors` — проверка безопасности
 
+## Supabase Realtime
+
+Realtime включён для автоматического обновления данных между пользователями.
+
+**Таблицы с Realtime:**
+- `residents` — проживающие (шахматка)
+- `bookings` — бронирования (шахматка)
+- `room_cleanings` — уборки (шахматка)
+
+**Реализация (placement/timeline.html):**
+```javascript
+// Подписка на изменения
+Layout.db.channel('timeline-realtime')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'residents' }, handler)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, handler)
+    .subscribe();
+
+// Обработчик с debounce 500мс
+function handler(payload) {
+    await loadTimelineData();
+    renderTable();
+}
+```
+
+**Добавление Realtime на другие страницы:**
+1. Включить таблицу: `ALTER PUBLICATION supabase_realtime ADD TABLE tablename;`
+2. Добавить подписку в JS (см. пример выше)
+
 ## Architecture
 
 ### Core Files
