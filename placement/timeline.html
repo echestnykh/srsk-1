@@ -1729,17 +1729,23 @@
             }
 
             // Вычисляем день клика по позиции мыши на плашке
+            // Используем полудни (колонки) для точного расчёта
             if (event) {
                 const bar = event.target.closest('.guest-bar');
                 if (bar) {
                     const rect = bar.getBoundingClientRect();
                     const clickX = event.clientX - rect.left;
                     const barWidth = rect.width;
-                    const totalDays = guestData.endDay - guestData.startDay + 1;
-                    const dayOffset = Math.floor((clickX / barWidth) * totalDays);
-                    clickedDayIndex = guestData.startDay + dayOffset;
+                    // Считаем в полуднях (колонках) для точности
+                    const startCol = guestData.startDay * 2 + guestData.startHalf;
+                    const endCol = guestData.endDay * 2 + guestData.endHalf;
+                    const totalCols = endCol - startCol + 1;
+                    const colOffset = Math.floor((clickX / barWidth) * totalCols);
+                    const clickedCol = startCol + colOffset;
+                    // Конвертируем колонку обратно в день (округляем вверх чтобы включить день)
+                    clickedDayIndex = Math.floor(clickedCol / 2);
                 } else {
-                    clickedDayIndex = guestData.endDay; // По умолчанию последний день
+                    clickedDayIndex = guestData.endDay;
                 }
             } else {
                 clickedDayIndex = guestData.endDay;
