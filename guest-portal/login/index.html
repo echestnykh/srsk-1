@@ -481,16 +481,16 @@
                     return;
                 }
 
-                // Успешно! Редирект в зависимости от типа пользователя
+                // Успешно! Редирект в зависимости от типа
                 const redirect = new URLSearchParams(window.location.search).get('redirect');
                 if (redirect) {
                     window.location.href = redirect;
                 } else if (vaishnava.is_team_member) {
-                    // Команда → админка (на другом домене)
-                    window.location.href = 'https://srsk.rupaseva.com/';
-                } else {
-                    // Гость → главная гостевого портала
+                    // Команда → полное приложение
                     window.location.href = '/';
+                } else {
+                    // Гость → гостевой портал
+                    window.location.href = '/guest-portal/';
                 }
 
             } catch (error) {
@@ -534,11 +534,11 @@
                     .single();
 
                 if (vaishnava && vaishnava.is_active !== false) {
-                    // Уже залогинен, редирект в зависимости от типа
+                    // Уже залогинен — редирект по типу
                     if (vaishnava.is_team_member) {
-                        window.location.href = 'https://srsk.rupaseva.com/';
-                    } else {
                         window.location.href = '/';
+                    } else {
+                        window.location.href = '/guest-portal/';
                     }
                     return;
                 }
