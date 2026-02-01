@@ -200,6 +200,7 @@ Housing (модуль проживания):
 
 Регистрации на ретриты:
 - `retreat_registrations` — регистрации (связь через `vaishnava_id`)
+  - `status` — constraint: `'guest'`, `'team'`, `'cancelled'` (НЕ 'registered', 'confirmed', 'pending')
 - `guest_visas`, `guest_payments`, `guest_transfers` — детали регистрации
 - `guest_notes` — заметки о гостях
 - Размещение гостей хранится в `residents` (единая таблица с шахматкой)
@@ -387,21 +388,19 @@ Layout.showNotification('Проверьте заполнение полей', 'w
    - Для HTML из БД использовать `Layout.escapeHtml()`
    - Валидировать цвета перед вставкой в style: `Utils.isValidColor(color)`
 
-5. **Inline onclick запрещены** — использовать event delegation вместо inline обработчиков:
-   ```html
-   <!-- НЕ ИСПОЛЬЗОВАТЬ -->
-   <button onclick="doSomething()">Click</button>
-
-   <!-- ИСПОЛЬЗОВАТЬ -->
-   <button data-action="do-something">Click</button>
-   ```
+5. **Inline onclick** — предпочитать event delegation для сложных случаев, но для простых элементов (поиск, модалки) inline допустим:
    ```javascript
+   // Event delegation для динамических элементов
    document.addEventListener('click', (e) => {
        const action = e.target.closest('[data-action]');
-       if (action?.dataset.action === 'do-something') {
-           doSomething();
+       if (action?.dataset.action === 'delete-item') {
+           deleteItem(action.dataset.id);
        }
    });
+
+   // Inline допустим для статичных элементов
+   <input oninput="onSearchInput(this.value)" />
+   <button onclick="openModal()">Открыть</button>
    ```
 
 6. **Поле поиска с крестиком** — все поля поиска должны иметь кнопку очистки (крестик), которая появляется при вводе текста и очищает поле по клику:
@@ -480,30 +479,6 @@ const grouped = allResidents.reduce((acc, r) => { (acc[r.booking_id] ||= []).pus
    - Функции с `SECURITY DEFINER` обходят RLS, но могут вызывать проблемы в контексте политик
    - Политика `FOR ALL` работает для INSERT/UPDATE/DELETE одновременно
 
-9. **Управление ролями: ошибка "Cannot read properties of undefined"** (решено 2026-01-31):
-   - **Проблема:** В `saveUserChanges()` переменная `user` возвращалась `undefined`
-   - **Причина:** `currentUserId` хранит `user_id` (auth UUID), но поиск шел по `allUsers.find(u => u.id === currentUserId)` где `id` это `vaishnava.id`
-   - **Решение:** Изменить поиск на `allUsers.find(u => u.user_id === currentUserId)`
-   - **Файл:** `settings/user-management.html:522`
-   - Аналогично в `blockUser()` - искать по `user_id`, обновлять по `user.id`
-
-10. **403 Forbidden при добавлении ролей** (решено 2026-01-31):
-    - **Проблема:** RLS политика блокировала INSERT в `user_roles` и `user_permissions`
-    - **Причина:** Были только политики FOR SELECT, но не было политик для INSERT/UPDATE/DELETE
-    - **Решение:** Миграция 096 - добавлены политики FOR ALL для суперпользователей
-    - **Код:**
-    ```sql
-    CREATE POLICY "Superusers can manage user roles"
-    ON user_roles FOR ALL TO authenticated
-    USING (auth.uid() IN (SELECT user_id FROM superusers))
-    WITH CHECK (auth.uid() IN (SELECT user_id FROM superusers));
-    ```
-
-11. **Временные функции с хардкодом UUID** (очищено 2026-01-31):
-    - **Проблема:** Функции `check_is_superuser()` и `is_superuser()` с хардкодом UUID (миграция 088)
-    - **Решение:** Миграция 097 - удалены устаревшие функции и политики
-    - **Текущий подход:** Используется `user_is_in_superusers()` из миграции 095 + таблица `superusers` без RLS
-
 ## File Locations
 
 ```
@@ -538,6 +513,7 @@ const grouped = allResidents.reduce((acc, r) => { (acc[r.booking_id] ||= []).pus
 |--------|------|
 | Проживание (импорт CSV) | `vaishnavas/retreat-guests.html` |
 | Распределение (предварительное) | `vaishnavas/preliminary.html` |
+| Шахматка (timeline) | `placement/timeline.html` |
 | Заезды | `placement/arrivals.html` |
 | Выезды | `placement/departures.html` |
 | Трансферы | `placement/transfers.html` |
