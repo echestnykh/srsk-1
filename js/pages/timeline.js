@@ -1868,6 +1868,52 @@ async function init() {
     renderTable();
     syncScroll();
     Layout.hideLoader();
+
+    // Подписка на изменения в реальном времени
+    subscribeToRealtime();
+}
+
+// Realtime: автоматическое обновление при изменениях в БД
+function subscribeToRealtime() {
+    const channel = Layout.db.channel('timeline-realtime');
+
+    // Подписка на изменения в residents
+    channel.on('postgres_changes',
+        { event: '*', schema: 'public', table: 'residents' },
+        handleRealtimeChange
+    );
+
+    // Подписка на изменения в bookings
+    channel.on('postgres_changes',
+        { event: '*', schema: 'public', table: 'bookings' },
+        handleRealtimeChange
+    );
+
+    // Подписка на изменения в room_cleanings
+    channel.on('postgres_changes',
+        { event: '*', schema: 'public', table: 'room_cleanings' },
+        handleRealtimeChange
+    );
+
+    channel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+            console.log('Realtime: подключено к шахматке');
+        }
+    });
+}
+
+// Обработка изменений — перезагрузка данных с debounce
+let realtimeTimeout = null;
+function handleRealtimeChange(payload) {
+    console.log('Realtime изменение:', payload.table, payload.eventType);
+
+    // Debounce: если несколько изменений подряд — ждём 500мс
+    if (realtimeTimeout) clearTimeout(realtimeTimeout);
+    realtimeTimeout = setTimeout(async () => {
+        await loadTimelineData();
+        renderTable();
+        Layout.showNotification('Данные обновлены', 'info');
+    }, 500);
 }
 
 init();
