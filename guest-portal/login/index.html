@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Вход | Rupa Seva Guest Portal</title>
+    <title>Вход | Rupa Seva</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 
     <!-- Tailwind CSS -->
@@ -32,7 +32,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Portal CSS -->
-    <link rel="stylesheet" href="css/portal.css">
+    <link rel="stylesheet" href="../css/portal.css">
 </head>
 <body class="bg-srsk-bg">
 
@@ -40,7 +40,7 @@
         <div class="login-card">
             <!-- Логотип -->
             <div class="flex justify-center mb-4">
-                <img src="img/logo.svg" alt="ШРСК" class="h-24">
+                <img src="../img/logo.svg" alt="ШРСК" class="h-24">
             </div>
 
             <!-- Заголовок -->
@@ -51,7 +51,7 @@
             <div id="error-alert" class="alert alert-error hidden"></div>
 
             <!-- Переключатель режима входа -->
-            <div class="flex rounded-lg bg-gray-100 p-1 mb-4">
+            <div class="flex rounded-lg bg-gray-100 p-1 mb-4" id="login-tabs">
                 <button type="button" id="tab-password" class="flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors bg-white shadow-sm text-gray-900" onclick="switchLoginMode('password')">
                     <span data-i18n="portal_tab_password">По паролю</span>
                 </button>
@@ -92,7 +92,49 @@
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                 </button>
+
+                <button type="button" class="w-full text-sm text-gray-500 hover:text-srsk-green mt-2" onclick="showForgotPassword()">
+                    <span data-i18n="portal_forgot_password">Забыли пароль?</span>
+                </button>
             </form>
+
+            <!-- Форма сброса пароля -->
+            <form id="forgot-form" class="space-y-4 hidden">
+                <div class="form-group">
+                    <label class="label" data-i18n="portal_email">Email</label>
+                    <input type="email" id="forgot-email" class="input" required
+                           placeholder="email@example.com"
+                           autocomplete="email">
+                </div>
+
+                <p class="text-sm text-gray-500" data-i18n="portal_forgot_hint">Мы отправим ссылку для сброса пароля</p>
+
+                <button type="submit" id="forgot-btn" class="btn-primary w-full">
+                    <span data-i18n="portal_send_reset_link">Отправить ссылку</span>
+                    <svg id="forgot-spinner" class="w-5 h-5 animate-spin hidden" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </button>
+
+                <button type="button" class="w-full text-sm text-gray-500 hover:text-srsk-green" onclick="hideForgotPassword()">
+                    <span data-i18n="portal_back_to_login">Вернуться к входу</span>
+                </button>
+            </form>
+
+            <!-- Сообщение об успешной отправке сброса -->
+            <div id="forgot-success" class="hidden text-center py-4">
+                <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                </div>
+                <p class="font-medium text-gray-900" data-i18n="portal_reset_link_sent">Ссылка отправлена!</p>
+                <p class="text-sm text-gray-500 mt-1" data-i18n="portal_check_email_reset">Проверьте почту и перейдите по ссылке для сброса пароля</p>
+                <button type="button" class="text-sm text-srsk-green mt-3 hover:underline" onclick="hideForgotPassword()">
+                    <span data-i18n="portal_back_to_login">Вернуться к входу</span>
+                </button>
+            </div>
 
             <!-- Форма входа по magic link -->
             <form id="magic-form" class="space-y-4 hidden">
@@ -141,7 +183,7 @@
             <!-- Ссылка на регистрацию -->
             <p class="text-center text-sm text-gray-600">
                 <span data-i18n="portal_no_account">Ещё нет аккаунта?</span>
-                <a href="../guest-signup.html" class="text-srsk-green font-medium hover:underline" data-i18n="portal_register">Зарегистрироваться</a>
+                <a href="/guest-signup.html" class="text-srsk-green font-medium hover:underline" data-i18n="portal_register">Зарегистрироваться</a>
             </p>
 
             <!-- Переключатель языка -->
@@ -154,8 +196,8 @@
     </div>
 
     <!-- Scripts -->
-    <script src="js/portal-config.js"></script>
-    <script src="js/portal-auth.js"></script>
+    <script src="../js/portal-config.js"></script>
+    <script src="../js/portal-auth.js"></script>
     <script>
         const db = window.portalSupabase;
         let currentLang = localStorage.getItem('srsk_lang') || 'ru';
@@ -163,7 +205,7 @@
 
         // Переводы для страницы логина (fallback если БД недоступна)
         const fallbackTranslations = {
-            portal_login_title: { ru: 'Личный кабинет', en: 'Guest Portal', hi: 'अतिथि पोर्टल' },
+            portal_login_title: { ru: 'Личный кабинет', en: 'Personal Account', hi: 'व्यक्तिगत खाता' },
             portal_login_subtitle: { ru: 'Войдите, чтобы продолжить', en: 'Sign in to continue', hi: 'जारी रखने के लिए साइन इन करें' },
             portal_email: { ru: 'Email', en: 'Email', hi: 'ईमेल' },
             portal_password: { ru: 'Пароль', en: 'Password', hi: 'पासवर्ड' },
@@ -181,10 +223,15 @@
             error_invalid_credentials: { ru: 'Неверный email или пароль', en: 'Invalid email or password', hi: 'गलत ईमेल या पासवर्ड' },
             error_user_not_found: { ru: 'Пользователь не найден', en: 'User not found', hi: 'उपयोगकर्ता नहीं मिला' },
             error_not_registered: { ru: 'Этот email не зарегистрирован. Пожалуйста, зарегистрируйтесь.', en: 'This email is not registered. Please sign up.', hi: 'यह ईमेल पंजीकृत नहीं है। कृपया साइन अप करें।' },
-            error_not_guest: { ru: 'Этот портал только для гостей. Команда использует основное приложение.', en: 'This portal is for guests only. Staff should use the main app.', hi: 'यह पोर्टल केवल अतिथियों के लिए है।' },
             error_account_disabled: { ru: 'Ваш аккаунт деактивирован', en: 'Your account is disabled', hi: 'आपका खाता निष्क्रिय है' },
             error_send_failed: { ru: 'Не удалось отправить ссылку. Попробуйте позже.', en: 'Failed to send link. Please try again.', hi: 'लिंक भेजने में विफल। कृपया पुनः प्रयास करें।' },
-            error_unknown: { ru: 'Произошла ошибка. Попробуйте позже.', en: 'An error occurred. Please try again.', hi: 'एक त्रुटि हुई। कृपया पुनः प्रयास करें।' }
+            error_unknown: { ru: 'Произошла ошибка. Попробуйте позже.', en: 'An error occurred. Please try again.', hi: 'एक त्रुटि हुई। कृपया पुनः प्रयास करें।' },
+            portal_forgot_password: { ru: 'Забыли пароль?', en: 'Forgot password?', hi: 'पासवर्ड भूल गए?' },
+            portal_forgot_hint: { ru: 'Мы отправим ссылку для сброса пароля', en: 'We will send a password reset link', hi: 'हम पासवर्ड रीसेट लिंक भेजेंगे' },
+            portal_send_reset_link: { ru: 'Отправить ссылку', en: 'Send link', hi: 'लिंक भेजें' },
+            portal_back_to_login: { ru: 'Вернуться к входу', en: 'Back to login', hi: 'लॉगिन पर वापस' },
+            portal_reset_link_sent: { ru: 'Ссылка отправлена!', en: 'Link sent!', hi: 'लिंक भेज दिया गया!' },
+            portal_check_email_reset: { ru: 'Проверьте почту и перейдите по ссылке для сброса пароля', en: 'Check your email and click the link to reset password', hi: 'अपना ईमेल जांचें और पासवर्ड रीसेट करने के लिए लिंक पर क्लिक करें' }
         };
 
         // Загрузка переводов
@@ -282,6 +329,61 @@
             document.getElementById('magic-email').value = '';
         }
 
+        // Показать форму сброса пароля
+        function showForgotPassword() {
+            hideError();
+            document.getElementById('login-form').classList.add('hidden');
+            document.getElementById('forgot-form').classList.remove('hidden');
+            document.getElementById('forgot-success').classList.add('hidden');
+            document.getElementById('login-tabs').classList.add('hidden');
+        }
+
+        // Скрыть форму сброса пароля
+        function hideForgotPassword() {
+            hideError();
+            document.getElementById('forgot-form').classList.add('hidden');
+            document.getElementById('forgot-success').classList.add('hidden');
+            document.getElementById('login-form').classList.remove('hidden');
+            document.getElementById('forgot-email').value = '';
+            document.getElementById('login-tabs').classList.remove('hidden');
+        }
+
+        // Обработка формы сброса пароля
+        async function handleForgotPassword(e) {
+            e.preventDefault();
+            hideError();
+
+            const email = document.getElementById('forgot-email').value.trim();
+            const submitBtn = document.getElementById('forgot-btn');
+            const spinner = document.getElementById('forgot-spinner');
+
+            submitBtn.disabled = true;
+            spinner.classList.remove('hidden');
+
+            try {
+                const { error } = await db.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin + '/reset-password/'
+                });
+
+                if (error) {
+                    console.error('Reset password error:', error);
+                    showError('error_send_failed');
+                    return;
+                }
+
+                // Успех — показываем сообщение
+                document.getElementById('forgot-form').classList.add('hidden');
+                document.getElementById('forgot-success').classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Reset password error:', error);
+                showError('error_unknown');
+            } finally {
+                submitBtn.disabled = false;
+                spinner.classList.add('hidden');
+            }
+        }
+
         // Обработка magic link формы
         async function handleMagicLink(e) {
             e.preventDefault();
@@ -353,7 +455,7 @@
                 console.log('[Login] Checking user for auth.uid:', data.user.id);
                 const { data: vaishnava, error: userError } = await db
                     .from('vaishnavas')
-                    .select('user_type, is_active')
+                    .select('user_type, is_active, is_team')
                     .eq('user_id', data.user.id)
                     .maybeSingle();
 
@@ -379,9 +481,17 @@
                     return;
                 }
 
-                // Успешно! Редирект
+                // Успешно! Редирект в зависимости от типа пользователя
                 const redirect = new URLSearchParams(window.location.search).get('redirect');
-                window.location.href = redirect || 'index.html';
+                if (redirect) {
+                    window.location.href = redirect;
+                } else if (vaishnava.is_team) {
+                    // Команда → админка (на другом домене)
+                    window.location.href = 'https://srsk.rupaseva.com/';
+                } else {
+                    // Гость → главная гостевого портала
+                    window.location.href = '/';
+                }
 
             } catch (error) {
                 console.error('Ошибка входа:', error);
@@ -419,13 +529,17 @@
                 // Проверяем есть ли пользователь в vaishnavas
                 const { data: vaishnava } = await db
                     .from('vaishnavas')
-                    .select('user_type, is_active')
+                    .select('user_type, is_active, is_team')
                     .eq('user_id', session.user.id)
                     .single();
 
                 if (vaishnava && vaishnava.is_active !== false) {
-                    // Уже залогинен, редирект на главную
-                    window.location.href = 'index.html';
+                    // Уже залогинен, редирект в зависимости от типа
+                    if (vaishnava.is_team) {
+                        window.location.href = 'https://srsk.rupaseva.com/';
+                    } else {
+                        window.location.href = '/';
+                    }
                     return;
                 }
             }
@@ -442,7 +556,6 @@
                 const reasonMap = {
                     'no_session': 'error_invalid_credentials',
                     'user_not_found': 'error_user_not_found',
-                    'not_guest': 'error_not_guest',
                     'account_disabled': 'error_account_disabled'
                 };
                 if (reasonMap[reason]) {
@@ -456,6 +569,7 @@
             // Обработчики событий
             document.getElementById('login-form').addEventListener('submit', handleLogin);
             document.getElementById('magic-form').addEventListener('submit', handleMagicLink);
+            document.getElementById('forgot-form').addEventListener('submit', handleForgotPassword);
             document.getElementById('toggle-password').addEventListener('click', togglePassword);
 
             // Переключатель языка

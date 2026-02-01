@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Вход | Rupa Seva Guest Portal</title>
+    <title>Вход | Rupa Seva</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 
     <!-- Tailwind CSS -->
@@ -32,7 +32,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Portal CSS -->
-    <link rel="stylesheet" href="css/portal.css">
+    <link rel="stylesheet" href="../css/portal.css">
 </head>
 <body class="bg-srsk-bg">
 
@@ -40,7 +40,7 @@
         <div class="login-card">
             <!-- Логотип -->
             <div class="flex justify-center mb-4">
-                <img src="img/logo.svg" alt="ШРСК" class="h-24">
+                <img src="../img/logo.svg" alt="ШРСК" class="h-24">
             </div>
 
             <!-- Состояние загрузки -->
@@ -58,7 +58,7 @@
                 </div>
                 <p class="font-medium text-gray-900 mb-2" id="error-title">Ошибка входа</p>
                 <p class="text-sm text-gray-500 mb-4" id="error-message">Не удалось выполнить вход</p>
-                <a href="login.html" class="inline-block px-4 py-2 bg-srsk-green text-white rounded-lg hover:bg-srsk-green-light transition-colors">
+                <a href="/login" class="inline-block px-4 py-2 bg-srsk-green text-white rounded-lg hover:bg-srsk-green-light transition-colors">
                     Вернуться на страницу входа
                 </a>
             </div>
@@ -77,8 +77,8 @@
     </div>
 
     <!-- Scripts -->
-    <script src="js/portal-config.js"></script>
-    <script src="js/portal-auth.js"></script>
+    <script src="../js/portal-config.js"></script>
+    <script src="../js/portal-auth.js"></script>
     <script>
         const db = window.portalSupabase;
 
@@ -149,7 +149,7 @@
                         setTimeout(() => {
                             const errorState = document.getElementById('error-state');
                             const link = errorState.querySelector('a');
-                            link.href = '../guest-signup.html';
+                            link.href = '/guest-signup.html';
                             link.textContent = 'Зарегистрироваться';
                         }, 100);
                         return;
@@ -171,9 +171,20 @@
                 console.log('[Callback] Successfully linked, vaishnava:', linkResult.vaishnavId);
                 showSuccess();
 
-                // Редирект в личный кабинет
+                // Получаем информацию о пользователе для редиректа
+                const { data: vaishnava } = await db
+                    .from('vaishnavas')
+                    .select('is_team')
+                    .eq('id', linkResult.vaishnavId)
+                    .single();
+
+                // Редирект в зависимости от типа пользователя
                 setTimeout(() => {
-                    window.location.href = 'index.html';
+                    if (vaishnava && vaishnava.is_team) {
+                        window.location.href = 'https://srsk.rupaseva.com/';
+                    } else {
+                        window.location.href = '/';
+                    }
                 }, 1000);
 
             } catch (error) {

@@ -114,9 +114,9 @@ async function checkGuestAuth() {
 function redirectToLogin(reason) {
     const currentPage = window.location.pathname;
     // Не редиректим если уже на странице логина
-    if (currentPage.includes('login.html')) return;
+    if (currentPage.includes('/login')) return;
 
-    window.location.href = `login.html?reason=${reason}&redirect=${encodeURIComponent(currentPage)}`;
+    window.location.href = `/login/?reason=${reason}&redirect=${encodeURIComponent(currentPage)}`;
 }
 
 /**
@@ -126,12 +126,12 @@ async function logout() {
     try {
         await db.auth.signOut();
         window.currentGuest = null;
-        window.location.href = 'login.html';
+        window.location.href = '/login/';
     } catch (error) {
         console.error('Ошибка выхода:', error);
         // Принудительно очищаем и редиректим
         window.currentGuest = null;
-        window.location.href = 'login.html';
+        window.location.href = '/login/';
     }
 }
 
@@ -165,7 +165,7 @@ async function sendMagicLink(email) {
         }
 
         // Отправляем magic link
-        const redirectUrl = window.location.origin + '/guest-portal/auth-callback.html';
+        const redirectUrl = window.location.origin + '/auth-callback/';
         const { error: otpError } = await db.auth.signInWithOtp({
             email: email,
             options: {
