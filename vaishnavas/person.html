@@ -639,9 +639,8 @@
                 <div class="form-control mb-4">
                     <label class="label"><span class="label-text font-medium" data-i18n="status">Статус</span></label>
                     <select id="retreatStatusSelect" class="select select-bordered w-full" required>
-                        <option value="registered">Зарегистрирован</option>
-                        <option value="confirmed">Подтверждён</option>
-                        <option value="pending">Ожидает</option>
+                        <option value="guest">Гость</option>
+                        <option value="team">Команда</option>
                     </select>
                 </div>
                 <div class="form-control mb-4">
@@ -1559,7 +1558,7 @@
             });
 
             // Сбрасываем форму
-            document.getElementById('retreatStatusSelect').value = 'registered';
+            document.getElementById('retreatStatusSelect').value = 'guest';
             document.getElementById('retreatOrgNotes').value = '';
 
             document.getElementById('addRetreatModal').showModal();
