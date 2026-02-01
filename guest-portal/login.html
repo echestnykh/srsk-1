@@ -228,10 +228,6 @@
             // Обновляем кнопки языка
             document.querySelectorAll('.lang-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.lang === currentLang);
-                btn.classList.toggle('bg-white', btn.dataset.lang === currentLang);
-                btn.classList.toggle('shadow-sm', btn.dataset.lang === currentLang);
-                btn.classList.toggle('font-medium', btn.dataset.lang === currentLang);
-                btn.classList.toggle('text-gray-500', btn.dataset.lang !== currentLang);
             });
         }
 
