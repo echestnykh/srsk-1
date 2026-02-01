@@ -1497,6 +1497,34 @@
             updateUI();
             await loadCleaningSchedule();
             Layout.hideLoader();
+
+            // Realtime: автообновление при изменениях
+            subscribeToRealtime();
+        }
+
+        // Realtime подписка
+        function subscribeToRealtime() {
+            Layout.db.channel('cleaning-realtime')
+                .on('postgres_changes',
+                    { event: '*', schema: 'public', table: 'room_cleanings' },
+                    handleRealtimeChange
+                )
+                .subscribe((status) => {
+                    if (status === 'SUBSCRIBED') {
+                        console.log('Realtime: подключено к уборкам');
+                    }
+                });
+        }
+
+        let realtimeTimeout = null;
+        function handleRealtimeChange(payload) {
+            console.log('Realtime изменение:', payload.eventType);
+            if (realtimeTimeout) clearTimeout(realtimeTimeout);
+            realtimeTimeout = setTimeout(async () => {
+                await loadCleaningSchedule();
+                render();
+                Layout.showNotification('Данные обновлены', 'info');
+            }, 500);
         }
 
         init();

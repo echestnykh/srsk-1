@@ -845,6 +845,38 @@ async function init() {
     Layout.showLoader();
     await loadRetreats();
     Layout.hideLoader();
+
+    // Realtime: автообновление при изменениях
+    subscribeToRealtime();
+}
+
+// Realtime подписка
+function subscribeToRealtime() {
+    Layout.db.channel('departures-realtime')
+        .on('postgres_changes',
+            { event: '*', schema: 'public', table: 'guest_transfers' },
+            handleRealtimeChange
+        )
+        .on('postgres_changes',
+            { event: '*', schema: 'public', table: 'residents' },
+            handleRealtimeChange
+        )
+        .subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+                console.log('Realtime: подключено к выездам');
+            }
+        });
+}
+
+let realtimeTimeout = null;
+function handleRealtimeChange(payload) {
+    console.log('Realtime изменение:', payload.table, payload.eventType);
+    if (realtimeTimeout) clearTimeout(realtimeTimeout);
+    realtimeTimeout = setTimeout(async () => {
+        await loadRegistrations();
+        renderTable();
+        Layout.showNotification('Данные обновлены', 'info');
+    }, 500);
 }
 
 init();

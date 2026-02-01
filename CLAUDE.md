@@ -79,13 +79,15 @@ npx serve .
 Realtime включён для автоматического обновления данных между пользователями.
 
 **Таблицы с Realtime:**
-- `residents` — проживающие (шахматка)
+- `residents` — проживающие (шахматка, arrivals, departures, preliminary)
 - `bookings` — бронирования (шахматка)
-- `room_cleanings` — уборки (шахматка)
+- `room_cleanings` — уборки (шахматка, cleaning)
 - `stock` — остатки на складе (stock.html, requests.html)
 - `purchase_requests` — заявки на закупку (requests.html)
 - `stock_receipts` — поступления
 - `stock_issuances` — выдачи
+- `guest_transfers` — трансферы (arrivals, departures)
+- `retreat_registrations` — регистрации на ретриты (preliminary)
 
 **Реализация (placement/timeline.html):**
 ```javascript

@@ -2342,8 +2342,37 @@ async function init() {
 
     setupFilters();
     updateSortIcons();
+    subscribeToRealtime();
 
     Layout.hideLoader();
+}
+
+// ==================== REALTIME ====================
+let realtimeTimeout = null;
+
+function subscribeToRealtime() {
+    const channel = Layout.db.channel('preliminary-realtime');
+
+    channel.on('postgres_changes',
+        { event: '*', schema: 'public', table: 'residents' },
+        handleRealtimeChange
+    );
+
+    channel.on('postgres_changes',
+        { event: '*', schema: 'public', table: 'retreat_registrations' },
+        handleRealtimeChange
+    );
+
+    channel.subscribe();
+}
+
+function handleRealtimeChange(payload) {
+    if (realtimeTimeout) clearTimeout(realtimeTimeout);
+    realtimeTimeout = setTimeout(async () => {
+        await loadRegistrations();
+        renderTable();
+        Layout.showNotification('Данные обновлены', 'info');
+    }, 500);
 }
 
 window.onLanguageChange = () => {
