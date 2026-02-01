@@ -1753,7 +1753,8 @@
                     console.log('startCol:', startCol, 'endCol:', endCol, 'totalCols:', totalCols);
                     console.log('colOffset:', colOffset, 'clickedCol:', clickedCol);
                     console.log('clickedDayIndex:', clickedDayIndex);
-                    console.log('checkoutDate would be:', getDateForDay(clickedDayIndex).toISOString().split('T')[0]);
+                    const debugDate = getDateForDay(clickedDayIndex);
+                    console.log('checkoutDate would be:', `${debugDate.getFullYear()}-${String(debugDate.getMonth()+1).padStart(2,'0')}-${String(debugDate.getDate()).padStart(2,'0')}`);
                     console.log('===================');
                 } else {
                     clickedDayIndex = guestData.endDay;
@@ -1917,6 +1918,14 @@
             return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' });
         }
 
+        // Форматирование даты в YYYY-MM-DD без сдвига часового пояса
+        function formatDateYMD(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
         // Выселить резидента (установить дату выезда = кликнутый день)
         async function checkoutResident() {
             if (!currentResident) return;
@@ -1926,7 +1935,7 @@
 
             // Если кликнули на конкретный день — используем его
             if (clickedDayIndex !== null && clickedDayIndex >= currentResident.startDay) {
-                checkoutDate = getDateForDay(clickedDayIndex).toISOString().split('T')[0];
+                checkoutDate = formatDateYMD(getDateForDay(clickedDayIndex));
             } else {
                 // Если день не определён или некорректный — используем оригинальную дату выезда
                 checkoutDate = res.check_out;
