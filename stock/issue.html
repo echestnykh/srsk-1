@@ -753,10 +753,11 @@
         function renderCooksSelect() {
             const select = Layout.$('#issuanceReceiver');
             if (!select) return;
+            const e = Layout.escapeHtml;
             select.innerHTML = `<option value="">${tr('select_receiver', '— Выберите —')}</option>` +
                 cooks.map(c => {
                     const name = c.spiritual_name || `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Без имени';
-                    return `<option value="${c.id}">${name}</option>`;
+                    return `<option value="${c.id}">${e(name)}</option>`;
                 }).join('');
         }
 

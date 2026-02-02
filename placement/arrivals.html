@@ -675,6 +675,7 @@
         }
 
         function renderCard(reg) {
+            const e = Layout.escapeHtml;
             const v = reg.vaishnavas;
             const name = v ? `${v.first_name || ''} ${v.last_name || ''}`.trim() : '—';
             const spiritualName = v?.spiritual_name || '';
@@ -699,10 +700,10 @@
             // Имя (клик → person.html)
             html += `<a href="../vaishnavas/person.html?id=${v?.id}" class="hover:underline">`;
             if (spiritualName) {
-                html += `<span class="font-semibold">${spiritualName}</span>`;
-                html += `<span class="text-xs opacity-60 ml-1.5">${name}</span>`;
+                html += `<span class="font-semibold">${e(spiritualName)}</span>`;
+                html += `<span class="text-xs opacity-60 ml-1.5">${e(name)}</span>`;
             } else {
-                html += `<span class="font-semibold">${name}</span>`;
+                html += `<span class="font-semibold">${e(name)}</span>`;
             }
             html += `</a>`;
 

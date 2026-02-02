@@ -796,10 +796,11 @@
             if (resident.vaishnavas) {
                 const tm = resident.vaishnavas;
                 const name = tm.spiritual_name || tm.first_name || '';
-                return Layout.currentLang === 'ru' ? name : Layout.transliterate(name);
+                const displayName = Layout.currentLang === 'ru' ? name : Layout.transliterate(name);
+                return e(displayName);
             }
             if (resident.guest_name) {
-                return resident.guest_name;
+                return e(resident.guest_name);
             }
             if (resident.bookings) {
                 return `${t('booking_placeholder') || 'Бронь'}: ${e(resident.bookings.name || resident.bookings.contact_name)}`;
