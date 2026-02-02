@@ -280,7 +280,7 @@ function getPersonName(person, lang = currentLang) {
 }
 
 // ==================== TRANSLATIONS ====================
-async function loadTranslations() {
+async function loadTranslations(retried = false) {
     const data = await Cache.getOrLoad('translations', async () => {
         const { data, error } = await db.from('translations').select('key, ru, en, hi');
         if (error) {
@@ -293,13 +293,14 @@ async function loadTranslations() {
     if (!data) return;
 
     // Проверка на наличие новых переводов (для автоинвалидации устаревшего кэша)
-    const requiredKeys = ['self_accommodation'];
+    // Добавляйте сюда ключи новых обязательных переводов
+    const requiredKeys = ['self_accommodation', 'nav_user_management'];
     const hasAllKeys = requiredKeys.every(key => data.some(row => row.key === key));
 
-    if (!hasAllKeys) {
-        // Кэш устарел, инвалидируем и перезагружаем
+    if (!hasAllKeys && !retried) {
+        // Кэш устарел, инвалидируем и перезагружаем (только 1 раз)
         Cache.invalidate('translations');
-        return loadTranslations();
+        return loadTranslations(true);
     }
 
     // Преобразуем массив в объект { key: { ru, en, hi } }
