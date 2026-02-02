@@ -519,6 +519,11 @@
                         <p class="text-sm text-srsk-green font-medium" id="application-retreat-name"></p>
                     </div>
 
+                    <!-- Сообщение для залогиненных пользователей -->
+                    <div id="logged-in-notice" class="hidden bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                        <p class="text-sm text-green-800" data-i18n="retreat_has_contact_info">У нас уже есть ваша контактная информация, поэтому только несколько дополнительных вопросов:</p>
+                    </div>
+
                     <form id="application-form" class="space-y-4">
                         <div class="form-group">
                             <label class="label" data-i18n="retreat_companions">С кем едете</label>
@@ -997,6 +1002,13 @@
             // Название ретрита на форме заявки
             if (step === 'application') {
                 document.getElementById('application-retreat-name').textContent = getName(currentRetreat);
+                // Показываем сообщение для залогиненных пользователей
+                const notice = document.getElementById('logged-in-notice');
+                if (currentUser) {
+                    notice.classList.remove('hidden');
+                } else {
+                    notice.classList.add('hidden');
+                }
             }
         }
 
