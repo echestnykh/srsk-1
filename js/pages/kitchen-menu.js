@@ -442,11 +442,11 @@ function renderDay() {
                         ${retreat ? `<div class="text-sm font-bold uppercase tracking-wide" style="color: ${retreat.color};">${getName(retreat)}</div>` : `<div class="text-sm opacity-40">${t('no_retreat')}</div>`}
                         ${(() => {
                             const counts = eatingCounts[dateStr];
-                            if (counts && (counts.guests > 0 || counts.team > 0)) {
+                            if (counts) {
                                 const total = counts.guests + counts.team;
                                 return `<div class="text-sm text-gray-500 font-medium mt-1" title="Гости + Команда = Итого">🍽 ${counts.guests}+${counts.team}=${total}</div>`;
                             }
-                            return '';
+                            return `<div class="text-sm text-gray-400 mt-1">🍽 загрузка...</div>`;
                         })()}
                     </div>
                 </div>
