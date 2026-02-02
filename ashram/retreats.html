@@ -279,7 +279,7 @@
                     <label class="label"><span class="label-text font-medium">Изображение</span></label>
                     <div class="flex items-start gap-4">
                         <!-- Preview -->
-                        <div id="imagePreview" class="w-32 h-20 rounded-lg bg-base-200 flex items-center justify-center overflow-hidden border border-base-300">
+                        <div id="imagePreview" class="w-24 h-24 rounded-lg bg-base-200 flex items-center justify-center overflow-hidden border border-base-300">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
@@ -468,7 +468,7 @@
 
                 // Image or color bar
                 const imageBlock = r.image_url
-                    ? `<div class="w-24 h-16 rounded-lg overflow-hidden flex-shrink-0">
+                    ? `<div class="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
                            <img src="${r.image_url}" class="w-full h-full object-cover" alt="${name}" />
                        </div>`
                     : `<div class="w-1 self-stretch rounded-full" style="background-color: ${r.color}"></div>`;
