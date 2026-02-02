@@ -452,14 +452,11 @@
                 }
 
                 // Проверяем пользователя
-                console.log('[Login] Checking user for auth.uid:', data.user.id);
                 const { data: vaishnava, error: userError } = await db
                     .from('vaishnavas')
                     .select('user_type, is_active, is_team_member')
                     .eq('user_id', data.user.id)
                     .maybeSingle();
-
-                console.log('[Login] Vaishnava result:', { vaishnava, userError });
 
                 if (userError) {
                     console.error('[Login] Query error:', userError);

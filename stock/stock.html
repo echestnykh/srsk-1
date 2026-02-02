@@ -391,16 +391,11 @@
                     { event: '*', schema: 'public', table: 'stock' },
                     handleRealtimeChange
                 )
-                .subscribe((status) => {
-                    if (status === 'SUBSCRIBED') {
-                        console.log('Realtime: подключено к складу');
-                    }
-                });
+                .subscribe();
         }
 
         let realtimeTimeout = null;
         function handleRealtimeChange(payload) {
-            console.log('Realtime изменение:', payload.eventType);
             if (realtimeTimeout) clearTimeout(realtimeTimeout);
             realtimeTimeout = setTimeout(async () => {
                 await loadStock();

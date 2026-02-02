@@ -1030,16 +1030,11 @@
                     { event: '*', schema: 'public', table: 'residents' },
                     handleRealtimeChange
                 )
-                .subscribe((status) => {
-                    if (status === 'SUBSCRIBED') {
-                        console.log('Realtime: подключено к заездам');
-                    }
-                });
+                .subscribe();
         }
 
         let realtimeTimeout = null;
         function handleRealtimeChange(payload) {
-            console.log('Realtime изменение:', payload.table, payload.eventType);
             if (realtimeTimeout) clearTimeout(realtimeTimeout);
             realtimeTimeout = setTimeout(async () => {
                 await loadRegistrations();

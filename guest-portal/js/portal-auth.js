@@ -19,10 +19,7 @@ async function checkGuestAuth() {
         // Проверяем сессию
         const { data: { session }, error: sessionError } = await db.auth.getSession();
 
-        console.log('[Portal Auth] Session:', session ? session.user.id : 'null');
-
         if (sessionError || !session) {
-            console.log('[Portal Auth] No session, redirecting');
             redirectToLogin('no_session');
             return null;
         }
@@ -52,8 +49,6 @@ async function checkGuestAuth() {
             `)
             .eq('user_id', session.user.id)
             .maybeSingle();
-
-        console.log('[Portal Auth] Vaishnava query result:', { vaishnava, userError });
 
         if (userError) {
             console.error('[Portal Auth] Query error:', userError);
@@ -220,7 +215,6 @@ async function linkAuthUserToVaishnava() {
             return { success: false, error: result.error_code };
         }
 
-        console.log('[Link] Successfully linked auth user to vaishnava:', result.vaishnava_id);
         return { success: true, vaishnavId: result.vaishnava_id };
 
     } catch (error) {

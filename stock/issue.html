@@ -720,15 +720,10 @@
                 .select('id, name_ru')
                 .in('name_ru', ['Кухня', 'Кафе']);
 
-            console.log('Departments loaded:', depts, 'Error:', deptsError);
-
             const kitchenDeptIds = depts?.map(d => d.id) || [];
 
             if (kitchenDeptIds.length === 0) {
                 console.warn('Kitchen/Cafe departments not found');
-                // Попробуем загрузить все департаменты для отладки
-                const { data: allDepts } = await Layout.db.from('departments').select('id, name_ru');
-                console.log('All departments:', allDepts);
                 cooks = [];
                 renderCooksSelect();
                 return;
@@ -742,8 +737,6 @@
                 .eq('is_deleted', false)
                 .in('department_id', kitchenDeptIds)
                 .order('spiritual_name');
-
-            console.log('Cooks loaded:', data, 'Error:', error);
 
             if (error) { console.error('Error loading cooks:', error); return; }
             cooks = data || [];

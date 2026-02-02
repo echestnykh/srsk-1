@@ -14,6 +14,9 @@ let currentTransfers = { arrival: null, departure: null };
 let currentRegistrationId = null;
 let isPublicView = false; // Режим просмотра чужого профиля
 
+// XSS protection helper
+const escapeHtml = str => PortalLayout.escapeHtml(str);
+
 // Photo View Modal
 function openPhotoModal() {
     const guest = window.currentGuest;
@@ -586,7 +589,7 @@ function renderTaxiStatus(transfer) {
                 <span class="w-2 h-2 bg-srsk-green rounded-full"></span>
                 <span class="text-sm text-srsk-green font-medium">Такси заказано</span>
             </div>
-            ${transfer.taxi_driver_info ? `<div class="text-xs text-gray-500 mt-1">${transfer.taxi_driver_info}</div>` : ''}
+            ${transfer.taxi_driver_info ? `<div class="text-xs text-gray-500 mt-1">${escapeHtml(transfer.taxi_driver_info)}</div>` : ''}
         `;
     }
 
@@ -758,8 +761,8 @@ async function loadUpcomingRetreats() {
                 </div>
                 <div class="p-3 flex flex-col flex-1">
                     <div class="text-xs text-srsk-green font-medium">${formatRetreatDates(retreat.start_date, retreat.end_date)}</div>
-                    <div class="font-medium text-gray-800 text-sm mt-1">${retreat.name_ru}</div>
-                    <div class="text-xs text-gray-500 mt-1 line-clamp-2">${retreat.description_ru || ''}</div>
+                    <div class="font-medium text-gray-800 text-sm mt-1">${escapeHtml(retreat.name_ru || '')}</div>
+                    <div class="text-xs text-gray-500 mt-1 line-clamp-2">${escapeHtml(retreat.description_ru || '')}</div>
                     <div class="text-xs text-srsk-orange font-medium mt-auto pt-2 flex items-center gap-1 group-hover:underline">
                         Подать заявку
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
@@ -787,7 +790,7 @@ async function loadTeachersList() {
         // Уникальные значения
         const teachers = [...new Set(data.map(d => d.spiritual_teacher))].sort();
         const datalist = document.getElementById('teachers-list');
-        datalist.innerHTML = teachers.map(t => `<option value="${t}">`).join('');
+        datalist.innerHTML = teachers.map(t => `<option value="${escapeHtml(t)}">`).join('');
     } catch (e) {
         console.error('Ошибка загрузки учителей:', e);
     }
@@ -798,9 +801,6 @@ async function init() {
     // Проверяем параметр view для просмотра чужого профиля
     const urlParams = new URLSearchParams(window.location.search);
     const viewId = urlParams.get('view');
-
-    console.log('[Portal] URL:', window.location.href);
-    console.log('[Portal] viewId:', viewId);
 
     // Всегда проверяем авторизацию — для отображения в хедере
     const loggedInUser = await PortalAuth.checkGuestAuth();

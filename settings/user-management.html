@@ -705,8 +705,6 @@
                 return;
             }
 
-            console.log('Loaded permissions:', allPerms.length);
-
             // Загрузить права пользователя из ролей
             const { data: userRoles } = await db
                 .from('user_roles')
@@ -797,8 +795,6 @@
             const permCode = checkbox.dataset.permCode;
             const permName = checkbox.dataset.permName;
             const isGranted = checkbox.checked;
-
-            console.log('togglePermission:', { permId, permCode, permName, isGranted, currentUserId });
 
             try {
                 // Использовать upsert для автоматической вставки или обновления

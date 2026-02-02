@@ -123,12 +123,10 @@
                 }
 
                 if (!session) {
-                    console.log('No session found');
                     showError('Сессия не найдена', 'Ссылка устарела или недействительна. Попробуйте запросить новую.');
                     return;
                 }
 
-                console.log('[Callback] Session user:', session.user.id, session.user.email);
                 updateStatus('Связывание аккаунта...');
 
                 // Связываем auth user с vaishnava
@@ -168,7 +166,6 @@
                 }
 
                 // Успех!
-                console.log('[Callback] Successfully linked, vaishnava:', linkResult.vaishnavId);
                 showSuccess();
 
                 // Получаем информацию о пользователе для редиректа

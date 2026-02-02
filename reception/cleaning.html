@@ -558,7 +558,6 @@
                 .order('start_date');
 
             if (error) {
-                console.log('Manual cleanings not available:', error.message);
                 manualCleanings = [];
                 return;
             }
@@ -1510,16 +1509,11 @@
                     { event: '*', schema: 'public', table: 'room_cleanings' },
                     handleRealtimeChange
                 )
-                .subscribe((status) => {
-                    if (status === 'SUBSCRIBED') {
-                        console.log('Realtime: подключено к уборкам');
-                    }
-                });
+                .subscribe();
         }
 
         let realtimeTimeout = null;
         function handleRealtimeChange(payload) {
-            console.log('Realtime изменение:', payload.eventType);
             if (realtimeTimeout) clearTimeout(realtimeTimeout);
             realtimeTimeout = setTimeout(async () => {
                 await loadCleaningSchedule();
