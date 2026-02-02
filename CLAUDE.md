@@ -552,6 +552,35 @@ const grouped = allResidents.reduce((acc, r) => { (acc[r.booking_id] ||= []).pus
 
 9. **Деплой изменений** — после коммита в main ветку GitHub Pages автоматически деплоит за 1-2 минуты. Проверить статус: GitHub → Actions. После деплоя может потребоваться жёсткое обновление страницы (Cmd+Shift+R) или cache busting через `?v=N`.
 
+10. **Ленивая загрузка для больших списков** — на страницах с потенциально большим количеством данных (user-management, vaishnavas) использовать паттерн:
+    - По умолчанию показывать placeholder "Введите имя для поиска или выберите категорию"
+    - Загружать данные только при поиске (от 2 символов) или выборе фильтра/таба
+    - Фильтрация на стороне БД (`.ilike()`, `.eq()`) вместо клиента
+    - Лимит результатов (`.limit(100)`)
+    - Debounce для поиска (300мс)
+
+```javascript
+// Быстрая загрузка только счётчиков
+async function loadCounts() {
+    const { data } = await db.from('table').select('id, status');
+    document.getElementById('countAll').textContent = data.length;
+    document.getElementById('countActive').textContent = data.filter(x => x.status === 'active').length;
+}
+
+// Ленивая загрузка с фильтрами
+async function loadData(filter = {}) {
+    let query = db.from('table').select('*').limit(100);
+    if (filter.search) query = query.ilike('name', `%${filter.search}%`);
+    if (filter.status) query = query.eq('status', filter.status);
+    const { data } = await query;
+    renderTable(data);
+}
+
+// Инициализация: только счётчики + placeholder
+loadCounts();
+showPlaceholder();
+```
+
 ## File Locations
 
 ```
