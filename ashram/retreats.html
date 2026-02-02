@@ -225,6 +225,55 @@
                     <input type="hidden" name="color" value="#6366f1" />
                 </div>
 
+                <!-- Registration Settings -->
+                <div class="divider text-sm opacity-50">Регистрация</div>
+
+                <!-- Registration Toggle -->
+                <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-3">
+                        <input type="checkbox" name="registration_open" class="toggle toggle-primary" />
+                        <span class="label-text font-medium">Регистрация открыта</span>
+                    </label>
+                </div>
+
+                <!-- Registration Dates -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="label"><span class="label-text font-medium">Начало регистрации</span></label>
+                        <input type="date" name="registration_start" class="input input-bordered w-full input-sm" />
+                    </div>
+                    <div>
+                        <label class="label"><span class="label-text font-medium">Окончание регистрации</span></label>
+                        <input type="date" name="registration_end" class="input input-bordered w-full input-sm" />
+                    </div>
+                </div>
+
+                <!-- Slug -->
+                <div>
+                    <label class="label"><span class="label-text font-medium">URL-slug (латиницей)</span></label>
+                    <div class="join w-full">
+                        <span class="join-item btn btn-sm no-animation">/retreat.html?slug=</span>
+                        <input type="text" name="slug" class="input input-bordered input-sm join-item flex-1" placeholder="vrindavan-2025" pattern="[a-z0-9\-]+" />
+                    </div>
+                    <p class="text-xs opacity-50 mt-1">Только строчные буквы, цифры и дефис</p>
+                </div>
+
+                <!-- Public Link (only when editing) -->
+                <div id="publicLinkSection" class="hidden">
+                    <label class="label"><span class="label-text font-medium">Публичная ссылка</span></label>
+                    <div class="join w-full">
+                        <input type="text" id="publicLinkInput" class="input input-bordered input-sm join-item flex-1 bg-base-200" readonly />
+                        <button type="button" class="btn btn-sm join-item btn-primary" onclick="copyPublicLink()">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                            </svg>
+                            Копировать
+                        </button>
+                    </div>
+                </div>
+
+                <div class="divider text-sm opacity-50">Медиа</div>
+
                 <!-- Image -->
                 <div>
                     <label class="label"><span class="label-text font-medium">Изображение</span></label>
@@ -432,6 +481,7 @@
                             <div class="flex items-center gap-2 mb-1">
                                 <h3 class="font-bold text-lg">${name}</h3>
                                 ${isActive ? `<span class="badge badge-sm" style="background-color: ${r.color}; color: white;">Сейчас</span>` : ''}
+                                ${r.registration_open ? `<span class="badge badge-sm badge-success">Регистрация</span>` : ''}
                             </div>
                             ${desc ? `<p class="text-sm opacity-60 mb-2 line-clamp-2">${desc}</p>` : ''}
                             <div class="flex flex-wrap gap-3 text-sm opacity-70">
@@ -458,6 +508,12 @@
                             </div>
                         </div>
                         <div class="flex flex-col gap-2">
+                            <a href="../retreat.html?id=${r.id}" target="_blank" class="btn btn-ghost btn-sm gap-1" onclick="event.stopPropagation()" title="Открыть публичную страницу">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                                <span>Страница</span>
+                            </a>
                             <a href="../vaishnavas/retreat-guests.html?id=${r.id}" class="btn btn-ghost btn-sm gap-1" onclick="event.stopPropagation()">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -607,6 +663,7 @@
             const form = document.getElementById('retreatForm');
             const title = document.getElementById('modalTitle');
             const deleteSection = document.getElementById('deleteSection');
+            const publicLinkSection = document.getElementById('publicLinkSection');
 
             form.reset();
             resetImagePreview();
@@ -625,6 +682,19 @@
                     renderColorPicker(retreat.color || COLORS[0]);
                     deleteSection.classList.remove('hidden');
 
+                    // Registration fields
+                    form.registration_open.checked = retreat.registration_open || false;
+                    form.registration_start.value = retreat.registration_start || '';
+                    form.registration_end.value = retreat.registration_end || '';
+                    form.slug.value = retreat.slug || '';
+
+                    // Show public link
+                    publicLinkSection.classList.remove('hidden');
+                    const publicUrl = retreat.slug
+                        ? `https://in.rupaseva.com/retreat.html?slug=${retreat.slug}`
+                        : `https://in.rupaseva.com/retreat.html?id=${retreat.id}`;
+                    document.getElementById('publicLinkInput').value = publicUrl;
+
                     // Show existing image
                     if (retreat.image_url) {
                         showImagePreview(retreat.image_url);
@@ -636,10 +706,18 @@
                 // Random default color
                 renderColorPicker(COLORS[Math.floor(Math.random() * COLORS.length)]);
                 deleteSection.classList.add('hidden');
+                publicLinkSection.classList.add('hidden');
             }
 
             Layout.setupAutoTranslate('#retreatForm', ['name', 'description']);
             modal.showModal();
+        }
+
+        function copyPublicLink() {
+            const input = document.getElementById('publicLinkInput');
+            navigator.clipboard.writeText(input.value).then(() => {
+                Layout.showNotification('Ссылка скопирована', 'success');
+            });
         }
 
         // ==================== IMAGE HANDLING ====================
@@ -733,7 +811,11 @@
                 end_date: form.end_date.value,
                 expected_participants: parseInt(form.expected_participants.value) || 0,
                 color: form.color.value,
-                image_url: form.image_url.value || null
+                image_url: form.image_url.value || null,
+                registration_open: form.registration_open.checked,
+                registration_start: form.registration_start.value || null,
+                registration_end: form.registration_end.value || null,
+                slug: form.slug.value.trim().toLowerCase() || null
             };
 
             try {
