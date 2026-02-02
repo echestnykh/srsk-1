@@ -641,6 +641,11 @@ async function loadActiveRetreat(guestId) {
         retreatBlock.classList.remove('hidden');
         noRetreatBlock.classList.add('hidden');
 
+        // Добавляем переход на страницу ретрита по клику
+        retreatBlock.onclick = () => {
+            window.location.href = `/retreat.html?id=${retreat.id}`;
+        };
+
         // Заполняем данные ретрита
         document.getElementById('retreat-label').textContent = data.isCurrentRetreat ? 'Ваш ретрит' : 'Предстоящий ретрит';
         document.getElementById('retreat-name').textContent = retreat.name_ru;
