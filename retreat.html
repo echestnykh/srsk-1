@@ -185,44 +185,40 @@
                     <div class="md:w-2/3 flex flex-col justify-center">
                         <h1 id="retreat-name" class="text-2xl md:text-3xl font-bold text-gray-800 mb-2"></h1>
                         <p id="retreat-dates" class="text-lg text-srsk-green font-medium mb-4"></p>
-                        <p id="retreat-description" class="text-gray-600 whitespace-pre-line"></p>
-                    </div>
-                </div>
-            </div>
-        </section>
+                        <p id="retreat-description" class="text-gray-600 whitespace-pre-line mb-6"></p>
 
-        <!-- Кнопка регистрации -->
-        <section class="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 pb-6">
-            <div id="registration-section">
-                <!-- Если регистрация открыта -->
-                <div id="registration-open" class="hidden">
-                    <button id="register-btn" onclick="openRegistrationModal()" class="btn-primary w-full md:w-auto text-lg py-3 px-8">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                        </svg>
-                        <span data-i18n="retreat_register_btn">Подать заявку</span>
-                    </button>
-                </div>
-
-                <!-- Если регистрация закрыта -->
-                <div id="registration-closed" class="hidden">
-                    <div class="bg-gray-100 rounded-lg p-4 text-center">
-                        <p class="text-gray-500" data-i18n="retreat_registration_closed">Регистрация на этот ретрит закрыта</p>
-                    </div>
-                </div>
-
-                <!-- Если уже зарегистрирован -->
-                <div id="already-registered" class="hidden">
-                    <div class="bg-green-50 border border-green-200 rounded-lg p-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                </svg>
+                        <!-- Регистрация -->
+                        <div id="registration-section">
+                            <!-- Если регистрация открыта -->
+                            <div id="registration-open" class="hidden">
+                                <button id="register-btn" onclick="openRegistrationModal()" class="btn-primary text-lg py-3 px-8">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                    </svg>
+                                    <span data-i18n="retreat_register_btn">Подать заявку</span>
+                                </button>
                             </div>
-                            <div>
-                                <p class="font-medium text-green-800" data-i18n="retreat_already_registered">Вы уже зарегистрированы на этот ретрит</p>
-                                <a href="/guest-portal/retreats.html" class="text-sm text-green-600 hover:underline" data-i18n="retreat_view_my_retreats">Посмотреть мои ретриты</a>
+
+                            <!-- Если регистрация закрыта -->
+                            <div id="registration-closed" class="hidden">
+                                <div class="bg-gray-100 rounded-lg p-3 inline-block">
+                                    <p class="text-gray-500 text-sm" data-i18n="retreat_registration_closed">Регистрация на этот ретрит закрыта</p>
+                                </div>
+                            </div>
+
+                            <!-- Если уже зарегистрирован -->
+                            <div id="already-registered" class="hidden">
+                                <div class="bg-green-50 border border-green-200 rounded-lg p-3 inline-flex items-center gap-3">
+                                    <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="font-medium text-green-800 text-sm" data-i18n="retreat_already_registered">Вы уже зарегистрированы</p>
+                                        <a href="/guest-portal/retreats.html" class="text-xs text-green-600 hover:underline" data-i18n="retreat_view_my_retreats">Мои ретриты</a>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
