@@ -739,7 +739,7 @@
 
             } catch (err) {
                 console.error('Upload error:', err);
-                alert(t('load_error') + ': ' + err.message);
+                Layout.showNotification(t('load_error') + ': ' + err.message, 'error');
             } finally {
                 uploadBtn.disabled = false;
                 uploadBtn.textContent = t('save');
@@ -775,7 +775,7 @@
 
             } catch (err) {
                 console.error('Delete error:', err);
-                alert(t('delete_error') + ': ' + err.message);
+                Layout.showNotification(t('delete_error') + ': ' + err.message, 'error');
             }
         }
 

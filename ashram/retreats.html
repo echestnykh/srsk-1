@@ -770,7 +770,7 @@
                 render();
             } catch (err) {
                 console.error('Error saving retreat:', err);
-                alert(t('error_saving') + ': ' + err.message);
+                Layout.showNotification(t('error_saving') + ': ' + err.message, 'error');
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = t('save');
@@ -790,7 +790,7 @@
                 render();
             } catch (err) {
                 console.error('Error deleting retreat:', err);
-                alert(t('error_deleting') + ': ' + err.message);
+                Layout.showNotification(t('error_deleting') + ': ' + err.message, 'error');
             }
         }
 

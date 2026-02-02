@@ -405,7 +405,7 @@
             };
 
             if (!data.name_ru) {
-                alert(t('enter_festival_name'));
+                Layout.showNotification(t('enter_festival_name'), 'warning');
                 return;
             }
 
@@ -418,7 +418,7 @@
 
             if (error) {
                 console.error('Error saving holiday:', error);
-                alert(t('error_saving') + ': ' + error.message);
+                Layout.showNotification(t('error_saving') + ': ' + error.message, 'error');
                 return;
             }
 
@@ -433,7 +433,7 @@
             const { error } = await Layout.db.from('holidays').delete().eq('id', editingId);
             if (error) {
                 console.error('Error deleting holiday:', error);
-                alert(t('error_deleting') + ': ' + error.message);
+                Layout.showNotification(t('error_deleting') + ': ' + error.message, 'error');
                 return;
             }
 

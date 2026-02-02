@@ -416,7 +416,7 @@
                 render();
             } catch (err) {
                 console.error('Error saving building:', err);
-                alert(t('save_error') + ': ' + err.message);
+                Layout.showNotification(t('save_error') + ': ' + err.message, 'error');
             }
         }
 
@@ -435,7 +435,7 @@
                 render();
             } catch (err) {
                 console.error('Error deleting building:', err);
-                alert(t('delete_error') + ': ' + err.message);
+                Layout.showNotification(t('delete_error') + ': ' + err.message, 'error');
             }
         }
 

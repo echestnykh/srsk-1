@@ -378,7 +378,7 @@
         // ==================== CREATE INVENTORY ====================
         async function createInventory() {
             if (selectedCategories.size === 0) {
-                alert(tr('select_categories', 'Выберите хотя бы одну категорию'));
+                Layout.showNotification(tr('select_categories', 'Выберите хотя бы одну категорию'), 'warning');
                 return;
             }
 
@@ -399,7 +399,7 @@
 
             if (error) {
                 console.error('Error creating inventory:', error);
-                alert(tr('save_error', 'Ошибка создания'));
+                Layout.showNotification(tr('save_error', 'Ошибка создания'), 'error');
                 return;
             }
 

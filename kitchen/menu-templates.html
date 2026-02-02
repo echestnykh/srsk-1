@@ -522,7 +522,7 @@
             const toDate = Layout.$('#importToDate').value;
 
             if (!name) {
-                alert(t('enter_template_name'));
+                Layout.showNotification(t('enter_template_name'), 'warning');
                 return;
             }
 
@@ -810,7 +810,7 @@
 
             const nameRu = Layout.$('#templateNameRu').value.trim();
             if (!nameRu) {
-                alert(t('enter_template_name'));
+                Layout.showNotification(t('enter_template_name'), 'warning');
                 return;
             }
 
@@ -903,7 +903,7 @@
                 await loadData();
             } catch (error) {
                 console.error('Error saving template:', error);
-                alert(t('save_error'));
+                Layout.showNotification(t('save_error'), 'error');
             } finally {
                 saveBtn.disabled = false;
                 saveBtn.textContent = t('save');
@@ -1234,7 +1234,7 @@
                 showSuccess(t('template_applied'), `${formatDisplayDate(startDate)} — ${formatDisplayDate(endDate)}`);
             } catch (error) {
                 console.error('Error applying template:', error);
-                alert(t('template_apply_error'));
+                Layout.showNotification(t('template_apply_error'), 'error');
             } finally {
                 applyBtn.disabled = false;
                 applyBtn.textContent = t('apply_template');

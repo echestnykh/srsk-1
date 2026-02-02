@@ -621,7 +621,7 @@
             }
 
             if (error) {
-                alert(t('error') + ': ' + error.message);
+                Layout.showNotification(t('error') + ': ' + error.message, 'error');
                 return false;
             }
 
@@ -639,7 +639,7 @@
 
             const { error } = await Layout.db.from('products').delete().eq('id', id);
             if (error) {
-                alert(t('error') + ': ' + error.message);
+                Layout.showNotification(t('error') + ': ' + error.message, 'error');
                 return;
             }
 

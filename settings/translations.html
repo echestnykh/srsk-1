@@ -346,7 +346,7 @@
             row.classList.remove('saving');
 
             if (error) {
-                alert(t('error') + ': ' + error.message);
+                Layout.showNotification(t('error') + ': ' + error.message, 'error');
                 input.value = original[field];
             } else {
                 const item = translations.find(tr => tr.id === id);
@@ -365,7 +365,7 @@
                 .eq('id', id);
 
             if (error) {
-                alert(t('error') + ': ' + error.message);
+                Layout.showNotification(t('error') + ': ' + error.message, 'error');
             } else {
                 translations = translations.filter(tr => tr.id !== id);
                 renderTable();
@@ -421,7 +421,7 @@
                     .single();
 
                 if (error) {
-                    alert(t('error') + ': ' + error.message);
+                    Layout.showNotification(t('error') + ': ' + error.message, 'error');
                 } else {
                     translations.push(inserted);
                     buildPageFilter();

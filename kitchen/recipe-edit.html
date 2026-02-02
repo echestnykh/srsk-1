@@ -1117,7 +1117,7 @@
 
             } catch (err) {
                 console.error('Error saving recipe:', err);
-                alert(t('save_error') + ':\n' + (err.message || JSON.stringify(err)));
+                Layout.showNotification(t('save_error') + ': ' + (err.message || JSON.stringify(err)), 'error');
             }
         }
 
@@ -1132,7 +1132,7 @@
                 window.location.href = 'recipes.html';
             } catch (err) {
                 console.error('Error deleting recipe:', err);
-                alert(t('delete_error') || 'Ошибка удаления: ' + err.message);
+                Layout.showNotification(t('delete_error') || 'Ошибка удаления: ' + err.message, 'error');
             }
         }
 

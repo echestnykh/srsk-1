@@ -751,7 +751,7 @@
             const orderedBy = document.getElementById('taxiOrderedBy').value.trim();
 
             if (!orderedBy) {
-                alert(t('specify_your_name'));
+                Layout.showNotification(t('specify_your_name'), 'warning');
                 return;
             }
 
@@ -768,7 +768,7 @@
 
             if (error) {
                 console.error('Error saving taxi order:', error);
-                alert(t('error_saving') + ': ' + error.message);
+                Layout.showNotification(t('error_saving') + ': ' + error.message, 'error');
                 return;
             }
 
@@ -805,7 +805,7 @@
             const orderedBy = document.getElementById('taxiDetailsOrderedBy').value.trim();
 
             if (!orderedBy) {
-                alert(t('specify_your_name'));
+                Layout.showNotification(t('specify_your_name'), 'warning');
                 return;
             }
 
@@ -819,7 +819,7 @@
 
             if (error) {
                 console.error('Error updating taxi details:', error);
-                alert(t('error_saving') + ': ' + error.message);
+                Layout.showNotification(t('error_saving') + ': ' + error.message, 'error');
                 return;
             }
 
@@ -858,7 +858,7 @@
 
             if (error) {
                 console.error('Error cancelling taxi:', error);
-                alert(t('cancel_error') + ': ' + error.message);
+                Layout.showNotification(t('cancel_error') + ': ' + error.message, 'error');
                 return;
             }
 

@@ -458,7 +458,7 @@
                 renderRooms();
             } catch (err) {
                 console.error('Error saving room:', err);
-                alert(t('save_error') + ': ' + err.message);
+                Layout.showNotification(t('save_error') + ': ' + err.message, 'error');
             }
         }
 
@@ -476,7 +476,7 @@
                 renderRooms();
             } catch (err) {
                 console.error('Error deleting room:', err);
-                alert(t('delete_error') + ': ' + err.message);
+                Layout.showNotification(t('delete_error') + ': ' + err.message, 'error');
             }
         }
 
