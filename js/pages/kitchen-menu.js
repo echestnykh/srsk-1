@@ -324,14 +324,18 @@ async function loadEatingCounts() {
 
     // Загружаем периоды пребывания команды (staff) в ШРСК
     // Это включает и временных, и постоянных жителей (с end_date >= 2099)
-    const { data: allStays } = await Layout.db
+    const { data: allStays, error: staysError } = await Layout.db
         .from('vaishnava_stays')
         .select('vaishnava_id, start_date, end_date, vaishnava:vaishnavas(user_type)')
         .lte('start_date', endDate)
         .gte('end_date', startDate);
 
+    console.log('allStays:', allStays, 'error:', staysError);
+    if (allStays?.length > 0) console.log('first stay structure:', JSON.stringify(allStays[0]));
+
     // Фильтруем только staff на клиенте (Supabase JS фильтр через join не работает)
     const teamStays = (allStays || []).filter(s => s.vaishnava?.user_type === 'staff');
+    console.log('teamStays after filter:', teamStays.length);
 
     // Подсчитываем для каждого дня
     for (let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
