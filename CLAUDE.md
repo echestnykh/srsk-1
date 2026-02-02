@@ -385,6 +385,30 @@ const { data, error } = await Layout.db
     .order('name_ru');
 ```
 
+### Лимит 1000 записей Supabase
+**ВАЖНО:** Supabase ограничивает 1000 записей на один запрос. `.limit(5000)` НЕ работает — это клиентский хинт, сервер всё равно вернёт максимум 1000.
+
+Для таблиц с >1000 записей используй пагинацию через `.range()`:
+```javascript
+const allData = [];
+let from = 0;
+const pageSize = 1000;
+
+while (true) {
+    const { data } = await db.from('translations')
+        .select('key, ru, en, hi')
+        .range(from, from + pageSize - 1);
+
+    if (!data || data.length === 0) break;
+    allData.push(...data);
+
+    if (data.length < pageSize) break;
+    from += pageSize;
+}
+```
+
+**Затронутые таблицы:** `translations` (1168+ записей) — загрузка реализована с пагинацией в `layout.js`.
+
 ### Обработка ошибок и уведомлений
 ```javascript
 // Унифицированная обработка ошибок — toast + console.error
