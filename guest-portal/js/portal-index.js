@@ -733,25 +733,47 @@ async function loadActiveRetreat(guestId) {
 }
 
 // Загрузить ближайшие ретриты
-async function loadUpcomingRetreats() {
+async function loadUpcomingRetreats(guestId = null) {
     try {
         const today = new Date().toISOString().split('T')[0];
-        const { data, error } = await window.portalSupabase
+
+        // Получаем ID ретритов, на которые гость уже зарегистрирован
+        let registeredRetreatIds = [];
+        if (guestId) {
+            const { data: registrations } = await window.portalSupabase
+                .from('retreat_registrations')
+                .select('retreat_id')
+                .eq('vaishnava_id', guestId)
+                .neq('status', 'cancelled');
+
+            if (registrations) {
+                registeredRetreatIds = registrations.map(r => r.retreat_id);
+            }
+        }
+
+        let query = window.portalSupabase
             .from('retreats')
             .select('id, name_ru, start_date, end_date, description_ru, image_url, registration_open')
             .gte('start_date', today)
             .order('start_date')
-            .limit(3);
+            .limit(6); // Берём больше, т.к. часть отфильтруем
+
+        const { data, error } = await query;
 
         if (error) throw error;
 
+        // Фильтруем ретриты, на которые уже зарегистрирован
+        const filteredData = data
+            ? data.filter(r => !registeredRetreatIds.includes(r.id)).slice(0, 3)
+            : [];
+
         const container = document.getElementById('upcoming-retreats');
-        if (!data || data.length === 0) {
+        if (filteredData.length === 0) {
             container.innerHTML = '<div class="col-span-3 text-center text-gray-500 py-8">Нет запланированных ретритов</div>';
             return;
         }
 
-        container.innerHTML = data.map(retreat => `
+        container.innerHTML = filteredData.map(retreat => `
             <a href="retreat.html?id=${retreat.id}" class="bg-white rounded-xl overflow-hidden border-2 border-transparent hover:border-[#6B5B95] transition-all flex group">
                 <div class="w-28 bg-gray-100 flex-shrink-0 flex items-center justify-center overflow-hidden">
                     ${retreat.image_url
@@ -825,7 +847,7 @@ async function init() {
         populateProfile(loggedInUser);
         initPhotoUpload();
         loadTeachersList();
-        loadUpcomingRetreats();
+        loadUpcomingRetreats(loggedInUser.id);
         loadActiveRetreat(loggedInUser.id);
         document.getElementById('profile-form').addEventListener('submit', handleProfileSave);
     }
@@ -897,8 +919,8 @@ async function loadPublicProfile(vaishnavId) {
         // Загружаем ретриты и трансферы этого пользователя
         loadActiveRetreat(vaishnava.id);
 
-        // Загружаем ближайшие ретриты
-        loadUpcomingRetreats();
+        // Загружаем ближайшие ретриты (исключая те, на которые уже зарегистрирован)
+        loadUpcomingRetreats(vaishnava.id);
 
     } catch (e) {
         console.error('Ошибка:', e);
