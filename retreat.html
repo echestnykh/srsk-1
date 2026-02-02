@@ -223,6 +223,95 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Персональная информация для зарегистрированных -->
+                <div id="guest-info-section" class="hidden mt-8 pt-8 border-t border-gray-200">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4" data-i18n="retreat_your_info">Ваша информация</h2>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Проживание -->
+                        <div id="accommodation-card" class="hidden bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+                            <div class="flex items-center gap-2 mb-3">
+                                <div class="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                                    </svg>
+                                </div>
+                                <span class="text-sm font-medium text-gray-500" data-i18n="retreat_accommodation">Размещение</span>
+                            </div>
+                            <p id="accommodation-room" class="text-lg font-semibold text-gray-800"></p>
+                            <div id="accommodation-roommate" class="hidden mt-3 pt-3 border-t border-gray-100">
+                                <span class="text-xs text-gray-500" data-i18n="retreat_roommate">Сосед:</span>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <div id="roommate-photo" class="w-8 h-8 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                        </svg>
+                                    </div>
+                                    <span id="roommate-name" class="text-sm font-medium text-gray-700"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Самостоятельное проживание -->
+                        <div id="self-accommodation-card" class="hidden bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+                            <div class="flex items-center gap-2 mb-3">
+                                <div class="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    </svg>
+                                </div>
+                                <span class="text-sm font-medium text-gray-500" data-i18n="retreat_accommodation">Размещение</span>
+                            </div>
+                            <p class="text-lg font-semibold text-gray-800" data-i18n="retreat_self_accommodation">Самостоятельное</p>
+                        </div>
+
+                        <!-- Трансфер туда -->
+                        <div id="arrival-card" class="hidden bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+                            <div class="flex items-center gap-2 mb-3">
+                                <div class="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+                                    </svg>
+                                </div>
+                                <span class="text-sm font-medium text-gray-500" data-i18n="retreat_arrival">Заезд</span>
+                            </div>
+                            <p id="arrival-datetime" class="text-lg font-semibold text-gray-800"></p>
+                            <p id="arrival-flight" class="text-sm text-gray-500 mt-1"></p>
+                            <div id="arrival-taxi" class="hidden mt-2">
+                                <span class="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-100 px-2 py-1 rounded">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    <span data-i18n="retreat_taxi_ordered">Такси заказано</span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Трансфер обратно -->
+                        <div id="departure-card" class="hidden bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+                            <div class="flex items-center gap-2 mb-3">
+                                <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                                    </svg>
+                                </div>
+                                <span class="text-sm font-medium text-gray-500" data-i18n="retreat_departure">Выезд</span>
+                            </div>
+                            <p id="departure-datetime" class="text-lg font-semibold text-gray-800"></p>
+                            <p id="departure-flight" class="text-sm text-gray-500 mt-1"></p>
+                            <div id="departure-taxi" class="hidden mt-2">
+                                <span class="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-100 px-2 py-1 rounded">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    <span data-i18n="retreat_taxi_ordered">Такси заказано</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -537,7 +626,14 @@
             error_unknown: { ru: 'Произошла ошибка', en: 'An error occurred', hi: 'एक त्रुटि हुई' },
             error_password_reset_sent: { ru: 'Ссылка для сброса пароля отправлена на вашу почту', en: 'Password reset link sent to your email', hi: 'पासवर्ड रीसेट लिंक आपके ईमेल पर भेजा गया' },
             back_to_profile: { ru: 'в профиль', en: 'to profile', hi: 'प्रोफाइल' },
-            retreat_join_community: { ru: 'Присоединяйтесь к сообществу', en: 'Join our community', hi: 'हमारे समुदाय से जुड़ें' }
+            retreat_join_community: { ru: 'Присоединяйтесь к сообществу', en: 'Join our community', hi: 'हमारे समुदाय से जुड़ें' },
+            retreat_your_info: { ru: 'Ваша информация', en: 'Your information', hi: 'आपकी जानकारी' },
+            retreat_accommodation: { ru: 'Размещение', en: 'Accommodation', hi: 'आवास' },
+            retreat_self_accommodation: { ru: 'Самостоятельное', en: 'Self-arranged', hi: 'स्व-व्यवस्थित' },
+            retreat_roommate: { ru: 'Сосед:', en: 'Roommate:', hi: 'रूममेट:' },
+            retreat_arrival: { ru: 'Заезд', en: 'Arrival', hi: 'आगमन' },
+            retreat_departure: { ru: 'Выезд', en: 'Departure', hi: 'प्रस्थान' },
+            retreat_taxi_ordered: { ru: 'Такси заказано', en: 'Taxi ordered', hi: 'टैक्सी बुक' }
         };
 
         // Загрузка переводов
@@ -729,7 +825,118 @@
                 // Уже зарегистрирован
                 document.getElementById('registration-open').classList.add('hidden');
                 document.getElementById('already-registered').classList.remove('hidden');
+
+                // Загружаем дополнительную информацию
+                await loadGuestInfo(vaishnava.id, currentRetreat.id);
             }
+        }
+
+        // Загрузка персональной информации гостя
+        async function loadGuestInfo(vaishnavId, retreatId) {
+            // Загружаем параллельно: размещение и трансферы
+            const [accommodationResult, transfersResult] = await Promise.all([
+                db.from('residents')
+                    .select(`
+                        id, room_id,
+                        room:rooms(id, number, building:buildings(id, name_ru, name_en, name_hi))
+                    `)
+                    .eq('vaishnava_id', vaishnavId)
+                    .eq('retreat_id', retreatId)
+                    .maybeSingle(),
+                db.from('guest_transfers')
+                    .select('*')
+                    .eq('vaishnava_id', vaishnavId)
+                    .eq('retreat_id', retreatId)
+            ]);
+
+            const accommodation = accommodationResult.data;
+            const transfers = transfersResult.data || [];
+
+            let hasInfo = false;
+
+            // Размещение
+            if (accommodation) {
+                hasInfo = true;
+                if (accommodation.room_id && accommodation.room) {
+                    // Размещение в ашраме
+                    document.getElementById('accommodation-card').classList.remove('hidden');
+                    const buildingName = getName(accommodation.room.building);
+                    document.getElementById('accommodation-room').textContent =
+                        `${buildingName}, №${accommodation.room.number}`;
+
+                    // Сосед
+                    const { data: roommates } = await db
+                        .from('residents')
+                        .select('vaishnava:vaishnavas(id, first_name, spiritual_name, photo_url)')
+                        .eq('room_id', accommodation.room_id)
+                        .eq('retreat_id', retreatId)
+                        .neq('vaishnava_id', vaishnavId);
+
+                    if (roommates && roommates.length > 0 && roommates[0].vaishnava) {
+                        const roommate = roommates[0].vaishnava;
+                        document.getElementById('accommodation-roommate').classList.remove('hidden');
+                        document.getElementById('roommate-name').textContent =
+                            roommate.spiritual_name || roommate.first_name || '';
+                        if (roommate.photo_url) {
+                            document.getElementById('roommate-photo').innerHTML =
+                                `<img src="${roommate.photo_url}" class="w-full h-full object-cover" alt="">`;
+                        }
+                    }
+                } else {
+                    // Самостоятельное проживание
+                    document.getElementById('self-accommodation-card').classList.remove('hidden');
+                }
+            }
+
+            // Трансферы
+            const arrival = transfers.find(t => t.direction === 'arrival');
+            const departure = transfers.find(t => t.direction === 'departure');
+
+            if (arrival) {
+                hasInfo = true;
+                document.getElementById('arrival-card').classList.remove('hidden');
+                document.getElementById('arrival-datetime').textContent =
+                    formatTransferDateTime(arrival.flight_datetime);
+                if (arrival.flight_number) {
+                    document.getElementById('arrival-flight').textContent =
+                        `Рейс: ${arrival.flight_number}`;
+                }
+                if (arrival.taxi_status === 'ordered') {
+                    document.getElementById('arrival-taxi').classList.remove('hidden');
+                }
+            }
+
+            if (departure) {
+                hasInfo = true;
+                document.getElementById('departure-card').classList.remove('hidden');
+                document.getElementById('departure-datetime').textContent =
+                    formatTransferDateTime(departure.flight_datetime);
+                if (departure.flight_number) {
+                    document.getElementById('departure-flight').textContent =
+                        `Рейс: ${departure.flight_number}`;
+                }
+                if (departure.taxi_status === 'ordered') {
+                    document.getElementById('departure-taxi').classList.remove('hidden');
+                }
+            }
+
+            // Показываем секцию если есть данные
+            if (hasInfo) {
+                document.getElementById('guest-info-section').classList.remove('hidden');
+            }
+        }
+
+        // Форматирование даты/времени трансфера
+        function formatTransferDateTime(datetime) {
+            if (!datetime) return '';
+            const date = new Date(datetime);
+            const locale = currentLang === 'ru' ? 'ru-RU' : currentLang === 'hi' ? 'hi-IN' : 'en-US';
+            return date.toLocaleDateString(locale, {
+                day: 'numeric',
+                month: 'long',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
         }
 
         // Открыть модалку регистрации
