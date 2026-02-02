@@ -11,6 +11,9 @@
     <script>tailwind.config = { theme: { extend: { screens: { 'desktop': '1200px' } } } }</script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../js/color-init.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/common.css">
 </head>
 
@@ -116,11 +119,8 @@
 
                 <!-- Индивидуальные права -->
                 <div class="flex gap-2">
-                    <button class="btn btn-sm btn-outline" onclick="openAddPermissionModal()">
-                        + Добавить право
-                    </button>
-                    <button class="btn btn-sm btn-outline btn-error" onclick="openRevokePermissionModal()">
-                        − Убрать право
+                    <button class="btn btn-sm btn-outline" onclick="openPermissionsModal()">
+                        Настроить права
                     </button>
                 </div>
 
@@ -190,6 +190,17 @@
     <script src="../js/layout.js?v=4"></script>
     <script>
         const db = window.supabaseClient;
+
+        // Экранирование HTML для защиты от XSS
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
 
         let allUsers = [];
         let currentTab = 'all';
@@ -364,7 +375,6 @@
             }, 300);
         }
 
-        // Отрисовка таблицы
         // Отрисовка таблицы (фильтрация уже на стороне БД)
         function renderUsers() {
             const tbody = document.getElementById('usersTableBody');
@@ -374,23 +384,28 @@
                 return;
             }
 
-            tbody.innerHTML = allUsers.map(user => `
+            tbody.innerHTML = allUsers.map(user => {
+                const displayName = escapeHtml(user.spiritual_name || `${user.first_name || ''} ${user.last_name || ''}`.trim());
+                const initial = (user.spiritual_name || user.first_name || '?')[0];
+                const safeEmail = escapeHtml(user.email);
+
+                return `
                 <tr>
                     <td>
                         <div class="avatar">
                             <div class="w-10 h-10 rounded-full">
                                 ${user.photo_url
-                                    ? `<img src="${user.photo_url}" alt="${user.spiritual_name || user.first_name}">`
-                                    : `<div class="bg-primary text-primary-content w-full h-full flex items-center justify-center text-xl">${(user.spiritual_name || user.first_name || '?')[0]}</div>`
+                                    ? `<img src="${escapeHtml(user.photo_url)}" alt="${displayName}">`
+                                    : `<div class="bg-primary text-primary-content w-full h-full flex items-center justify-center text-xl">${escapeHtml(initial)}</div>`
                                 }
                             </div>
                         </div>
                     </td>
                     <td>
-                        <div class="font-bold">${user.spiritual_name || user.first_name + ' ' + (user.last_name || '')}</div>
+                        <div class="font-bold">${displayName}</div>
                         ${user.is_superuser ? '<span class="badge badge-warning badge-sm">Superuser</span>' : ''}
                     </td>
-                    <td>${user.email}</td>
+                    <td>${safeEmail}</td>
                     <td>
                         <span class="badge ${user.user_type === 'staff' ? 'badge-primary' : 'badge-secondary'}">
                             ${user.user_type === 'staff' ? 'Команда' : 'Гость'}
@@ -417,7 +432,7 @@
                                 : `<button class="btn btn-xs btn-primary" onclick="openManageModal('${user.id}')">Управление</button>`
                             }
                             ${!user.user_id && user.email
-                                ? `<button class="btn btn-xs btn-outline btn-secondary" onclick="sendInvite('${user.id}', '${user.email.replace(/'/g, "\\'")}')">
+                                ? `<button class="btn btn-xs btn-outline btn-secondary" onclick="sendInvite('${user.id}', '${safeEmail.replace(/'/g, "\\'")}')">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                     </svg>
@@ -428,7 +443,8 @@
                         </div>
                     </td>
                 </tr>
-            `).join('');
+                `;
+            }).join('');
         }
 
         // Получить badge статуса
@@ -501,6 +517,7 @@
                 }
 
                 closeApprovalModal();
+                loadCounts(); // Обновить счётчики в табах
                 loadUsers({ tab: currentTab !== 'all' ? currentTab : null });
                 alert(approvalAction === 'approve' ? '✅ Заявка одобрена' : '❌ Заявка отклонена');
             } catch (err) {
@@ -621,22 +638,20 @@
                     .update({ is_active: false })
                     .eq('user_id', user.user_id);
 
-                // Добавить выбранные роли
-                for (let roleId of checkedRoles) {
-                    await db
-                        .from('user_roles')
-                        .upsert({
-                            user_id: user.user_id,
-                            role_id: roleId,
-                            is_active: true,
-                            assigned_by: window.currentUser.id,
-                            assigned_at: new Date().toISOString()
-                        }, {
-                            onConflict: 'user_id,role_id'
-                        });
+                // Добавить выбранные роли (batch upsert)
+                if (checkedRoles.length > 0) {
+                    const rolesData = checkedRoles.map(roleId => ({
+                        user_id: user.user_id,
+                        role_id: roleId,
+                        is_active: true,
+                        assigned_by: window.currentUser.id,
+                        assigned_at: new Date().toISOString()
+                    }));
+                    await db.from('user_roles').upsert(rolesData, { onConflict: 'user_id,role_id' });
                 }
 
                 closeManageModal();
+                loadCounts(); // Обновить счётчики в табах
                 loadUsers({ tab: currentTab !== 'all' ? currentTab : null });
                 alert('✅ Изменения сохранены');
             } catch (err) {
@@ -665,6 +680,7 @@
                     .eq('id', user.id);
 
                 closeManageModal();
+                loadCounts(); // Обновить счётчики в табах
                 loadUsers({ tab: currentTab !== 'all' ? currentTab : null });
                 alert('🚫 Пользователь заблокирован');
             } catch (err) {
@@ -774,15 +790,6 @@
             };
 
             document.getElementById('permissionSelectModal').showModal();
-        }
-
-        // Заменяем обе старые функции на одну
-        function openAddPermissionModal() {
-            openPermissionsModal();
-        }
-
-        function openRevokePermissionModal() {
-            openPermissionsModal();
         }
 
         async function togglePermission(checkbox) {
