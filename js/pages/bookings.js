@@ -962,6 +962,38 @@ async function cancelBooking() {
     }
 }
 
+async function deleteBookingPermanently() {
+    if (!selectedBookingId) return;
+    if (!confirm('Удалить бронь навсегда? Это действие нельзя отменить.')) return;
+    if (!confirm('Вы уверены? Все данные брони будут удалены безвозвратно.')) return;
+
+    try {
+        // Сначала удаляем связанных резидентов
+        const { error: residentsError } = await Layout.db
+            .from('residents')
+            .delete()
+            .eq('booking_id', selectedBookingId);
+
+        if (residentsError) throw residentsError;
+
+        // Затем удаляем саму бронь
+        const { error: bookingError } = await Layout.db
+            .from('bookings')
+            .delete()
+            .eq('id', selectedBookingId);
+
+        if (bookingError) throw bookingError;
+
+        closeBookingModal();
+        await loadBookings();
+        await loadAllBookings();
+
+    } catch (err) {
+        console.error('Error deleting booking:', err);
+        alert('Ошибка удаления: ' + err.message);
+    }
+}
+
 // ==================== INIT ====================
 function updateUI() {
     Layout.updateAllTranslations();
