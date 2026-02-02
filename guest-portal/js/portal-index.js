@@ -774,7 +774,7 @@ async function loadUpcomingRetreats(guestId = null) {
         }
 
         container.innerHTML = filteredData.map(retreat => `
-            <a href="retreat.html?id=${retreat.id}" class="bg-white rounded-xl overflow-hidden border-2 border-transparent hover:border-[#6B5B95] transition-all flex group">
+            <a href="/retreat.html?id=${retreat.id}" class="bg-white rounded-xl overflow-hidden border-2 border-transparent hover:border-[#6B5B95] transition-all flex group">
                 <div class="w-28 bg-gray-100 flex-shrink-0 flex items-center justify-center overflow-hidden">
                     ${retreat.image_url
                         ? `<img src="${retreat.image_url}" alt="" class="w-full h-full object-cover">`
