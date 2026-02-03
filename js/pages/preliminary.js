@@ -389,6 +389,10 @@ function renderTable() {
 
     noGuests.classList.add('hidden');
 
+    // Проверка прав на редактирование
+    const canEdit = window.hasPermission && window.hasPermission('edit_preliminary');
+    const disabledAttr = canEdit ? '' : 'disabled';
+
     // Переводы для типов питания
     const mealTypeNotSpecified = t('not_specified');
     const mealTypePrasad = t('meal_type_prasad');
@@ -464,7 +468,8 @@ function renderTable() {
                 <td class="text-sm">
                     <select class="select select-xs select-bordered w-full ${reg.meal_type === 'prasad' ? 'meal-prasad' : reg.meal_type === 'self' ? 'meal-self' : reg.meal_type === 'child' ? 'meal-child' : ''}"
                         onchange="onMealTypeChange('${reg.id}', this.value, this)"
-                        onclick="event.stopPropagation()">
+                        onclick="event.stopPropagation()"
+                        ${disabledAttr}>
                         <option value="" ${!reg.meal_type ? 'selected' : ''}>${mealTypeNotSpecified}</option>
                         <option value="prasad" ${reg.meal_type === 'prasad' ? 'selected' : ''}>${mealTypePrasad}</option>
                         <option value="self" ${reg.meal_type === 'self' ? 'selected' : ''}>${mealTypeSelf}</option>
@@ -483,7 +488,8 @@ function renderTable() {
                 <td class="text-sm ${buildingId === 'self' ? 'bg-error/20' : buildingId ? 'bg-success/20' : ''}">
                     <select class="select select-xs select-bordered w-full"
                         onchange="onBuildingChange('${reg.id}', this.value)"
-                        onclick="event.stopPropagation()">
+                        onclick="event.stopPropagation()"
+                        ${disabledAttr}>
                         <option value="">—</option>
                         ${buildings.map(b => `<option value="${b.id}" ${buildingId === b.id ? 'selected' : ''}>${Layout.getName(b)}</option>`).join('')}
                         <option value="self" ${buildingId === 'self' ? 'selected' : ''}>${t('self_accommodation')}</option>
@@ -493,7 +499,8 @@ function renderTable() {
                     <select class="select select-xs select-bordered w-full ${buildingId === 'self' ? 'hidden' : ''}"
                         id="room_select_${reg.id}"
                         onchange="onRoomChange('${reg.id}', this.value)"
-                        onclick="event.stopPropagation()">
+                        onclick="event.stopPropagation()"
+                        ${disabledAttr}>
                         ${buildingId && buildingId !== 'self' ? renderRoomOptions(buildingId, roomId, reg.id) : '<option value="">—</option>'}
                     </select>
                     ${buildingId === 'self' ? `<span class="text-sm opacity-50">${t('self_accommodation')}</span>` : ''}
@@ -572,6 +579,12 @@ function renderRoomOptions(buildingId, selectedRoomId, registrationId) {
 }
 
 async function onMealTypeChange(registrationId, mealType, selectElement) {
+    // Проверка прав
+    if (!window.hasPermission || !window.hasPermission('edit_preliminary')) {
+        Layout.showNotification('Недостаточно прав для редактирования', 'error');
+        return;
+    }
+
     try {
         const { error } = await Layout.db
             .from('retreat_registrations')
@@ -597,6 +610,12 @@ async function onMealTypeChange(registrationId, mealType, selectElement) {
 }
 
 async function onBuildingChange(registrationId, buildingId) {
+    // Проверка прав
+    if (!window.hasPermission || !window.hasPermission('edit_preliminary')) {
+        Layout.showNotification('Недостаточно прав для редактирования', 'error');
+        return;
+    }
+
     const roomSelect = document.getElementById(`room_select_${registrationId}`);
     if (!roomSelect) return;
 
@@ -641,6 +660,12 @@ async function onBuildingChange(registrationId, buildingId) {
 }
 
 async function onRoomChange(registrationId, roomId) {
+    // Проверка прав
+    if (!window.hasPermission || !window.hasPermission('edit_preliminary')) {
+        Layout.showNotification('Недостаточно прав для редактирования', 'error');
+        return;
+    }
+
     if (!roomId) return;
 
     const reg = registrations.find(r => r.id === registrationId);

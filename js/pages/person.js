@@ -71,6 +71,29 @@ async function loadPerson(personId) {
 
     person = data;
     renderPerson();
+    applyEditPermissions();
+}
+
+// Проверка прав на редактирование профиля
+function canEditProfile() {
+    if (!person || !window.currentUser) return false;
+    const isOwnProfile = person.id === window.currentUser.vaishnava_id;
+    if (isOwnProfile) {
+        return window.hasPermission && window.hasPermission('edit_own_profile');
+    } else {
+        return window.hasPermission && window.hasPermission('edit_vaishnava');
+    }
+}
+
+function applyEditPermissions() {
+    const canEdit = canEditProfile();
+    const editBtn = document.getElementById('editPersonBtn');
+    const deleteBtn = document.getElementById('deletePersonBtn');
+
+    if (editBtn) editBtn.style.display = canEdit ? '' : 'none';
+    // Удаление доступно только с правом edit_vaishnava (не своего профиля)
+    const canDelete = window.hasPermission && window.hasPermission('edit_vaishnava');
+    if (deleteBtn) deleteBtn.style.display = canDelete ? '' : 'none';
 }
 
 async function loadDepartments() {
@@ -438,6 +461,10 @@ function openGuestPortal() {
 // ==================== EDIT MODE ====================
 
 function enterEditMode() {
+    if (!canEditProfile()) {
+        Layout.showNotification(t('no_permission') || 'Недостаточно прав', 'error');
+        return;
+    }
     isEditMode = true;
     document.getElementById('profileContainer').classList.remove('view-mode');
     document.getElementById('profileContainer').classList.add('edit-mode');
@@ -512,6 +539,12 @@ async function savePerson() {
 }
 
 async function deletePerson() {
+    // Удаление требует права edit_vaishnava
+    if (!window.hasPermission || !window.hasPermission('edit_vaishnava')) {
+        Layout.showNotification(t('no_permission') || 'Недостаточно прав', 'error');
+        return;
+    }
+
     const confirmed = await ModalUtils.confirm(t('confirm_delete') || 'Удалить?');
     if (!confirmed) return;
 

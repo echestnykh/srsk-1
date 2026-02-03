@@ -140,7 +140,7 @@
                 </div>
             </div>
             <!-- Add buttons -->
-            <div id="addButtons" class="flex gap-2">
+            <div id="addButtons" class="flex gap-2" data-permission="manage_cleaning">
                 <button class="btn btn-primary gap-2" onclick="openCleaningModal('cleaning')">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -835,7 +835,9 @@
             const itemType = isManual ? 'manual' : 'auto';
             const roomId = room?.id || '';
 
-            const actionButtons = `
+            // Проверяем права на управление уборкой
+            const canManageCleaning = window.hasPermission && window.hasPermission('manage_cleaning');
+            const actionButtons = canManageCleaning ? `
                 <div class="cleaning-actions">
                     <button class="cleaning-action-btn complete" onclick="event.stopPropagation(); completeCleaning('${itemId}', '${itemType}')" title="${t('mark_done') || 'Выполнено'}">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
@@ -854,7 +856,7 @@
                         </svg>
                     </button>
                 </div>
-            `;
+            ` : '';
 
             return `
                 <div class="flex items-center justify-between p-4 hover:bg-base-200/50 transition-colors">
