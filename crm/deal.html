@@ -42,11 +42,11 @@
 
             <!-- Вкладки -->
             <div class="tabs tabs-boxed mb-4">
-                <button class="tab tab-active" onclick="switchTab('info')">Инфо</button>
-                <button class="tab" onclick="switchTab('services')">Услуги</button>
-                <button class="tab" onclick="switchTab('payments')">Оплаты</button>
-                <button class="tab" onclick="switchTab('tasks')">Задачи</button>
-                <button class="tab" onclick="switchTab('history')">История</button>
+                <button class="tab tab-active" onclick="switchTab('info')" id="tabInfo">Инфо</button>
+                <button class="tab" onclick="switchTab('services')" id="tabServices">Услуги</button>
+                <button class="tab" onclick="switchTab('payments')" id="tabPayments">Оплаты</button>
+                <button class="tab" onclick="switchTab('tasks')" id="tabTasks">Задачи</button>
+                <button class="tab" onclick="switchTab('history')" id="tabHistory">История</button>
             </div>
 
             <!-- Контент вкладок -->
@@ -370,6 +370,7 @@ let managers = [];
 let currencies = [];
 let templates = [];
 let currentTab = 'info';
+let counts = { services: 0, payments: 0, tasks: 0 };
 
 // ==================== DATA ====================
 async function loadDeal() {
@@ -401,7 +402,30 @@ async function loadDeal() {
 
     renderHeader();
     renderSidebar();
+    await loadCounts();
     loadTabData();
+}
+
+async function loadCounts() {
+    const [servicesRes, paymentsRes, tasksRes] = await Promise.all([
+        Layout.db.from('crm_deal_services').select('id', { count: 'exact', head: true }).eq('deal_id', dealId),
+        Layout.db.from('crm_payments').select('id', { count: 'exact', head: true }).eq('deal_id', dealId),
+        Layout.db.from('crm_tasks').select('id', { count: 'exact', head: true }).eq('deal_id', dealId).is('completed_at', null)
+    ]);
+
+    counts.services = servicesRes.count || 0;
+    counts.payments = paymentsRes.count || 0;
+    counts.tasks = tasksRes.count || 0;
+
+    updateTabCounts();
+}
+
+function updateTabCounts() {
+    const badge = (n) => n > 0 ? `<sup class="ml-1 text-xs opacity-70">${n}</sup>` : '';
+
+    document.getElementById('tabServices').innerHTML = 'Услуги' + badge(counts.services);
+    document.getElementById('tabPayments').innerHTML = 'Оплаты' + badge(counts.payments);
+    document.getElementById('tabTasks').innerHTML = 'Задачи' + badge(counts.tasks);
 }
 
 async function loadReferenceData() {
@@ -938,6 +962,8 @@ async function saveService(event) {
     Layout.showNotification('Услуга добавлена', 'success');
     closeServiceModal();
     await loadDealServices();
+    counts.services++;
+    updateTabCounts();
     renderTab();
     await refreshDeal();
 }
@@ -947,6 +973,8 @@ async function deleteService(id) {
     const { error } = await Layout.db.from('crm_deal_services').delete().eq('id', id);
     if (error) { Layout.handleError(error, 'Удаление'); return; }
     await loadDealServices();
+    counts.services = Math.max(0, counts.services - 1);
+    updateTabCounts();
     renderTab();
     await refreshDeal();
 }
@@ -996,6 +1024,8 @@ async function savePayment(event) {
     Layout.showNotification('Оплата добавлена', 'success');
     closePaymentModal();
     await loadPayments();
+    counts.payments++;
+    updateTabCounts();
     renderTab();
     await refreshDeal();
 }
@@ -1005,6 +1035,8 @@ async function deletePayment(id) {
     const { error } = await Layout.db.from('crm_payments').delete().eq('id', id);
     if (error) { Layout.handleError(error, 'Удаление'); return; }
     await loadPayments();
+    counts.payments = Math.max(0, counts.payments - 1);
+    updateTabCounts();
     renderTab();
     await refreshDeal();
 }
@@ -1038,6 +1070,8 @@ async function saveTask(event) {
     Layout.showNotification('Задача создана', 'success');
     closeTaskModal();
     await loadTasks();
+    counts.tasks++;
+    updateTabCounts();
     renderTab();
 }
 
@@ -1047,6 +1081,8 @@ async function toggleTask(id, completed) {
         .eq('id', id);
     if (error) { Layout.handleError(error, 'Обновление задачи'); return; }
     await loadTasks();
+    counts.tasks = completed ? Math.max(0, counts.tasks - 1) : counts.tasks + 1;
+    updateTabCounts();
     renderTab();
 }
 
