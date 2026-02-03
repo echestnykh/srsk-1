@@ -462,7 +462,8 @@ function renderDay() {
 
 function renderMealSection(dateStr, mealType, index, mealData, isEkadashiDay) {
     const dishes = mealData?.dishes || [];
-    const portions = mealData?.portions || 50;
+    // Если порции = 50 (дефолт), используем рассчитанное значение
+    const portions = (mealData?.portions && mealData.portions !== 50) ? mealData.portions : getEatingTotal(dateStr);
     const cook = mealData?.cook;
     const isCafe = Layout.currentLocation === 'cafe';
 
