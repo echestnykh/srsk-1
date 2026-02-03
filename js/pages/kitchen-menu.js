@@ -15,7 +15,7 @@ let retreats = [];
 let holidays = [];
 let cooks = [];
 let eatingCounts = {}; // { 'YYYY-MM-DD': { guests: N, team: N } }
-let teamCount = 0; // Количество команды (staff)
+let staffIds = []; // Кеш ID сотрудников для loadEatingCounts
 
 let selectedDate = null;
 let selectedMealType = null;
@@ -187,6 +187,7 @@ async function loadData() {
         retreatsResult,
         holidaysResult,
         cooksResult,
+        staffResult,
         unitsResult
     ] = await Promise.all([
         recipesQuery,
@@ -200,11 +201,18 @@ async function loadData() {
         }),
         Layout.db.from('retreats').select('*'),
         Layout.db.from('holidays').select('*'),
+        // Оптимизация: фильтруем по Kitchen на сервере через связь
         Layout.db
             .from('vaishnavas')
             .select('*, department:departments!inner(*)')
             .eq('is_team_member', true)
-            .eq('is_deleted', false),
+            .eq('is_deleted', false)
+            .eq('departments.name_en', 'Kitchen'),
+        // Загружаем staff IDs один раз для loadEatingCounts
+        Layout.db
+            .from('vaishnavas')
+            .select('id')
+            .eq('user_type', 'staff'),
         Cache.getOrLoad('units', async () => {
             const { data, error } = await Layout.db.from('units').select('*');
             if (error) { console.error('Error loading units:', error); return null; }
@@ -216,7 +224,8 @@ async function loadData() {
     categories = categoriesResult || [];
     retreats = retreatsResult.data || [];
     holidays = holidaysResult.data || [];
-    cooks = (cooksResult.data || []).filter(m => m.department?.name_en === 'Kitchen');
+    cooks = cooksResult.data || [];
+    staffIds = (staffResult.data || []).map(s => s.id);
     units = unitsResult || [];
 
     // Load menu for current period
@@ -288,24 +297,13 @@ async function loadMenuData() {
 async function loadEatingCounts(startDate, endDate) {
     eatingCounts = {};
 
-    // Волна 1: независимые запросы параллельно
-    const [retreatsResult, staffResult] = await Promise.all([
-        Layout.db
-            .from('retreats')
-            .select('id, start_date, end_date')
-            .lte('start_date', endDate)
-            .gte('end_date', startDate),
-        Layout.db
-            .from('vaishnavas')
-            .select('id')
-            .eq('user_type', 'staff')
-    ]);
+    // Используем уже загруженные retreats (фильтруем по периоду)
+    const retreatsInPeriod = retreats.filter(r =>
+        r.start_date <= endDate && r.end_date >= startDate
+    );
+    const retreatIds = retreatsInPeriod.map(r => r.id);
 
-    const retreatsInMonth = retreatsResult.data || [];
-    const retreatIds = retreatsInMonth.map(r => r.id);
-    const staffIds = (staffResult.data || []).map(s => s.id);
-
-    // Волна 2: зависимые запросы параллельно
+    // Один параллельный запрос (staffIds уже загружены в loadData)
     const [guestRegResult, teamStaysResult] = await Promise.all([
         retreatIds.length > 0
             ? Layout.db
@@ -337,7 +335,7 @@ async function loadEatingCounts(startDate, endDate) {
 
         // Гости: считаем регистрации на ретриты, которые включают этот день
         let guestsCount = 0;
-        for (const retreat of (retreatsInMonth || [])) {
+        for (const retreat of retreatsInPeriod) {
             if (dateStr >= retreat.start_date && dateStr <= retreat.end_date) {
                 guestsCount += guestRegistrations.filter(r => r.retreat_id === retreat.id).length;
             }
@@ -346,7 +344,7 @@ async function loadEatingCounts(startDate, endDate) {
         // Команда: staff, которые в этот день в ШРСК (по vaishnava_stays)
         // Используем Set чтобы не считать одного человека дважды (если несколько периодов)
         const teamInDay = new Set();
-        for (const stay of (teamStays || [])) {
+        for (const stay of teamStays) {
             if (stay.start_date <= dateStr && stay.end_date >= dateStr) {
                 teamInDay.add(stay.vaishnava_id);
             }
