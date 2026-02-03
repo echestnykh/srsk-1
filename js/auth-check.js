@@ -128,8 +128,15 @@
         // Глобальная функция применения прав к UI-элементам
         window.applyPermissions = function() {
             if (!window.currentUser || !window.hasPermission) return;
-            if (window.currentUser.is_superuser) return; // Суперюзер видит всё
+            if (window.currentUser.is_superuser) {
+                // Суперюзер видит всё — скрыть сообщения об отсутствии прав
+                document.querySelectorAll('[data-no-permission]').forEach(el => {
+                    el.style.display = 'none';
+                });
+                return;
+            }
 
+            // Скрыть элементы без нужных прав
             document.querySelectorAll('[data-permission]').forEach(el => {
                 const perm = el.getAttribute('data-permission');
                 if (!window.hasPermission(perm)) {
@@ -138,6 +145,16 @@
                     if (el.tagName === 'BUTTON' || el.tagName === 'INPUT') {
                         el.disabled = true;
                     }
+                }
+            });
+
+            // Показать сообщения когда НЕТ прав (обратная логика)
+            document.querySelectorAll('[data-no-permission]').forEach(el => {
+                const perm = el.getAttribute('data-no-permission');
+                if (window.hasPermission(perm)) {
+                    el.style.display = 'none'; // Есть права — скрыть сообщение
+                } else {
+                    el.style.display = ''; // Нет прав — показать сообщение
                 }
             });
         };
