@@ -82,7 +82,7 @@
                 <h1 class="text-2xl font-bold" data-i18n="translations_title">Переводы интерфейса</h1>
                 <p class="text-sm opacity-60" id="translationsCount">Загрузка...</p>
             </div>
-            <button class="btn btn-primary gap-2" onclick="openAddModal()">
+            <button class="btn btn-primary gap-2" data-permission="edit_translations" onclick="openAddModal()">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>
@@ -267,6 +267,7 @@
         function renderTable() {
             const table = Layout.$('#translationsTable');
             const countEl = Layout.$('#translationsCount');
+            const canEdit = window.hasPermission && window.hasPermission('edit_translations');
 
             const filtered = translations.filter(row => {
                 const matchesSearch = searchQuery === '' ||
@@ -292,20 +293,20 @@
                         ${row.page ? `<div class="context-text mt-1">${getPageName(row.page)}</div>` : ''}
                     </td>
                     <td class="edit-cell p-0">
-                        <input type="text" class="edit-input" value="${escapeHtml(row.ru)}" data-field="ru" data-id="${row.id}" />
+                        <input type="text" class="edit-input" value="${escapeHtml(row.ru)}" data-field="ru" data-id="${row.id}" ${canEdit ? '' : 'readonly'} />
                     </td>
                     <td class="edit-cell p-0">
-                        <input type="text" class="edit-input" value="${escapeHtml(row.en)}" data-field="en" data-id="${row.id}" />
+                        <input type="text" class="edit-input" value="${escapeHtml(row.en)}" data-field="en" data-id="${row.id}" ${canEdit ? '' : 'readonly'} />
                     </td>
                     <td class="edit-cell p-0">
-                        <input type="text" class="edit-input" value="${escapeHtml(row.hi)}" data-field="hi" data-id="${row.id}" />
+                        <input type="text" class="edit-input" value="${escapeHtml(row.hi)}" data-field="hi" data-id="${row.id}" ${canEdit ? '' : 'readonly'} />
                     </td>
                     <td>
-                        <button class="btn btn-ghost btn-sm btn-square text-error" onclick="deleteTranslation('${row.id}')">
+                        ${canEdit ? `<button class="btn btn-ghost btn-sm btn-square text-error" onclick="deleteTranslation('${row.id}')">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
-                        </button>
+                        </button>` : ''}
                     </td>
                 </tr>
             `).join('');
@@ -327,6 +328,10 @@
         }
 
         async function saveField(input) {
+            if (!window.hasPermission || !window.hasPermission('edit_translations')) {
+                Layout.showNotification('Недостаточно прав', 'error');
+                return;
+            }
             const id = input.dataset.id;
             const field = input.dataset.field;
             const value = input.value;
@@ -357,6 +362,10 @@
         }
 
         async function deleteTranslation(id) {
+            if (!window.hasPermission || !window.hasPermission('edit_translations')) {
+                Layout.showNotification('Недостаточно прав', 'error');
+                return;
+            }
             if (!confirm(t('confirm_delete'))) return;
 
             const { error } = await Layout.db
@@ -373,6 +382,10 @@
         }
 
         function openAddModal() {
+            if (!window.hasPermission || !window.hasPermission('edit_translations')) {
+                Layout.showNotification('Недостаточно прав', 'error');
+                return;
+            }
             Layout.$('#addForm').reset();
             addModal.showModal();
         }

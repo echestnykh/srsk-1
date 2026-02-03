@@ -483,7 +483,8 @@ function renderTable() {
                         placeholder="${t('preliminary_notes_placeholder')}"
                         oninput="autoResizeTextarea(this)"
                         onchange="saveLocalNotes('${reg.id}', this.value)"
-                        onclick="event.stopPropagation()">${e(localNotes || '')}</textarea>
+                        onclick="event.stopPropagation()"
+                        ${disabledAttr}>${e(localNotes || '')}</textarea>
                 </td>
                 <td class="text-sm ${buildingId === 'self' ? 'bg-error/20' : buildingId ? 'bg-success/20' : ''}">
                     <select class="select select-xs select-bordered w-full"
@@ -524,6 +525,10 @@ function getLocalNotes(registrationId) {
 }
 
 function saveLocalNotes(registrationId, value) {
+    if (!window.hasPermission || !window.hasPermission('edit_preliminary')) {
+        Layout.showNotification('Недостаточно прав', 'error');
+        return;
+    }
     const key = `preliminary_notes_${registrationId}`;
     if (value && value.trim()) {
         localStorage.setItem(key, value.trim());

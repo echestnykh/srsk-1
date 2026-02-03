@@ -294,7 +294,10 @@
 
                 const photoHtml = showPhotos ? `
                     <figure class="h-32 bg-base-200 overflow-hidden">
-                        <img src="${recipe.photo_url}" alt="${Layout.getName(recipe)}" class="w-full h-full object-cover" onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\\'h-full w-full flex items-center justify-center text-4xl\\'>${cat?.emoji || '🍽️'}</div>'" />
+                        ${recipe.photo_url
+                            ? `<img src="${recipe.photo_url}" alt="${Layout.getName(recipe)}" class="w-full h-full object-cover" onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\\'h-full w-full flex items-center justify-center text-4xl\\'>${cat?.emoji || '🍽️'}</div>'" />`
+                            : `<div class="h-full w-full flex items-center justify-center text-4xl">${cat?.emoji || '🍽️'}</div>`
+                        }
                     </figure>
                 ` : '';
 
