@@ -634,15 +634,17 @@ function buildLocationOptions() {
         crmBtn.textContent = t('module_crm'); // безопасно
         el.appendChild(crmBtn);
 
-        // Кнопка "Управление"
-        const adminBtn = document.createElement('button');
-        adminBtn.className = 'w-full text-left px-4 py-2 hover:bg-base-200 text-base-content';
-        if (isAdmin) {
-            adminBtn.classList.add('font-medium');
+        // Кнопка "Управление" — только для суперпользователей
+        if (window.currentUser?.is_superuser) {
+            const adminBtn = document.createElement('button');
+            adminBtn.className = 'w-full text-left px-4 py-2 hover:bg-base-200 text-base-content';
+            if (isAdmin) {
+                adminBtn.classList.add('font-medium');
+            }
+            adminBtn.dataset.module = 'admin';
+            adminBtn.textContent = t('module_admin'); // безопасно
+            el.appendChild(adminBtn);
         }
-        adminBtn.dataset.module = 'admin';
-        adminBtn.textContent = t('module_admin'); // безопасно
-        el.appendChild(adminBtn);
     });
 }
 

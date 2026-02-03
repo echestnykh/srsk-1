@@ -947,6 +947,13 @@
         // ==================== INIT ====================
         async function init() {
             await Layout.init({ module: 'admin', menuId: 'ashram', itemId: 'retreats' });
+
+            // Модуль admin только для суперпользователей
+            if (!window.currentUser?.is_superuser) {
+                window.location.href = '../index.html';
+                return;
+            }
+
             Layout.showLoader();
 
             // Load retreats and holidays in parallel

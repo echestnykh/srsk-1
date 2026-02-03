@@ -480,6 +480,13 @@
         // ==================== INIT ====================
         async function init() {
             await Layout.init({ module: 'admin', menuId: 'ashram', itemId: 'festivals' });
+
+            // Модуль admin только для суперпользователей
+            if (!window.currentUser?.is_superuser) {
+                window.location.href = '../index.html';
+                return;
+            }
+
             await loadHolidays();
         }
 

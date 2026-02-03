@@ -171,8 +171,8 @@
                     </div>
                 </div>
 
-                <!-- Admin Module -->
-                <div class="bg-base-100 rounded-2xl shadow-sm overflow-hidden border-t-4 border-violet-800">
+                <!-- Admin Module (только для суперпользователей) -->
+                <div id="adminModule" class="bg-base-100 rounded-2xl shadow-sm overflow-hidden border-t-4 border-violet-800 hidden">
                     <a href="ashram/retreats.html" onclick="selectModule('admin')"
                        class="block px-6 py-5 bg-gradient-to-r from-violet-100 to-transparent hover:from-violet-200 transition-colors">
                         <div class="flex items-center gap-4">
@@ -231,6 +231,11 @@
 
         async function init() {
             await Layout.init({ menuId: null, itemId: null });
+
+            // Показать модуль "Управление" только суперпользователям
+            if (window.currentUser?.is_superuser) {
+                document.getElementById('adminModule')?.classList.remove('hidden');
+            }
 
             // Установить активную кнопку языка
             const currentLang = localStorage.getItem('srsk_lang') || 'ru';

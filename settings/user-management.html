@@ -954,6 +954,12 @@
             // Инициализация layout (хедер, футер, переводы)
             await Layout.init({ module: 'admin', menuId: 'access', itemId: 'user_management' });
 
+            // Модуль admin только для суперпользователей
+            if (!window.currentUser?.is_superuser) {
+                window.location.href = '../index.html';
+                return;
+            }
+
             // Подождать пока auth-check.js создаст hasPermission
             while (typeof window.hasPermission !== 'function') {
                 await new Promise(resolve => setTimeout(resolve, 50));

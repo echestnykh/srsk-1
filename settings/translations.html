@@ -474,6 +474,12 @@
             // Инициализируем layout (хедер, футер, локации)
             await Layout.init({ module: 'admin', menuId: 'system', itemId: 'translations' });
 
+            // Модуль admin только для суперпользователей
+            if (!window.currentUser?.is_superuser) {
+                window.location.href = '../index.html';
+                return;
+            }
+
             // Загружаем данные страницы
             await loadTranslations();
 
