@@ -26,6 +26,9 @@ let guestsMap = new Map();
 // Хранилище уборок для кликов
 let cleaningsMap = new Map();
 
+// Флаг права на редактирование таймлайна
+const canEditTimeline = () => window.hasPermission?.('edit_timeline') ?? false;
+
 // Базовая дата (сегодня минус 2 дня)
 let baseDate = new Date();
 baseDate.setHours(0, 0, 0, 0);
@@ -502,6 +505,9 @@ function formatDateForInput(date) {
 
 // Открыть модалку действий
 function openActionModal(dayIndex, roomId, buildingName, roomName, bedName, halfIndex = 0) {
+    // Проверка прав на редактирование
+    if (!canEditTimeline()) return;
+
     const checkInDate = getDateForDay(dayIndex);
     const checkOutDate = getDateForDay(dayIndex + 1);
 
@@ -972,59 +978,64 @@ function openResidentModal(guestData, buildingName, roomName) {
 
     document.getElementById('residentInfo').innerHTML = infoHtml;
 
-    // Кнопки действий
+    // Кнопки действий (только если есть права на редактирование)
     let actionsHtml = '';
+    const canEdit = canEditTimeline();
 
-    if (isBooking) {
-        // Действия для бронирования
-        actionsHtml += `<button class="btn btn-primary" onclick="convertToCheckin()">
+    if (canEdit) {
+        if (isBooking) {
+            // Действия для бронирования
+            actionsHtml += `<button class="btn btn-primary" onclick="convertToCheckin()">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+                Заселить
+            </button>`;
+            actionsHtml += `<button class="btn btn-info btn-outline" onclick="showMoveScreen()">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+                Перенос
+            </button>`;
+            actionsHtml += `<button class="btn btn-error btn-outline" onclick="cancelBooking()">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Отменить
+            </button>`;
+        } else if (!isCheckedOut) {
+            // Действия для заселённого гостя (не выселенного)
+            actionsHtml += `<button class="btn btn-warning" onclick="checkoutResident()">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Выселить
+            </button>`;
+            actionsHtml += `<button class="btn btn-outline" onclick="showEditDatesScreen()">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Даты
+            </button>`;
+            actionsHtml += `<button class="btn btn-info btn-outline" onclick="showMoveScreen()">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+                Перенос
+            </button>`;
+        }
+        // Для выселенных (isCheckedOut) — только кнопка удаления
+
+        // Кнопка удаления для всех
+        actionsHtml += `<button class="btn btn-error btn-outline" onclick="deleteResident()">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
-            Заселить
+            Удалить
         </button>`;
-        actionsHtml += `<button class="btn btn-info btn-outline" onclick="showMoveScreen()">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-            </svg>
-            Перенос
-        </button>`;
-        actionsHtml += `<button class="btn btn-error btn-outline" onclick="cancelBooking()">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            Отменить
-        </button>`;
-    } else if (!isCheckedOut) {
-        // Действия для заселённого гостя (не выселенного)
-        actionsHtml += `<button class="btn btn-warning" onclick="checkoutResident()">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            Выселить
-        </button>`;
-        actionsHtml += `<button class="btn btn-outline" onclick="showEditDatesScreen()">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            Даты
-        </button>`;
-        actionsHtml += `<button class="btn btn-info btn-outline" onclick="showMoveScreen()">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-            </svg>
-            Перенос
-        </button>`;
+    } else {
+        actionsHtml = '<p class="text-sm opacity-60">Только просмотр</p>';
     }
-    // Для выселенных (isCheckedOut) — только кнопка удаления
-
-    // Кнопка удаления для всех
-    actionsHtml += `<button class="btn btn-error btn-outline" onclick="deleteResident()">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-        </svg>
-        Удалить
-    </button>`;
 
     document.getElementById('residentActions').innerHTML = actionsHtml;
 
@@ -1338,10 +1349,12 @@ function openCleaningModal(cleaningId) {
     document.getElementById('cleaningStartDate').value = raw.start_date;
     document.getElementById('cleaningEndDate').value = raw.end_date;
 
-    // Показываем/скрываем элементы в зависимости от статуса
+    // Показываем/скрываем элементы в зависимости от статуса и прав
     const isCompleted = cleaningData.isCompleted;
+    const canManageCleaning = window.hasPermission?.('manage_cleaning') ?? false;
     document.getElementById('cleaningCompletedStatus').classList.toggle('hidden', !isCompleted);
-    document.getElementById('cleaningActions').classList.toggle('hidden', isCompleted);
+    // Скрываем действия если нет прав или уборка уже выполнена
+    document.getElementById('cleaningActions').classList.toggle('hidden', isCompleted || !canManageCleaning);
 
     document.getElementById('cleaningModal').showModal();
 }

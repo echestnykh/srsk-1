@@ -84,7 +84,7 @@
 
                     <div class="flex-1"></div>
 
-                    <button class="btn btn-outline btn-primary w-full" onclick="createManualReceipt()" data-i18n="create_receipt">
+                    <button class="btn btn-outline btn-primary w-full" onclick="createManualReceipt()" data-i18n="create_receipt" data-permission="receive_stock">
                         Создать приёмку
                     </button>
                 </div>
@@ -150,7 +150,7 @@
                             <div class="text-sm opacity-60" data-i18n="total">Итого</div>
                             <div class="text-2xl font-bold" id="receiptTotal">₹0</div>
                         </div>
-                        <button type="button" class="btn btn-primary" id="saveReceiptBtn" onclick="saveReceipt()">
+                        <button type="button" class="btn btn-primary" id="saveReceiptBtn" onclick="saveReceipt()" data-permission="receive_stock">
                             <span class="loading loading-spinner loading-sm hidden" id="saveSpinner"></span>
                             <span id="saveText" data-i18n="save_receipt">Сохранить приёмку</span>
                         </button>

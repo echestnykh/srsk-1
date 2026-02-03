@@ -99,7 +99,7 @@
                         </div>
                     </div>
 
-                    <button class="btn btn-primary w-full mt-4" onclick="generateFromMenu()" data-i18n="generate">
+                    <button class="btn btn-primary w-full mt-4" onclick="generateFromMenu()" data-i18n="generate" data-permission="issue_stock">
                         Сформировать
                     </button>
                 </div>
@@ -111,7 +111,7 @@
 
                     <div class="flex-1"></div>
 
-                    <button class="btn btn-outline btn-primary w-full" onclick="createManualIssue()" data-i18n="create_issue">
+                    <button class="btn btn-outline btn-primary w-full" onclick="createManualIssue()" data-i18n="create_issue" data-permission="issue_stock">
                         Создать выдачу
                     </button>
                 </div>
@@ -177,7 +177,7 @@
                             <div class="text-sm opacity-60" data-i18n="total_items_short">Позиций</div>
                             <div class="text-2xl font-bold" id="issuanceTotal">0</div>
                         </div>
-                        <button type="button" class="btn btn-primary" id="saveIssuanceBtn" onclick="saveIssuance()">
+                        <button type="button" class="btn btn-primary" id="saveIssuanceBtn" onclick="saveIssuance()" data-permission="issue_stock">
                             <span class="loading loading-spinner loading-sm hidden" id="saveSpinner"></span>
                             <span id="saveText" data-i18n="save_issuance">Сохранить выдачу</span>
                         </button>

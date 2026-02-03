@@ -29,6 +29,9 @@ let selectedTemplateId = null;
 // Ingredients cache for meal details
 let ingredientsCache = {};
 
+// Флаг права на редактирование меню
+const canEditMenu = () => window.hasPermission?.('edit_menu') ?? false;
+
 // Склонение дней
 const DAY_FORMS = { ru: ['день', 'дня', 'дней'], en: ['day', 'days'], hi: 'दिन' };
 const pluralizeDays = n => Layout.pluralize(n, DAY_FORMS);
@@ -483,13 +486,14 @@ function renderMealSection(dateStr, mealType, index, mealData, isEkadashiDay) {
     const mealTitle = isCafe ? getMealTypeName(mealType) : `${index + 1}. ${getMealTypeName(mealType)}`;
 
     if (dishes.length === 0) {
+        const canEdit = canEditMenu();
         return `
-            <div class="p-4 rounded-lg bg-white/40 meal-empty no-print" onclick="openDishModal('${dateStr}', '${mealType}')">
+            <div class="p-4 rounded-lg bg-white/40 meal-empty no-print" ${canEdit ? `onclick="openDishModal('${dateStr}', '${mealType}')"` : ''} style="${canEdit ? 'cursor: pointer;' : ''}">
                 <div class="flex items-center justify-center py-8">
                     <div class="flex items-center gap-3 opacity-40">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        ${canEdit ? `<svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
+                        </svg>` : ''}
                         <span class="text-xl font-medium">${mealTitle}</span>
                     </div>
                 </div>
@@ -497,8 +501,9 @@ function renderMealSection(dateStr, mealType, index, mealData, isEkadashiDay) {
         `;
     }
 
-    // Блок повара и порций (для кафе - ничего не показываем)
-    const controlsHtml = isCafe ? `` : `
+    // Блок повара и порций (для кафе - ничего не показываем, без права edit_menu - только чтение)
+    const canEdit = canEditMenu();
+    const controlsHtml = isCafe ? `` : (canEdit ? `
             <div class="flex items-center gap-4 mb-3 p-2 bg-base-100 rounded-lg no-print">
                 <div class="flex items-center gap-2 flex-1">
                     <span class="text-sm opacity-60">${t('cook')}:</span>
@@ -520,7 +525,12 @@ function renderMealSection(dateStr, mealType, index, mealData, isEkadashiDay) {
             <div class="print-only print-meal-info">
                 ${t('cook')}:&nbsp;<strong>${getPersonName(cook) || '—'}</strong> · ${t('portions')}:&nbsp;<strong>${portions}</strong>
             </div>
-    `;
+    ` : `
+            <div class="flex items-center gap-4 mb-3 p-2 bg-base-100 rounded-lg text-sm opacity-70">
+                <span>${t('cook')}: <strong>${getPersonName(cook) || '—'}</strong></span>
+                <span>${t('portions')}: <strong>${portions}</strong></span>
+            </div>
+    `);
 
     return `
         <div class="p-4 rounded-lg bg-white/70">
@@ -540,11 +550,13 @@ function renderMealSection(dateStr, mealType, index, mealData, isEkadashiDay) {
                         </svg>
                     </button>
                     ` : ''}
+                    ${canEdit ? `
                     <button class="btn btn-ghost btn-md btn-square opacity-50 hover:opacity-100 no-print" onclick="openDishModal('${dateStr}', '${mealType}')">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                         </svg>
                     </button>
+                    ` : ''}
                 </div>
             </div>
 
@@ -557,8 +569,8 @@ function renderMealSection(dateStr, mealType, index, mealData, isEkadashiDay) {
                     const notEkadashiWarning = isEkadashiDay && !recipe.ekadashi;
                     const categoryName = recipe.category ? getName(recipe.category) : '';
 
-                    // Для кафе — редактируемое количество, для остальных — бейдж
-                    const quantityHtml = isCafe ? `
+                    // Для кафе — редактируемое количество (если есть права), для остальных — бейдж
+                    const quantityHtml = isCafe && canEdit ? `
                         <div class="join no-print">
                             <input type="number"
                                    class="input input-sm input-bordered join-item w-16 text-center"
@@ -581,11 +593,13 @@ function renderMealSection(dateStr, mealType, index, mealData, isEkadashiDay) {
                             </div>
                             <div class="flex items-center gap-2">
                                 ${quantityHtml}
+                                ${canEdit ? `
                                 <button class="btn btn-ghost btn-sm btn-square text-error/60 hover:text-error hover:bg-error/10 no-print" onclick="removeDish('${dateStr}', '${mealType}', '${dish.id}')">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                 </button>
+                                ` : ''}
                             </div>
                         </div>
                     `;
@@ -600,6 +614,7 @@ function renderWeek() {
     const today = formatDate(new Date());
     const m = getMonthNames();
     const d = getDayNames();
+    const canEdit = canEditMenu();
 
     // Генерируем массив дней недели
     const days = Array.from({ length: 7 }, (_, i) => {
@@ -647,11 +662,13 @@ function renderWeek() {
                             <div class="font-semibold">${date.getDate()} ${m[date.getMonth()]}, <span class="font-normal opacity-60">${d[date.getDay()]}</span></div>
                             ${holidayLine}
                         </div>
+                        ${canEdit ? `
                         <button class="btn btn-ghost btn-sm btn-square opacity-50 hover:opacity-100 no-print" onclick="openDayDetail('${dateStr}')">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
                         </button>
+                        ` : ''}
                     </div>
                     ${retreat ? `<div class="mt-1 text-xs font-bold uppercase tracking-wide" style="color: ${retreat.color};">${getName(retreat)}</div>` : ''}
                     ${(() => {

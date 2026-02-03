@@ -125,6 +125,35 @@
             Layout.updateUserInfo();
         }
 
+        // Глобальная функция применения прав к UI-элементам
+        window.applyPermissions = function() {
+            if (!window.currentUser || !window.hasPermission) return;
+            if (window.currentUser.is_superuser) return; // Суперюзер видит всё
+
+            document.querySelectorAll('[data-permission]').forEach(el => {
+                const perm = el.getAttribute('data-permission');
+                if (!window.hasPermission(perm)) {
+                    el.style.display = 'none';
+                    el.classList.add('permission-hidden');
+                    if (el.tagName === 'BUTTON' || el.tagName === 'INPUT') {
+                        el.disabled = true;
+                    }
+                }
+            });
+        };
+
+        // Применить права к статическим элементам
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', window.applyPermissions);
+        } else {
+            window.applyPermissions();
+        }
+
+        // Применить повторно через 500мс для динамического контента
+        setTimeout(window.applyPermissions, 500);
+
+        console.log('✅ Permissions system ready');
+
     } catch (err) {
         console.error('Auth check exception:', err);
         window.location.href = '/login.html';

@@ -67,7 +67,7 @@
                         <textarea id="inventoryNotes" class="textarea textarea-bordered w-full" rows="2"></textarea>
                     </div>
 
-                    <button class="btn btn-primary w-full" onclick="createInventory()" data-i18n="create_inventory">
+                    <button class="btn btn-primary w-full" onclick="createInventory()" data-i18n="create_inventory" data-permission="conduct_inventory">
                         Создать инвентаризацию
                     </button>
                 </div>
@@ -153,7 +153,7 @@
             </div>
 
             <!-- Actions -->
-            <div class="flex justify-between items-center mt-4">
+            <div class="flex justify-between items-center mt-4" data-permission="conduct_inventory">
                 <button class="btn btn-ghost btn-error" onclick="cancelInventory()" data-i18n="cancel_inventory">
                     Отменить
                 </button>
