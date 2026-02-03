@@ -752,8 +752,8 @@
                 <span>Уборка выполнена</span>
             </div>
 
-            <!-- Кнопки действий (скрываются для выполненных) -->
-            <div id="cleaningActions" class="grid grid-cols-2 gap-3 mb-3">
+            <!-- Кнопки действий (скрываются для выполненных и без прав) -->
+            <div id="cleaningActions" class="grid grid-cols-2 gap-3 mb-3" data-permission="manage_cleaning">
                 <button class="btn btn-success" onclick="completeCleaning()">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -768,8 +768,8 @@
                 </button>
             </div>
 
-            <!-- Кнопка удаления (показывается всегда) -->
-            <button id="cleaningDeleteBtn" class="btn btn-ghost btn-sm text-error w-full" onclick="deleteCleaning()">
+            <!-- Кнопка удаления (только с правами manage_cleaning) -->
+            <button id="cleaningDeleteBtn" class="btn btn-ghost btn-sm text-error w-full" onclick="deleteCleaning()" data-permission="manage_cleaning">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>

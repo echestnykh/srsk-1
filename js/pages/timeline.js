@@ -709,6 +709,7 @@ document.addEventListener('click', (e) => {
 // Сохранение заселения
 async function saveCheckin(e) {
     e.preventDefault();
+    if (!canEditTimeline()) return;
     const form = e.target;
 
     const data = {
@@ -761,6 +762,7 @@ async function saveCheckin(e) {
 // Сохранение бронирования
 async function saveBooking(e) {
     e.preventDefault();
+    if (!canEditTimeline()) return;
     const form = e.target;
 
     const bedsCount = parseInt(form.beds_count.value) || 1;
@@ -1063,6 +1065,7 @@ function formatDateYMD(date) {
 // Выселить резидента (установить дату выезда = кликнутый день)
 async function checkoutResident() {
     if (!currentResident) return;
+    if (!canEditTimeline()) return;
 
     const res = currentResident.rawData;
     let checkoutDate;
@@ -1098,6 +1101,7 @@ async function checkoutResident() {
 // Удалить резидента
 async function deleteResident() {
     if (!currentResident) return;
+    if (!canEditTimeline()) return;
     if (!confirm(Layout.t('confirm_delete_entry'))) return;
 
     const { error } = await Layout.db
@@ -1118,6 +1122,7 @@ async function deleteResident() {
 // Отменить бронирование
 async function cancelBooking() {
     if (!currentResident) return;
+    if (!canEditTimeline()) return;
     if (!confirm(Layout.t('confirm_cancel_booking'))) return;
 
     const res = currentResident.rawData;
@@ -1173,6 +1178,7 @@ function showEditDatesScreen() {
 // Сохранить изменённые даты
 async function saveDates() {
     if (!currentResident) return;
+    if (!canEditTimeline()) return;
 
     const checkIn = document.getElementById('editCheckIn').value;
     const checkOut = document.getElementById('editCheckOut').value;
@@ -1312,6 +1318,7 @@ async function showMoveScreen() {
 // Перенос резидента в другой номер
 async function moveToRoom(newRoomId) {
     if (!currentResident) return;
+    if (!canEditTimeline()) return;
 
     const { error } = await Layout.db
         .from('residents')
@@ -1362,6 +1369,7 @@ function openCleaningModal(cleaningId) {
 // Уборка выполнена — помечаем как выполненную (перекрашивается в зелёный)
 async function completeCleaning() {
     if (!currentCleaning) return;
+    if (!window.hasPermission?.('manage_cleaning')) return;
 
     // Для автоуборки — ставим флаг cleaning_done в residents
     if (currentCleaning.isAuto || currentCleaning.isAutoCleaning) {
@@ -1400,6 +1408,7 @@ async function completeCleaning() {
 // Продлить уборку — обновляем дату окончания (ручная) или создаём новую запись (авто)
 async function extendCleaning() {
     if (!currentCleaning) return;
+    if (!window.hasPermission?.('manage_cleaning')) return;
 
     const newEndDate = document.getElementById('cleaningEndDate').value;
     if (!newEndDate) {
@@ -1444,6 +1453,7 @@ async function extendCleaning() {
 // Удалить уборку (скрыть совсем, в отличие от "Выполнена" которая делает зелёной)
 async function deleteCleaning() {
     if (!currentCleaning) return;
+    if (!window.hasPermission?.('manage_cleaning')) return;
 
     // Для автоуборки — помечаем как пропущенную (скрываем)
     if (currentCleaning.isAuto || currentCleaning.isAutoCleaning) {
@@ -1482,6 +1492,7 @@ async function deleteCleaning() {
 // Превратить бронирование в заселение
 async function convertToCheckin() {
     if (!currentResident) return;
+    if (!canEditTimeline()) return;
 
     // Закрываем модалку резидента
     document.getElementById('residentModal').close();
