@@ -1709,7 +1709,7 @@ function printMealDetails() {
 
 // ==================== INIT ====================
 async function init() {
-    await Layout.init({ menuId: 'kitchen', itemId: 'menu' });
+    await Layout.init({ module: 'kitchen', menuId: 'kitchen', itemId: 'menu' });
     Layout.showLoader();
     await loadData();
     Layout.hideLoader();

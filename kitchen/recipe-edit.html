@@ -1173,7 +1173,7 @@
 
         // ==================== INIT ====================
         async function init() {
-            await Layout.init({ menuId: 'kitchen', itemId: 'recipes' });
+            await Layout.init({ module: 'kitchen', menuId: 'kitchen', itemId: 'recipes' });
 
             // Get recipe ID from URL
             const params = new URLSearchParams(window.location.search);

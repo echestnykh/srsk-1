@@ -808,7 +808,7 @@
 
         // ==================== INIT ====================
         async function init() {
-            await Layout.init({ menuId: 'stock', itemId: 'inventory' });
+            await Layout.init({ module: 'kitchen', menuId: 'stock', itemId: 'inventory' });
 
             Layout.$('#inventoryDate').value = new Date().toISOString().split('T')[0];
 

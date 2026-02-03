@@ -569,7 +569,7 @@
 
         // ==================== INIT ====================
         async function init() {
-            await Layout.init({ menuId: 'settings', itemId: 'dictionaries' });
+            await Layout.init({ module: 'kitchen', menuId: 'settings', itemId: 'dictionaries' });
             await loadData(currentTab);
         }
 

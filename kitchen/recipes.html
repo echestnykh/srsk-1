@@ -420,7 +420,7 @@
         // ==================== INIT ====================
         async function init() {
             // Инициализируем layout (хедер, футер, локации)
-            await Layout.init({ menuId: 'kitchen', itemId: 'recipes' });
+            await Layout.init({ module: 'kitchen', menuId: 'kitchen', itemId: 'recipes' });
 
             // Загружаем данные страницы
             await loadLocationId();

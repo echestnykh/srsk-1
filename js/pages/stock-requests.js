@@ -1348,7 +1348,7 @@ function removeItem(index) {
 
 // ==================== INIT ====================
 async function init() {
-    await Layout.init({ menuId: 'stock', itemId: 'requests' });
+    await Layout.init({ module: 'kitchen', menuId: 'stock', itemId: 'requests' });
     await loadLocationId();
     await Promise.all([loadProducts(), loadProductCategories(), loadStock(), loadRecipes(), loadBuyers()]);
     selectPeriod('today');

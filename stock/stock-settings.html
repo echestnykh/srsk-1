@@ -741,7 +741,7 @@
 
         // ==================== INIT ====================
         async function init() {
-            await Layout.init({ menuId: 'stock', itemId: 'stock_settings' });
+            await Layout.init({ module: 'kitchen', menuId: 'stock', itemId: 'stock_settings' });
 
             // Style initial active tab
             const activeBtn = document.querySelector('#mainTabs .tab[data-tab="buyers"]');

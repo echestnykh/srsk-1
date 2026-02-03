@@ -703,7 +703,7 @@
 
         // ==================== INIT ====================
         async function init() {
-            await Layout.init({ menuId: 'kitchen', itemId: 'products' });
+            await Layout.init({ module: 'kitchen', menuId: 'kitchen', itemId: 'products' });
             await Promise.all([loadCategories(), loadUnits()]);
             await loadProducts();
             updatePageUI();
