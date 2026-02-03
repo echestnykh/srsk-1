@@ -314,6 +314,53 @@ Housing (модуль проживания):
 - Создает глобальную функцию `window.hasPermission(permCode)`
 - Ограничивает гостей только их профилем
 - Блокирует pending/rejected/blocked пользователей
+- Добавляет CSS-классы на body: `user-type-{role}`, `is-superuser`
+
+**Проверка прав на UI (двойная защита):**
+
+1. **HTML атрибут** — скрывает элементы без права:
+```html
+<button data-permission="edit_products" onclick="openAddModal()">Добавить</button>
+```
+
+2. **CSS классы на body** — глобальное скрытие для гостей:
+```css
+/* css/common.css */
+body.user-type-guest [data-hide-for-guests] { display: none !important; }
+body.user-type-guest .edit-action { display: none !important; }
+```
+
+3. **JS проверка в функциях** — блокировка действий:
+```javascript
+function openAddModal() {
+    if (!window.hasPermission || !window.hasPermission('edit_products')) {
+        Layout.showNotification('Недостаточно прав', 'error');
+        return;
+    }
+    // ...
+}
+```
+
+4. **Условный рендеринг** — для динамических элементов:
+```javascript
+function renderTable() {
+    const canEdit = window.hasPermission && window.hasPermission('edit_products');
+
+    return items.map(item => `
+        <tr>
+            <td>${item.name}</td>
+            ${canEdit ? `<td><button onclick="edit('${item.id}')">✏️</button></td>` : '<td></td>'}
+        </tr>
+    `).join('');
+}
+```
+
+**Основные права:**
+- `edit_products`, `edit_kitchen_dictionaries` — кухня
+- `edit_housing_dictionaries`, `edit_floor_plan`, `manage_cleaning` — ресепшен
+- `edit_preliminary`, `manage_transfers` — размещение
+- `edit_translations` — настройки
+- `edit_vaishnava`, `edit_own_profile` — профили
 
 ## Key Patterns
 
