@@ -162,6 +162,13 @@ function handler(payload) {
 
 - **js/color-init.js** — Инициализация цвета модуля до рендера (предотвращает FOUC). Подключается в `<head>` каждого HTML файла.
 
+- **js/crm-utils.js** — Утилиты для CRM модуля:
+  - `CrmUtils.UI_ICONS` — SVG иконки в стиле Heroicons (edit, trash, copy, phone, email и др.)
+  - `CrmUtils.STATUS_SVG_ICONS` — иконки статусов воронки продаж
+  - Форматирование: `formatDate()`, `formatDateTime()`, `formatRelativeTime()`, `formatMoney()`, `formatPhone()`
+  - Бейджи: `getStatusBadge()`, `getPriorityBadge()`
+  - Экспортируется как `window.CrmUtils`
+
 - **css/common.css** — Общие стили, CSS-переменная `--current-color` для динамического цвета локации
 
 ### Page Structure
@@ -506,7 +513,7 @@ Layout.showNotification('Проверьте заполнение полей', 'w
 
 ## Menu Structure
 
-Два модуля с разными меню (см. `js/layout.js`):
+Три модуля с разными меню (см. `js/layout.js`):
 
 **Kitchen** (кухня):
 - kitchen: menu, menu_templates, recipes, products
@@ -521,9 +528,15 @@ Layout.showNotification('Проверьте заполнение полей', 'w
 - ashram: retreats, festivals
 - settings: buildings, rooms, housing_dictionaries
 
-**Общее:** раздел «Ашрам» (retreats, festivals) присутствует в обоих модулях.
+**CRM** (продажи):
+- crm_main: dashboard, deals
+- crm_tasks: tasks
+- crm_analytics: activity_log
+- crm_settings: templates, tags, services, currencies, managers
 
-Ключи переводов: `nav_kitchen`, `nav_vaishnavas_team`, etc.
+**Общее:** раздел «Ашрам» (retreats, festivals) присутствует в Kitchen и Housing модулях.
+
+Ключи переводов: `nav_kitchen`, `nav_vaishnavas_team`, `nav_crm_dashboard`, etc.
 
 **Важные переименования:**
 - `nav_retreat_guests` — "Проживание" (бывшее "Распределение")
@@ -713,9 +726,10 @@ tbody.innerHTML = users.map(u => `<td>${escapeHtml(u.email)}</td>`).join('');
 ├── vaishnavas/     # модуль Housing: база людей (все, гости, команда)
 ├── placement/      # модуль Housing: размещение (бронирования, таймлайн, трансферы)
 ├── reception/      # модуль Housing: ресепшен (шахматка, уборка, комнаты, здания)
+├── crm/            # CRM: заявки, сделки, воронка продаж
 ├── settings/       # переводы, пользователи
 ├── css/            # common.css
-├── js/             # layout.js, vaishnavas-utils.js, color-init.js
+├── js/             # layout.js, vaishnavas-utils.js, color-init.js, crm-utils.js
 ├── supabase/       # SQL-миграции (001-097+)
 └── docs/           # документация
 ```
@@ -778,6 +792,21 @@ tbody.innerHTML = users.map(u => `<td>${escapeHtml(u.email)}</td>`).join('');
 |--------|------|
 | Ретриты | `ashram/retreats.html` |
 | Праздники | `ashram/festivals.html` |
+
+### crm/ (CRM)
+| Термин | Файл |
+|--------|------|
+| Дашборд | `crm/dashboard.html` |
+| Все заявки | `crm/deals.html` |
+| Карточка сделки | `crm/deal.html` |
+| Мои задачи | `crm/tasks.html` |
+| Лог активности | `crm/activity-log.html` |
+| Форма заявки | `crm/form.html` |
+| Шаблоны сообщений | `crm/templates.html` |
+| Теги | `crm/tags.html` |
+| Услуги и цены | `crm/services.html` |
+| Курсы валют | `crm/currencies.html` |
+| Менеджеры | `crm/managers.html` |
 
 ### settings/ (Настройки)
 | Термин | Файл |
@@ -936,6 +965,72 @@ if (sortField === 'notes') {
 - `"Латвия, Рига"` → страна: Латвия, город: Рига
 - `"Россия Иркутск"` → страна: Россия, город: Иркутск
 - Известные страны определяются автоматически (Россия, Украина, Латвия, и т.д.)
+
+## CRM Module (crm/)
+
+Модуль управления заявками на участие в ретритах. Воронка продаж, сделки, задачи менеджеров.
+
+### Структура
+
+```
+crm/
+├── dashboard.html      # Дашборд: воронка продаж, статистика
+├── deals.html          # Список всех заявок с фильтрами
+├── deal.html           # Карточка сделки (детали, комментарии, история)
+├── tasks.html          # Мои задачи (менеджера)
+├── activity-log.html   # Лог всех действий
+├── form.html           # Публичная форма заявки
+├── templates.html      # Шаблоны сообщений
+├── tags.html           # Теги для заявок
+├── services.html       # Услуги и цены (проживание, питание)
+├── currencies.html     # Курсы валют (пересчет в INR)
+└── managers.html       # Менеджеры ретритов, очередь распределения
+```
+
+### Utility файл (js/crm-utils.js)
+
+Общие функции для CRM:
+- `CrmUtils.UI_ICONS` — SVG иконки (edit, trash, copy, phone, email и др.)
+- `CrmUtils.STATUS_SVG_ICONS` — иконки статусов воронки
+- `CrmUtils.formatDate()`, `formatDateTime()`, `formatRelativeTime()` — форматирование дат
+- `CrmUtils.formatMoney()`, `formatPhone()` — форматирование
+- `CrmUtils.getStatusBadge()`, `getPriorityBadge()` — бейджи
+
+### База данных (CRM таблицы)
+
+- `crm_deals` — заявки/сделки (статус, менеджер, сумма)
+- `crm_deal_comments` — комментарии к сделкам
+- `crm_deal_history` — история изменений
+- `crm_tasks` — задачи менеджеров
+- `crm_services` — услуги (проживание, питание, транспорт)
+- `crm_currencies` — валюты и курсы к INR
+- `crm_retreat_managers` — связь ретрит-менеджер
+- `crm_manager_queue` — очередь распределения заявок (round-robin)
+- `crm_message_templates` — шаблоны сообщений
+- `crm_tags`, `crm_deal_tags` — теги
+
+### Воронка продаж (статусы)
+
+1. `new` — Новая заявка
+2. `contacted` — Связались
+3. `negotiation` — Переговоры
+4. `payment` — Ожидает оплаты
+5. `paid` — Оплачено
+6. `cancelled` — Отменено
+
+### Права доступа
+
+- `view_crm` — просмотр CRM
+- `edit_crm` — редактирование сделок
+- `edit_crm_settings` — настройки CRM (менеджеры, услуги, валюты)
+
+### Очередь распределения (managers.html)
+
+Новые заявки автоматически распределяются по менеджерам методом round-robin:
+- Менеджеры добавляются в очередь
+- Можно ставить на паузу (`is_active`)
+- `last_assigned_at` отслеживает последнее назначение
+- Чекбокс "Все" для быстрого назначения всех менеджеров на ретрит
 
 ## Guest Portal (guest-portal/)
 
