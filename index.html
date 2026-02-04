@@ -18,6 +18,11 @@
 </head>
 <body class="bg-base-200 min-h-screen flex flex-col">
 
+    <!-- Прелоадер -->
+    <div id="pageLoader" class="fixed inset-0 bg-base-200 z-50 flex items-center justify-center">
+        <span class="loading loading-spinner loading-lg text-primary"></span>
+    </div>
+
     <main class="container mx-auto px-4 py-8 flex-1">
         <div class="max-w-5xl mx-auto relative">
 
@@ -208,6 +213,9 @@
             document.querySelectorAll('.lang-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.lang === currentLang);
             });
+
+            // Скрыть прелоадер
+            document.getElementById('pageLoader')?.remove();
         }
 
         init();
