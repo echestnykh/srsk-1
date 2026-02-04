@@ -1,1116 +1,169 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## Проект
 
-## Project Overview
+**ШРСК** (Sri Rupa Seva Kunja) — веб-приложение для управления ашрамом.
 
-**ШРСК** (Sri Rupa Seva Kunja) — веб-приложение для управления ашрамом: кухня, проживание и другие сервисы. Мультиязычный интерфейс (русский, английский, хинди) с динамической сменой локаций.
+- **Stack**: Vanilla JS + DaisyUI + Tailwind CSS + Supabase
+- **Production**: https://in.rupaseva.com
+- **Supabase Project ID**: `llttmftapmwebidgevmg`
+- **Языки**: русский, английский, хинди
 
-**Production URL:** https://in.rupaseva.com
-**Repository:** https://github.com/krupchanskiy/srsk
-**Deployment:** GitHub Pages (автоматический деплой из main ветки)
+---
 
-## ⚠️ КРИТИЧЕСКИ ВАЖНО: Правило подтверждения реализации
+## Документация
 
-**ПЕРЕД НАЧАЛОМ ЛЮБОЙ БОЛЬШОЙ/СЛОЖНОЙ РЕАЛИЗАЦИИ — ВСЕГДА СПРАШИВАТЬ ПОДТВЕРЖДЕНИЕ У ПОЛЬЗОВАТЕЛЯ!**
+### Ядро системы
+| Файл | Содержание |
+|------|------------|
+| [docs/architecture.md](docs/architecture.md) | Структура проекта, модули, инициализация |
+| [docs/auth.md](docs/auth.md) | Авторизация, права, роли |
+| [docs/utilities.md](docs/utilities.md) | Layout.*, Utils.*, Cache.*, CrmUtils.* |
+| [docs/patterns.md](docs/patterns.md) | Паттерны кода: формы, таблицы, модалки |
+| [docs/database.md](docs/database.md) | Таблицы БД, связи, типичные запросы |
 
-### Когда требуется подтверждение:
-- ✋ После выхода из Plan Mode с готовым планом → СПРОСИТЬ: "Начать реализацию?"
-- ✋ Задача предполагает создание/изменение нескольких файлов
-- ✋ Задача требует применения миграций к базе данных
-- ✋ Задача требует изменения архитектуры или структуры
-- ✋ Любая задача, которая займёт больше 5-10 минут работы
-- ✋ **ЕСЛИ СОМНЕВАЕШЬСЯ — СПРОСИ!**
+### Модули
+| Файл | Содержание |
+|------|------------|
+| [docs/modules/kitchen.md](docs/modules/kitchen.md) | Рецепты, меню, продукты, склад |
+| [docs/modules/housing.md](docs/modules/housing.md) | Люди, размещение, ресепшен |
+| [docs/modules/crm.md](docs/modules/crm.md) | Воронка продаж, сделки, задачи |
+| [docs/modules/guest-portal.md](docs/modules/guest-portal.md) | Портал гостя (отдельный дизайн) |
 
-### Когда можно делать сразу:
-- ✅ Простые однострочные исправления
-- ✅ Очевидные баги (опечатки, простые логические ошибки)
-- ✅ Явный запрос пользователя "сделай X" где X — простая конкретная задача
-- ✅ Задачи, которые занимают < 1 минуты
+---
 
-### Формат запроса подтверждения:
-```
-План готов. Начать реализацию?
-Это включает:
-- Создание X миграций базы данных
-- Создание Y HTML файлов
-- Изменение Z конфигурационных файлов
+## Быстрый старт
 
-[Ответ: да/нет]
-```
+### Структура страницы
 
-**НИКОГДА не начинай реализацию большой задачи без явного "да" от пользователя!**
-
-## Technology Stack
-
-- **Frontend**: Vanilla JS + DaisyUI + Tailwind CSS (CDN)
-- **Backend**: Supabase (PostgreSQL + Auth + Realtime)
-- **Fonts**: Noto Sans + Noto Sans Devanagari (для хинди)
-- **No build step** — HTML файлы открываются напрямую или через локальный сервер
-
-## Development
-
-Сборка не требуется. Для локальной разработки:
-```bash
-# Простой вариант — открыть HTML напрямую в браузере
-open index.html
-
-# Или локальный сервер (для корректной работы с Supabase)
-npx serve .
-```
-
-## Testing
-
-Playwright E2E тесты в папке `tests/`. Не запускать автоматически — предложить при больших изменениях.
-
-```bash
-# Все тесты
-npx playwright test
-
-# Конкретный файл
-npx playwright test tests/housing.spec.js
-
-# С UI
-npx playwright test --ui
-
-# Один тест по имени
-npx playwright test -g "название теста"
-```
-
-Тесты автоматически запускают локальный сервер на порту 3000.
-
-## Supabase MCP
-
-Настроен MCP-сервер для прямого доступа к БД. Project ID: `llttmftapmwebidgevmg`
-
-Доступные операции:
-- `mcp__supabase__execute_sql` — выполнение SQL-запросов
-- `mcp__supabase__apply_migration` — применение миграций
-- `mcp__supabase__list_tables` — просмотр схемы
-- `mcp__supabase__get_logs` — логи сервисов
-- `mcp__supabase__get_advisors` — проверка безопасности
-
-## Supabase Realtime
-
-Realtime включён для автоматического обновления данных между пользователями.
-
-**Таблицы с Realtime:**
-- `residents` — проживающие (шахматка, arrivals, departures, preliminary)
-- `bookings` — бронирования (шахматка)
-- `room_cleanings` — уборки (шахматка, cleaning)
-- `stock` — остатки на складе (stock.html, requests.html)
-- `purchase_requests` — заявки на закупку (requests.html)
-- `stock_receipts` — поступления
-- `stock_issuances` — выдачи
-- `guest_transfers` — трансферы (arrivals, departures)
-- `retreat_registrations` — регистрации на ретриты (preliminary)
-
-**Реализация (placement/timeline.html):**
-```javascript
-// Подписка на изменения
-Layout.db.channel('timeline-realtime')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'residents' }, handler)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, handler)
-    .subscribe();
-
-// Обработчик с debounce 500мс
-function handler(payload) {
-    await loadTimelineData();
-    renderTable();
-}
-```
-
-**Добавление Realtime на другие страницы:**
-1. Включить таблицу: `ALTER PUBLICATION supabase_realtime ADD TABLE tablename;`
-2. Добавить подписку в JS (см. пример выше)
-
-## Architecture
-
-### Core Files
-
-- **js/config.js** — Централизованная конфигурация (подключать ПЕРВЫМ):
-  - `CONFIG.SUPABASE_URL` и `CONFIG.SUPABASE_ANON_KEY`
-  - Создан для устранения дублирования credentials
-
-- **js/layout.js** — Единая точка входа для всех страниц:
-  - Хедер, футер, навигация
-  - Переключение языков и локаций
-  - Supabase клиент (`Layout.db`)
-  - Функция перевода `Layout.t(key)`
-  - Утилиты: `Layout.getName()`, `Layout.pluralize()`, `Layout.debounce()`, `Layout.escapeHtml()`
-  - Прелоадер: `Layout.showLoader()`, `Layout.hideLoader()`
-  - Обработка ошибок: `Layout.handleError(error, context)` — toast-уведомление + console.error
-  - Уведомления: `Layout.showNotification(message, type)` — type: 'info', 'success', 'warning', 'error'
-  - Форматирование количеств: `Layout.formatQuantity(amount, unit)` — округление вверх
-    - g, ml, tsp, tbsp → до 1 знака после запятой
-    - kg, l, pcs, cup → до 2 знаков после запятой
-  - Обёрнут в IIFE для изоляции переменных
-
-- **js/utils.js** — Вспомогательные утилиты:
-  - `Utils.isValidColor(color)` — валидация hex-цветов (#RRGGBB)
-
-- **js/cache.js** — Клиентский кэш с localStorage:
-  - `Cache.getOrLoad(key, loadFn, ttl)` — получить из кэша или загрузить
-  - `Cache.invalidate(key)` — сбросить кэш для конкретного ключа
-
-- **js/vaishnavas-utils.js** — Общие функции для vaishnavas/index.html, team.html, guests.html:
-  - Поиск, сортировка, фильтрация списков людей
-  - Рендер строк таблицы (`VaishnavasUtils.renderPersonRow()`)
-  - Модальные окна добавления (`VaishnavasUtils.openAddModal()`, `saveNewPerson()`)
-  - Загрузка и проверка присутствия (`loadStays()`, `isPresent()`)
-  - Экспортируется как `window.VaishnavasUtils`
-
-- **js/color-init.js** — Инициализация цвета модуля до рендера (предотвращает FOUC). Подключается в `<head>` каждого HTML файла.
-
-- **js/crm-utils.js** — Утилиты для CRM модуля:
-  - `CrmUtils.UI_ICONS` — SVG иконки в стиле Heroicons (edit, trash, copy, phone, email и др.)
-  - `CrmUtils.STATUS_SVG_ICONS` — иконки статусов воронки продаж
-  - Форматирование: `formatDate()`, `formatDateTime()`, `formatRelativeTime()`, `formatMoney()`, `formatPhone()`
-  - Бейджи: `getStatusBadge()`, `getPriorityBadge()`
-  - Экспортируется как `window.CrmUtils`
-
-- **css/common.css** — Общие стили, CSS-переменная `--current-color` для динамического цвета локации
-
-### Page Structure
-
-Каждая страница:
 ```html
 <head>
-    <script src="../js/color-init.js"></script> <!-- или js/color-init.js для корневых -->
+    <script src="js/color-init.js"></script>
 </head>
 <body>
     <div id="header-placeholder"></div>
     <main>...</main>
     <div id="footer-placeholder"></div>
-    <script src="../js/config.js"></script> <!-- ОБЯЗАТЕЛЬНО ПЕРВЫМ -->
-    <script src="../js/cache.js"></script>
-    <script src="../js/utils.js"></script>
-    <script src="../js/layout.js"></script>
-    <script src="../js/vaishnavas-utils.js"></script> <!-- только для vaishnavas/ -->
+
+    <script src="js/config.js"></script>
+    <script src="js/cache.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/layout.js"></script>
     <script>
-        const t = key => Layout.t(key);
         async function init() {
-            await Layout.init({ module: 'housing', menuId: 'housing', itemId: 'timeline' });
-            Layout.showLoader();
-            // load page data...
-            Layout.hideLoader();
+            await Layout.init({ module: 'housing', menuId: 'placement', itemId: 'timeline' });
+            // загрузка данных...
         }
         init();
     </script>
 </body>
 ```
 
-### i18n System
-
-- Переводы хранятся в таблице `translations` (key → ru, en, hi)
-- `Layout.t('key')` возвращает перевод для текущего языка
-- `data-i18n="key"` атрибут для автоматического перевода элементов
-- `data-i18n-placeholder="key"` для placeholder'ов
-- `window.onLanguageChange(lang)` — колбэк при смене языка
-- **Кэширование:** переводы кэшируются в localStorage через `Cache.getOrLoad('translations', ...)`
-- **Автоинвалидация:** если в кэше отсутствуют новые ключи (проверяется список), кэш автоматически инвалидируется
-
-**Ключи переводов для трансферов:**
-- `arrivals`, `departures`, `transfers_title` — заголовки страниц
-- `flight_arrival`, `will_arrive_to_srsc`, `departure_from_srsc`, `flight_departure` — колонки таблиц
-- `needs_transfer` ("Нужно такси"), `ordered` ("Заказано"), `taxi_ordered` ("Такси заказано")
-- `driver_info`, `ordered_by` — поля модалки такси
-- `specify_your_name`, `error_saving`, `cancel_error` — сообщения
-
-### Database Tables
-
-Основные:
-- `locations` — кухни (main, cafe, guest) с цветами
-- `recipes`, `recipe_categories`, `recipe_ingredients` — рецепты
-- `products`, `product_categories`, `product_densities` — продукты и плотности для конвертации единиц
-  - `waste_percent` — процент отходов при очистке (овощи/фрукты). Учитывается автоматически при создании заявок и выдаче
-  - **Формула:** `количество_для_закупки = нужно_очищенной / (1 - waste_percent / 100)`
-  - **Пример:** нужно 1 кг картофеля очищенного (waste_percent=20) → закупать 1 / 0.8 = 1.25 кг
-- `units` — единицы измерения (справочник)
-- `translations` — переводы интерфейса
-- `menu_days`, `menu_items`, `menu_templates` — меню
-- `stock`, `stock_requests`, `stock_inventories` — склад и инвентаризация
-- `stock_issuances` — выдачи со склада (`receiver_id` → vaishnavas)
-- `retreats`, `holidays` — ретриты и праздники
-
-Вайшнавы (люди):
-- `vaishnavas` — единая таблица для всех людей (гости + команда)
-  - `spiritual_teacher` — духовный учитель (для всех)
-  - `is_team_member` — флаг принадлежности к команде
-  - `department_id` — отдел (для команды)
-  - `service` — служение (для команды)
-  - `senior_id` → `vaishnavas` — старший (для команды)
-- `vaishnava_stays` — периоды пребывания членов команды
-- `departments` — отделы (кухня, пуджари и т.д.)
-
-Housing (модуль проживания):
-- `buildings`, `building_types` — здания
-  - `is_temporary` + `available_from`/`available_until` — временные здания с датами
-  - `is_temporary` + NULL dates — временные здания без ограничения (доступно всегда)
-  - `sort_order` группировка: 1-10 постоянные, 50-59 временные без дат, 100+ временные с датами
-- `rooms`, `room_types` — комнаты
-- `residents`, `resident_categories` — проживающие (связь через `vaishnava_id`)
-  - `room_id` может быть NULL = "Самостоятельно" (гость живет вне ашрама)
-- `bookings` — бронирования
-- `room_cleanings`, `cleaning_tasks` — уборка
-- `floor_plans` — планы этажей (SVG)
-
-Регистрации на ретриты:
-- `retreat_registrations` — регистрации (связь через `vaishnava_id`)
-  - `status` — constraint: `'guest'`, `'team'`, `'cancelled'` (НЕ 'registered', 'confirmed', 'pending')
-- `guest_visas`, `guest_payments`, `guest_transfers` — детали регистрации
-- `guest_notes` — заметки о гостях
-- Размещение гостей хранится в `residents` (единая таблица с шахматкой)
-
-### SQL Migrations
-
-Файлы в `supabase/` выполняются последовательно по номерам (001-097+):
-- `001-010` — основная схема, seed-данные, рецепты
-- `011-030` — переводы, RLS-политики, склад, команда
-- `031-050` — инвентаризация, меню-шаблоны, справочники
-- `051-066` — модуль Housing (здания, комнаты, бронирования, уборка)
-- `073-078` — система управления пользователями, ролями и правами
-- `079-097` — **Legacy:** итеративные фиксы RLS-рекурсии (консолидированы в cleanup_redundant_rls_policies)
-- `cleanup_redundant_rls_policies*` — очистка избыточных RLS политик (2026-02-01)
-
-**Примечание:** Миграции 079-097 содержат множество итеративных исправлений RLS-политик, которые были необходимы для решения проблемы рекурсии. Финальное состояние консолидировано — эти миграции можно игнорировать при изучении истории.
-
-Применять через MCP `mcp__supabase__apply_migration` или Supabase SQL Editor.
-
-### User Management & RBAC System
-
-**Архитектура (кросс-модульные роли, 2026-02):**
-- `modules` — модули системы (kitchen, housing) — используются только для категоризации
-- `permissions` — атомарные права по категориям (kitchen, stock, placement, reception, ashram, vaishnavas, settings, profile)
-- `roles` — **кросс-модульные роли** (`module_id = NULL`): team_member, cook, chef, warehouse_manager, receptionist, organizer, guest
-- `role_permissions` — связь ролей и прав
-- `user_roles` — назначенные роли пользователей (роли комбинируются: повар + организатор)
-- `user_permissions` — индивидуальные переопределения прав (is_granted: true/false)
-- `superusers` — таблица UUID суперпользователей (без RLS для проверки прав)
-- Суперпользователи имеют доступ к модулю Admin (Управление)
-
-**Типы пользователей:**
-- **Staff (команда)** — проходит одобрение администратора, получает роли
-- **Guest (гость)** — автоматическое одобрение, доступ только к своему профилю
-- **Superuser** — полный доступ ко всему, обходит все проверки
-
-**Фильтрация меню по правам (layout.js):**
-- `pagePermissions` — карта соответствия страниц и требуемых прав
-- Меню фильтруется автоматически в `filterMenuByPermissions()`
-- Суперпользователи и неавторизованные видят всё меню
-
-**RLS политики (82 политики на 64 таблицы):**
-- Большинство таблиц имеют одну политику `FOR ALL` с условием `true` (полный доступ для authenticated)
-- Справочники: `FOR ALL` для authenticated + `SELECT` для public/anon
-- Таблица `superusers` имеет RLS disabled для избежания рекурсии
-- Суперпользователи проверяются через `auth.uid() IN (SELECT user_id FROM superusers)`
-
-**Структура политик после очистки (2026-02-01):**
-- 47 таблиц: 1 политика (ALL)
-- 12 таблиц: 2 политики (ALL для write + SELECT для public read)
-- 4 таблицы с особыми правилами: vaishnavas, profiles, translations, price_history
-
-**Страницы:**
-- `staff-signup.html` — регистрация команды (approval_status = 'pending')
-- `guest-signup.html` — регистрация гостя (approval_status = 'approved')
-- `pending-approval.html` — ожидание одобрения
-- `settings/user-management.html` — управление пользователями, ролями и правами
-
-**js/auth-check.js:**
-- Проверяет сессию на всех страницах (кроме login/signup)
-- Загружает права пользователя в `window.currentUser.permissions`
-- Создает глобальную функцию `window.hasPermission(permCode)`
-- Ограничивает гостей только их профилем
-- Блокирует pending/rejected/blocked пользователей
-- Добавляет CSS-классы на body: `user-type-{role}`, `is-superuser`
-
-**Проверка прав на UI (двойная защита):**
-
-1. **HTML атрибут** — скрывает элементы без права:
-```html
-<button data-permission="edit_products" onclick="openAddModal()">Добавить</button>
-```
-
-2. **CSS классы на body** — глобальное скрытие для гостей:
-```css
-/* css/common.css */
-body.user-type-guest [data-hide-for-guests] { display: none !important; }
-body.user-type-guest .edit-action { display: none !important; }
-```
-
-3. **JS проверка в функциях** — блокировка действий:
-```javascript
-function openAddModal() {
-    if (!window.hasPermission || !window.hasPermission('edit_products')) {
-        Layout.showNotification('Недостаточно прав', 'error');
-        return;
-    }
-    // ...
-}
-```
-
-4. **Условный рендеринг** — для динамических элементов:
-```javascript
-function renderTable() {
-    const canEdit = window.hasPermission && window.hasPermission('edit_products');
-
-    return items.map(item => `
-        <tr>
-            <td>${item.name}</td>
-            ${canEdit ? `<td><button onclick="edit('${item.id}')">✏️</button></td>` : '<td></td>'}
-        </tr>
-    `).join('');
-}
-```
-
-**Основные права:**
-- `edit_products`, `edit_kitchen_dictionaries` — кухня
-- `edit_housing_dictionaries`, `edit_floor_plan`, `manage_cleaning` — ресепшен
-- `edit_preliminary`, `manage_transfers` — размещение
-- `edit_translations` — настройки
-- `edit_vaishnava`, `edit_own_profile` — профили
-
-## Key Patterns
-
-### Локализованные имена объектов
-```javascript
-Layout.getName(item)  // возвращает item.name_ru / name_en / name_hi
-```
-
-### Отображение имени вайшнава
-**ВАЖНО:** Всегда использовать этот порядок приоритета:
-```javascript
-// Правильно: spiritual_name ИЛИ полное имя (first_name + last_name)
-const name = vaishnava.spiritual_name ||
-             `${vaishnava.first_name || ''} ${vaishnava.last_name || ''}`.trim() ||
-             'Без имени';
-
-// НЕПРАВИЛЬНО: не использовать только first_name без last_name
-const name = vaishnava.spiritual_name || vaishnava.first_name; // ❌
-```
-
-**Причина:** Если нет духовного имени, нужно показывать полное имя (Имя Фамилия), а не только имя.
-
-### Склонение слов
-```javascript
-const FORMS = {
-    ru: ['рецепт', 'рецепта', 'рецептов'],
-    en: ['recipe', 'recipes'],
-    hi: 'व्यंजन'  // не склоняется
-};
-Layout.pluralize(5, FORMS)  // "5 рецептов"
-```
-
-### Хранение количеств
-Все количества в БД хранятся в единицах продукта (kg, g, l, ml, pcs), **без конвертации в базовые единицы**. Если продукт имеет `unit='kg'`, то `quantity=0.5` означает 0.5 кг.
-
-### Работа с датами — ТОЛЬКО локальное время
-**ВАЖНО:** Всегда использовать локальное время, НЕ UTC!
+### Работа с БД
 
 ```javascript
-// ✅ ПРАВИЛЬНО — локальное форматирование
-function formatDate(date) {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-}
-
-// ❌ НЕПРАВИЛЬНО — toISOString() конвертирует в UTC!
-function formatDate(date) {
-    return date.toISOString().split('T')[0]; // Сдвигает дату на день для часовых поясов +3 и выше
-}
-```
-
-**Причина:** `toISOString()` возвращает UTC время. Для пользователя в часовом поясе +5:30 (Индия) полночь локального времени = 18:30 предыдущего дня в UTC. Это приводит к сдвигу дат на день назад.
-
-### Учет процента на очистку (waste_percent)
-При создании заявок (`stock/requests.html`) и выдаче со склада (`stock/issue.html`) автоматически учитывается процент отходов при очистке овощей/фруктов.
-
-**Формула:**
-```javascript
-const wastePercent = product.waste_percent || 0;
-const quantityToPurchase = wastePercent > 0
-    ? neededQuantity / (1 - wastePercent / 100)
-    : neededQuantity;
-```
-
-**Логика:** Если 80% от нечищеной массы составляет чистая (waste_percent=20%), то для получения 1 кг чищеной нужно: 1 / 0.8 = 1.25 кг нечищеной.
-
-**Примеры:**
-- Рецепту нужно 1 кг очищенного картофеля (waste_percent = 20%)
-  - Закупить: 1 / (1 - 0.20) = 1 / 0.8 = **1.25 кг**
-- Рецепту нужно 10 кг брокколи (waste_percent = 50%)
-  - Закупить: 10 / (1 - 0.50) = 10 / 0.5 = **20 кг**
-
-**Реализовано (2026-01-31):**
-- `requests.html:addProductToRequest()` — при ручном добавлении продукта
-- `requests.html:generateRequest()` — при автоматическом создании заявки из меню
-- `issue.html:addIssuanceItem()` — при добавлении продукта в выдачу
-- **UI пояснение:** под количеством показывается текст `(+50% на очистку)` для наглядности
-
-### Цвет модуля
-CSS-переменная `--current-color` определяет акцентный цвет:
-- **Kitchen**: `#f49800` (оранжевый)
-- **Housing**: `#8b5cf6` (фиолетовый)
-- **CRM**: `#10b981` (изумрудный)
-- **Admin**: `#374151` (тёмно-серый)
-
-Использовать для кнопок, активных табов, подменю. Цвет устанавливается через `js/color-init.js` в `<head>` для предотвращения мигания при загрузке.
-
-### Supabase запросы
-```javascript
-// Указывать конкретные поля вместо select('*')
+// Загрузка данных
 const { data, error } = await Layout.db
-    .from('recipes')
-    .select('id, name_ru, name_en, name_hi, recipe_categories(id, name_ru, name_en, name_hi)')
-    .order('name_ru');
-```
+    .from('vaishnavas')
+    .select('id, spiritual_name, first_name, last_name')
+    .order('spiritual_name');
 
-### Cache Busting
-
-При изменении JS файлов в `js/pages/` обновить версию в соответствующем HTML:
-```html
-<script src="../js/pages/preliminary.js?v=2"></script>
-```
-Это гарантирует что браузеры загрузят обновлённый код после деплоя на GitHub Pages.
-
-### Лимит 1000 записей Supabase
-**ВАЖНО:** Supabase ограничивает 1000 записей на один запрос. `.limit(5000)` НЕ работает — это клиентский хинт, сервер всё равно вернёт максимум 1000.
-
-Для таблиц с >1000 записей используй пагинацию через `.range()`:
-```javascript
-const allData = [];
-let from = 0;
-const pageSize = 1000;
-
-while (true) {
-    const { data } = await db.from('translations')
-        .select('key, ru, en, hi')
-        .range(from, from + pageSize - 1);
-
-    if (!data || data.length === 0) break;
-    allData.push(...data);
-
-    if (data.length < pageSize) break;
-    from += pageSize;
-}
-```
-
-**Затронутые таблицы:** `translations` (1168+ записей) — загрузка реализована с пагинацией в `layout.js`.
-
-### Обработка ошибок и уведомлений
-```javascript
-// Унифицированная обработка ошибок — toast + console.error
 if (error) {
-    Layout.handleError(error, 'Загрузка рецептов');
+    Layout.handleError(error, 'Загрузка');
     return;
 }
 
-// Успешные операции и информирование
-Layout.showNotification('Данные сохранены', 'success');
-Layout.showNotification('Проверьте заполнение полей', 'warning');
+// Локализованное имя
+Layout.getName(item)  // item.name_ru | name_en | name_hi
 
-// НЕ ИСПОЛЬЗОВАТЬ alert() — заменять на Layout.showNotification()
+// Перевод интерфейса
+Layout.t('save')  // "Сохранить"
 ```
 
-## Menu Structure
+---
 
-Три модуля с разными меню (см. `js/layout.js`):
+## Ключевые правила
 
-**Kitchen** (кухня):
-- kitchen: menu, menu_templates, recipes, products
-- stock: stock_balance, requests, receive, issue, inventory, stock_settings
-- ashram: retreats, vaishnavas_team
-- settings: dictionaries, translations, festivals
-
-**Housing** (проживание):
-- vaishnavas: vaishnavas_all, vaishnavas_guests, vaishnavas_team
-- placement: retreat_guests (Проживание), preliminary (Распределение), arrivals, departures, transfers
-- reception: floor_plan, cleaning, buildings, rooms, housing_dictionaries
-- ashram: retreats, festivals
-- settings: buildings, rooms, housing_dictionaries
-
-**CRM** (продажи):
-- crm_main: dashboard, deals
-- crm_tasks: tasks
-- crm_analytics: activity_log
-- crm_settings: templates, tags, services, currencies, managers
-
-**Admin** (управление) — **только для суперпользователей**:
-- ashram: retreats, festivals
-- access: user_management
-- system: translations
-
-**Примечание:** Модуль Admin доступен только суперпользователям (`is_superuser = true`). Кнопка модуля скрыта в селекторе, страницы редиректят на index.html при отсутствии прав.
-
-Ключи переводов: `nav_kitchen`, `nav_vaishnavas_team`, `nav_crm_dashboard`, etc.
-
-**Важные переименования:**
-- `nav_retreat_guests` — "Проживание" (бывшее "Распределение")
-- `nav_preliminary` — "Распределение" (бывшее "Предварительное")
-- `retreat_guests` и `preliminary` — аналогичные ключи без префикса для layout.js
-
-## Language
-
-Весь код, комментарии и коммиты — на русском языке.
-
-## UI/UX Rules
-
-Обязательные правила для интерфейса:
-
-1. **НЕ ИСПОЛЬЗОВАТЬ EMOJI — только SVG иконки в стиле Heroicons!**
-   - Все иконки должны быть в едином стиле: `stroke="currentColor"`, `fill="none"`, `stroke-width="1.5"`, `stroke-linecap="round"`
-   - Базовые иконки хранятся в `CrmUtils.UI_ICONS` и `CrmUtils.STATUS_SVG_ICONS` (для CRM модуля)
-   - Для других модулей — использовать inline SVG в том же стиле
-   - Пример иконки:
-   ```html
-   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-       <path stroke-linecap="round" stroke-linejoin="round" d="M..." />
-   </svg>
-   ```
-   - Библиотека иконок: https://heroicons.com (outline стиль)
-
-2. **Числовые поля без стрелок** — все `input[type="number"]` должны быть без spinners (стрелок вверх/вниз). Стили уже прописаны в `common.css`.
-
-3. **Цвет локации** — использовать `--current-color` для акцентных элементов.
-
-4. **Трёхязычность** — все тексты должны иметь переводы (ru, en, hi).
-
-5. **Безопасность от XSS**:
-   - НЕ ИСПОЛЬЗОВАТЬ `innerHTML` с пользовательскими данными
-   - Использовать DOM API: `textContent`, `createElement()`, `appendChild()`
-   - Для HTML из БД использовать `Layout.escapeHtml()`
-   - Валидировать цвета перед вставкой в style: `Utils.isValidColor(color)`
-
-6. **Inline onclick** — предпочитать event delegation для сложных случаев, но для простых элементов (поиск, модалки) inline допустим:
-   ```javascript
-   // Event delegation для динамических элементов
-   document.addEventListener('click', (e) => {
-       const action = e.target.closest('[data-action]');
-       if (action?.dataset.action === 'delete-item') {
-           deleteItem(action.dataset.id);
-       }
-   });
-
-   // Inline допустим для статичных элементов
-   <input oninput="onSearchInput(this.value)" />
-   <button onclick="openModal()">Открыть</button>
-   ```
-
-7. **Поле поиска с крестиком** — все поля поиска должны иметь кнопку очистки (×), которая появляется при вводе и скрывается при очистке. Пример реализации см. в `vaishnavas/index.html`.
-
-8. **Таблицы с сортировкой** — все таблицы данных должны иметь сортировку по столбцам:
-   - Заголовки столбцов кликабельные с иконкой сортировки (↑/↓)
-   - По умолчанию сортировка по первому значимому столбцу
-   - Клик переключает: asc → desc → asc
-   - Пустые значения всегда в конце списка (независимо от направления)
-   - Пример реализации см. в `vaishnavas/preliminary.html`
-
-## Storage Buckets
-
-Supabase Storage buckets с публичным доступом:
-- `vaishnava-photos` — фотографии вайшнавов
-- `floor-plans` — планы этажей (SVG)
-- `guest-photos` — устаревший, использовать vaishnava-photos
-
-Для каждого bucket должны быть RLS-политики (SELECT, INSERT, UPDATE, DELETE).
-
-## Common Issues
-
-1. **Конфликт имён переменной `t`** — layout.js обёрнут в IIFE, но если объявить `const t` на странице до вызова `Layout.t`, может быть конфликт.
-   - Используйте `const t = key => Layout.t(key);` после загрузки layout.js
-   - В циклах/функциях где переменная `t` используется для других целей (например, transfer объект), используйте `Layout.t()` напрямую
-
-2. **RLS на Supabase** — при update/insert с `.select().single()` может вернуть ошибку если RLS не настроен. Используйте `.select()` и берите `result.data?.[0]`.
-
-3. **Storage RLS** — при ошибке "new row violates row-level security policy" для загрузки файлов — проверить RLS-политики для storage.objects.
-
-4. **Skeleton loaders** — HTML содержит skeleton-карточки, которые заменяются после загрузки данных.
-
-5. **Кэш переводов** — после добавления новых переводов в БД кэш может быть устаревшим:
-   - Автоматическая инвалидация работает только для известных ключей (см. `loadTranslations()` в layout.js)
-   - Вручную: `Cache.invalidate('translations'); location.reload();` в консоли
-   - Или обновление с очисткой: `Ctrl+Shift+R`
-
-6. **Browser back-forward cache (bfcache)** — при навигации "Назад" страница восстанавливается из кэша без выполнения JS:
-   ```javascript
-   window.addEventListener('pageshow', (event) => {
-       if (event.persisted) {
-           // Перерисовать UI с актуальными данными
-           renderTable();
-       }
-   });
-   ```
-
-7. **N+1 запросы** — избегать циклов с await внутри. Загружать все данные одним запросом с `.in()` и группировать на клиенте:
+### Имена вайшнавов
 ```javascript
-// Плохо: N+1 запросов
-for (const booking of bookings) {
-    const { data } = await Layout.db.from('residents').select('*').eq('booking_id', booking.id);
-}
-
-// Хорошо: 1 запрос
-const { data: allResidents } = await Layout.db.from('residents').select('*').in('booking_id', bookingIds);
-const grouped = allResidents.reduce((acc, r) => { (acc[r.booking_id] ||= []).push(r); return acc; }, {});
+// Правильно: spiritual_name → first_name + last_name
+const name = vaishnava.spiritual_name ||
+             `${vaishnava.first_name || ''} ${vaishnava.last_name || ''}`.trim();
 ```
 
-8. **RLS рекурсия** (исправлено 2026-02-01) — при создании RLS политик избегать вызовов функций, которые читают ту же таблицу:
-   - ❌ ПЛОХО: политика на `user_permissions` вызывает функцию → функция читает `vaishnavas` → политика на `vaishnavas` вызывает функцию → рекурсия
-   - ✅ ХОРОШО: использовать отдельную таблицу без RLS (`superusers`) или inline SQL без функций
-   - Функции с `SECURITY DEFINER` обходят RLS, но могут вызывать проблемы в контексте политик
-   - Политика `FOR ALL` работает для INSERT/UPDATE/DELETE одновременно
-   - **Текущее решение:** большинство таблиц используют простые политики `FOR ALL USING (true)`, проверка прав происходит на уровне приложения
-
-9. **Деплой изменений** — после коммита в main ветку GitHub Pages автоматически деплоит за 1-2 минуты. Проверить статус: GitHub → Actions. После деплоя может потребоваться жёсткое обновление страницы (Cmd+Shift+R) или cache busting через `?v=N`.
-
-10. **Tailwind desktop breakpoint** — для работы меню первого уровня в хедере каждая страница должна иметь конфиг tailwind:
-    ```html
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>tailwind.config = { theme: { extend: { screens: { 'desktop': '1200px' } } } }</script>
-    ```
-    Без этого класс `desktop:flex` не работает и меню скрывается.
-
-11. **Ленивая загрузка для больших списков** — на страницах с потенциально большим количеством данных (user-management, vaishnavas) использовать паттерн:
-    - По умолчанию показывать placeholder "Введите имя для поиска или выберите категорию"
-    - Загружать данные только при поиске (от 2 символов) или выборе фильтра/таба
-    - Фильтрация на стороне БД (`.ilike()`, `.eq()`) вместо клиента
-    - Лимит результатов (`.limit(100)`)
-    - Debounce для поиска (300мс)
-
+### Даты — только локальное время!
 ```javascript
-// Быстрая загрузка только счётчиков
-async function loadCounts() {
-    const { data } = await db.from('table').select('id, status');
-    document.getElementById('countAll').textContent = data.length;
-    document.getElementById('countActive').textContent = data.filter(x => x.status === 'active').length;
-}
+// Правильно
+const d = new Date(date);
+return `${d.getDate()}.${d.getMonth()+1}.${d.getFullYear()}`;
 
-// Ленивая загрузка с фильтрами
-async function loadData(filter = {}) {
-    let query = db.from('table').select('*').limit(100);
-    if (filter.search) query = query.ilike('name', `%${filter.search}%`);
-    if (filter.status) query = query.eq('status', filter.status);
-    const { data } = await query;
-    renderTable(data);
-}
-
-// Инициализация: только счётчики + placeholder
-loadCounts();
-showPlaceholder();
-
-// После действий (сохранение, удаление) — сохранять текущий фильтр/таб
-async function saveItem() {
-    await db.from('table').update(...);
-    loadCounts();  // обновить счётчики
-    loadData({ tab: currentTab !== 'all' ? currentTab : null });  // сохранить таб
-}
+// Неправильно (сдвигает дату в UTC!)
+date.toISOString().split('T')[0];  // ❌
 ```
 
-12. **XSS защита пользовательских данных** — при рендере данных пользователя (имя, email) использовать escapeHtml:
+### XSS защита
 ```javascript
-function escapeHtml(str) {
-    if (!str) return '';
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-}
+// Экранировать пользовательские данные
+Layout.escapeHtml(user.name)
 
-// Использование в шаблонах
-const displayName = escapeHtml(user.spiritual_name || user.first_name);
-tbody.innerHTML = users.map(u => `<td>${escapeHtml(u.email)}</td>`).join('');
+// Валидировать цвета
+Utils.isValidColor(color) ? color : '#ccc'
 ```
-
-## File Locations
-
-```
-/                   # корень (index.html, login.html)
-├── kitchen/        # рецепты, меню, продукты
-├── stock/          # склад, заявки, инвентаризация
-├── ashram/         # ретриты, праздники
-├── vaishnavas/     # модуль Housing: база людей (все, гости, команда)
-├── placement/      # модуль Housing: размещение (бронирования, таймлайн, трансферы)
-├── reception/      # модуль Housing: ресепшен (шахматка, уборка, комнаты, здания)
-├── crm/            # CRM: заявки, сделки, воронка продаж
-├── settings/       # переводы, пользователи
-├── css/            # common.css
-├── js/             # layout.js, vaishnavas-utils.js, color-init.js, crm-utils.js
-├── supabase/       # SQL-миграции (001-097+)
-└── docs/           # документация
-```
-
-## Словарь страниц
-
-Быстрый поиск: что где находится.
-
-### vaishnavas/ (Вайшнавы)
-| Термин | Файл |
-|--------|------|
-| Все вайшнавы | `vaishnavas/index.html` |
-| Команда | `vaishnavas/team.html` |
-| Гости | `vaishnavas/guests.html` |
-| Профиль вайшнава | `vaishnavas/person.html` |
-
-### placement/ (Размещение)
-| Термин | Файл |
-|--------|------|
-| Проживание (импорт CSV) | `vaishnavas/retreat-guests.html` |
-| Распределение (предварительное) | `vaishnavas/preliminary.html` |
-| Шахматка (timeline) | `placement/timeline.html` |
-| Заезды | `placement/arrivals.html` |
-| Выезды | `placement/departures.html` |
-| Трансферы | `placement/transfers.html` |
-
-### reception/ (Ресепшен)
-| Термин | Файл |
-|--------|------|
-| Планы этажей | `reception/floor-plan.html` |
-| Редактор планов | `reception/floor-plan-editor.html` |
-| Уборка | `reception/cleaning.html` |
-| Комнаты | `reception/rooms.html` |
-| Здания | `reception/buildings.html` |
-| Справочники (ресепшен) | `reception/dictionaries.html` |
-
-### kitchen/ (Кухня)
-| Термин | Файл |
-|--------|------|
-| Рецепты (список) | `kitchen/recipes.html` |
-| Рецепт (карточка) | `kitchen/recipe.html` |
-| Редактор рецепта | `kitchen/recipe-edit.html` |
-| Меню | `kitchen/menu.html` |
-| Шаблоны меню | `kitchen/menu-templates.html` |
-| Продукты | `kitchen/products.html` |
-| Справочники (кухня) | `kitchen/dictionaries.html` |
-
-### stock/ (Склад)
-| Термин | Файл |
-|--------|------|
-| Склад / Остатки | `stock/stock.html` |
-| Заявки | `stock/requests.html` |
-| Поступление | `stock/receive.html` |
-| Выдача / Отпуск | `stock/issue.html` |
-| Инвентаризация | `stock/inventory.html` |
-| Настройки склада | `stock/stock-settings.html` |
-
-### ashram/ (Ашрам) — модуль Admin
-| Термин | Файл | Особенности |
-|--------|------|-------------|
-| Ретриты | `ashram/retreats.html` | Только суперпользователи |
-| Праздники | `ashram/festivals.html` | Только суперпользователи |
-
-### crm/ (CRM)
-| Термин | Файл |
-|--------|------|
-| Дашборд | `crm/dashboard.html` |
-| Все заявки | `crm/deals.html` |
-| Карточка сделки | `crm/deal.html` |
-| Мои задачи | `crm/tasks.html` |
-| Лог активности | `crm/activity-log.html` |
-| Форма заявки | `crm/form.html` |
-| Шаблоны сообщений | `crm/templates.html` |
-| Теги | `crm/tags.html` |
-| Услуги и цены | `crm/services.html` |
-| Курсы валют | `crm/currencies.html` |
-| Менеджеры | `crm/managers.html` |
-
-### settings/ (Настройки) — модуль Admin
-| Термин | Файл | Особенности |
-|--------|------|-------------|
-| Переводы | `settings/translations.html` | Только суперпользователи |
-| Управление пользователями | `settings/user-management.html` | Только суперпользователи |
-
-### Корень
-| Термин | Файл | Особенности |
-|--------|------|-------------|
-| Главная | `index.html` | Без header/footer, встроенный переключатель языков, CSS columns для меню |
-| Логин | `login.html` | |
-
-## View/Edit Mode Pattern
-
-Страницы профилей (person.html) используют паттерн view/edit:
-```html
-<div id="profileContainer" class="view-mode">
-    <span class="view-only">Значение</span>
-    <input class="edit-only" value="...">
-</div>
-```
-
-```css
-.view-mode .edit-only { display: none; }
-.edit-mode .view-only { display: none; }
-```
-
-```javascript
-function enterEditMode() {
-    document.getElementById('profileContainer').classList.replace('view-mode', 'edit-mode');
-}
-```
-
-## Auto-Resizing Textarea Pattern
-
-Для textarea, которые должны автоматически растягиваться по высоте контента:
-
-```html
-<textarea
-    class="textarea textarea-xs textarea-bordered w-full auto-resize-textarea"
-    rows="1"
-    oninput="autoResizeTextarea(this)"
-    onchange="saveData(this.value)"></textarea>
-```
-
-```javascript
-// Автоматическая подстройка высоты textarea
-function autoResizeTextarea(textarea) {
-    textarea.style.height = 'auto';
-    textarea.style.height = textarea.scrollHeight + 'px';
-}
-
-// Вызвать для всех существующих textarea после рендера
-setTimeout(() => {
-    document.querySelectorAll('.auto-resize-textarea').forEach(textarea => {
-        autoResizeTextarea(textarea);
-    });
-}, 0);
-```
-
-## Color Status Indicators
-
-Паттерн цветовой индикации статуса (используется в preliminary.html):
-
-```javascript
-// Подсветка ячеек в зависимости от статуса
-const buildingId = resident?.building_id;
-const roomId = resident?.room_id;
-
-// Зеленый - заселен, красный - самостоятельное проживание, без цвета - не заселен
-const cellClass = buildingId === 'self'
-    ? 'bg-error/20'
-    : (buildingId && roomId) ? 'bg-success/20' : '';
-```
-
-```html
-<!-- Применение к ячейкам -->
-<td class="${cellClass}">...</td>
-```
-
-**Цветовая схема:**
-- 🟢 `bg-success/20` — успешное состояние (гость заселен)
-- 🔴 `bg-error/20` — проблемное состояние (самостоятельное проживание)
-- ⚪ Без цвета — нейтральное состояние (не заселен)
-- 🟡 `bg-warning/30` — предупреждение (неполные данные)
-
-## Special Sorting Logic
-
-Сортировка с выносом пустых значений в конец списка (независимо от направления):
-
-```javascript
-if (sortField === 'notes') {
-    const aNotes = getLocalNotes(a.id);
-    const bNotes = getLocalNotes(b.id);
-
-    // Если оба пустые - не меняем порядок
-    if (!aNotes && !bNotes) return 0;
-    // Если только a пустое - оно всегда в конец
-    if (!aNotes) return 1;
-    // Если только b пустое - оно всегда в конец
-    if (!bNotes) return -1;
-
-    // Оба не пустые - сортируем нормально
-    aVal = aNotes.toLowerCase();
-    bVal = bNotes.toLowerCase();
-}
-```
-
-Результат:
-- ↑ asc: 1, 2, 3, ... пустые
-- ↓ desc: 3, 2, 1, ... пустые
-
-## Transfers System (arrivals.html, departures.html, transfers.html)
-
-Страницы заездов, выездов и трансферов работают с данными из таблицы `guest_transfers`:
-- `direction` — 'arrival' или 'departure'
-- `flight_datetime` — время прилета/вылета
-- `needs_transfer` — 'yes'/'no' (нужен трансфер)
-- `taxi_status` — 'ordered' (такси заказано) или NULL
-- `taxi_driver_info` — информация о водителе (текст)
-- `taxi_ordered_by` — кто заказал (имя)
-
-**Бейджи статуса:**
-- 🟡 Желтый `badge-warning` — нужен трансфер, но такси не заказано
-- 🟢 Зеленый `badge-success` — такси заказано (кликабельный, открывает модалку с редактированием)
-
-**Колонки:**
-- `arrivals.html`: "Прилет" (время + бейдж такси), "Приедет ≈" (расчетное время приезда в ашрам = прилет + 4 часа)
-- `departures.html`: "Выезд" (время выезда = вылет - 7 часов + бейдж такси), "Вылет" (время вылета)
-
-**Подсветка размещения:**
-- 🟢 `bg-success/20` — гость размещен в ашраме (показывает здание и комнату)
-- 🔴 `bg-error/20` — самостоятельное проживание (room_id = NULL)
-
-**Модалки такси:**
-- При клике на зеленый бейдж "Заказано" открывается модалка с редактированием
-- Поля: информация о водителе (textarea), кто заказал (input)
-- Кнопки: Сохранить, Отменить такси
-- Крестик закрытия в правом верхнем углу (без кнопки "Закрыть")
-
-## CSV Import (retreat-guests.html)
-
-Страница гостей ретрита поддерживает импорт из CSV с автоматическим:
-- Парсингом дат в форматах: `"7 февраля 18:30"`, `"22.02.26 5:50"`, `"06.02.2026 в 04.05"`, `"07.03.2026"`, `"7 февраля"`
-- Матчингом по email (+5), телефону (+4), духовному имени (+3), telegram (+3)
-- Разрешением конфликтов при score 3-4 (интерактивный выбор)
-
-Колонки CSV: `name`, `name2` (духовное имя), `phone`, `email`, `birth`, `country`, `arrival_time`, `departure_time`, `transfer_up_2`, `transfer_back`, `hotel`, `famili`, `Questions`.
-
-### Правила очистки полей
-
-**Духовное имя** (`name2`) — если значение: `нет`, `пока нет`, `еще нет`, `ещё нет`, `-`, `–`, `no` — поле очищается (остаётся пустым).
-
-**Страна и город** (`country`) — если указаны вместе, разделяются на два поля:
-- `"Латвия, Рига"` → страна: Латвия, город: Рига
-- `"Россия Иркутск"` → страна: Россия, город: Иркутск
-- Известные страны определяются автоматически (Россия, Украина, Латвия, и т.д.)
-
-## CRM Module (crm/)
-
-Модуль управления заявками на участие в ретритах. Воронка продаж, сделки, задачи менеджеров.
-
-### Структура
-
-```
-crm/
-├── dashboard.html      # Дашборд: воронка продаж, статистика
-├── deals.html          # Список всех заявок с фильтрами
-├── deal.html           # Карточка сделки (детали, комментарии, история)
-├── tasks.html          # Мои задачи (менеджера)
-├── activity-log.html   # Лог всех действий
-├── form.html           # Публичная форма заявки
-├── templates.html      # Шаблоны сообщений
-├── tags.html           # Теги для заявок
-├── services.html       # Услуги и цены (проживание, питание)
-├── currencies.html     # Курсы валют (пересчет в INR)
-└── managers.html       # Менеджеры ретритов, очередь распределения
-```
-
-### Utility файл (js/crm-utils.js)
-
-Общие функции для CRM:
-- `CrmUtils.UI_ICONS` — SVG иконки (edit, trash, copy, phone, email и др.)
-- `CrmUtils.STATUS_SVG_ICONS` — иконки статусов воронки
-- `CrmUtils.formatDate()`, `formatDateTime()`, `formatRelativeTime()` — форматирование дат
-- `CrmUtils.formatMoney()`, `formatPhone()` — форматирование
-- `CrmUtils.getStatusBadge()`, `getPriorityBadge()` — бейджи
-
-### База данных (CRM таблицы)
-
-- `crm_deals` — заявки/сделки (статус, менеджер, сумма)
-- `crm_deal_comments` — комментарии к сделкам
-- `crm_deal_history` — история изменений
-- `crm_tasks` — задачи менеджеров
-- `crm_services` — услуги (проживание, питание, транспорт)
-- `crm_currencies` — валюты и курсы к INR
-- `crm_retreat_managers` — связь ретрит-менеджер
-- `crm_manager_queue` — очередь распределения заявок (round-robin)
-- `crm_message_templates` — шаблоны сообщений
-- `crm_tags`, `crm_deal_tags` — теги
-
-### Воронка продаж (статусы)
-
-1. `new` — Новая заявка
-2. `contacted` — Связались
-3. `negotiation` — Переговоры
-4. `payment` — Ожидает оплаты
-5. `paid` — Оплачено
-6. `cancelled` — Отменено
 
 ### Права доступа
+```javascript
+// Проверка права
+if (!window.hasPermission?.('edit_products')) return;
 
-- `view_crm` — просмотр CRM
-- `edit_crm` — редактирование сделок
-- `edit_crm_settings` — настройки CRM (менеджеры, услуги, валюты)
-
-### Очередь распределения (managers.html)
-
-Новые заявки автоматически распределяются по менеджерам методом round-robin:
-- Менеджеры добавляются в очередь
-- Можно ставить на паузу (`is_active`)
-- `last_assigned_at` отслеживает последнее назначение
-- Чекбокс "Все" для быстрого назначения всех менеджеров на ретрит
-
-## Guest Portal (guest-portal/)
-
-Отдельный модуль — личный кабинет для гостей ашрама. Дизайн отличается от основного приложения.
-
-**URL:** https://in.rupaseva.com/guest-portal/
-
-### Технологии
-
-- **Tailwind CSS** (CDN, без DaisyUI)
-- **Supabase** (та же база данных)
-- Vanilla JS
-
-### Структура
-
-```
-guest-portal/
-├── index.html          # Dashboard (профиль + ретрит + трансферы)
-├── login.html          # Вход для гостей
-├── contacts.html       # Контакты ашрама
-├── materials.html      # Гайды и материалы
-├── retreats.html       # История ретритов
-├── css/portal.css      # Кастомные стили
-└── js/
-    ├── portal-config.js    # Supabase credentials
-    ├── portal-auth.js      # Авторизация гостей
-    ├── portal-layout.js    # Header/Footer/i18n
-    └── portal-data.js      # Загрузка данных
+// Ожидание авторизации
+await waitForAuth();
+if (window.currentUser?.is_superuser) { ... }
 ```
 
-### Ключевые особенности
+---
 
-1. **Публичный просмотр профилей** — `index.html?view=<vaishnava_id>`
-   - Хедер показывает залогиненного пользователя
-   - Профиль показывает просматриваемого
-   - Скрыты кнопки редактирования
+## Модули
 
-2. **Расчёт заполненности профиля**:
-   ```javascript
-   // Поля: firstName, spiritualName, phone, telegram, country, city, photoUrl, birthDate
-   // + spiritualTeacher (или noSpiritualTeacher = true)
-   // Цвета: <50% красный, 50-99% жёлтый, 100% зелёный
-   ```
+| Модуль | Цвет | Папки |
+|--------|------|-------|
+| Kitchen | #f49800 | kitchen/, stock/ |
+| Housing | #8b5cf6 | vaishnavas/, placement/, reception/ |
+| CRM | #10b981 | crm/ |
+| Admin | #374151 | ashram/, settings/ (только superuser) |
 
-3. **Чекбокс "Пока нет"** для духовного учителя — блокирует поле и считается как заполненное
+---
 
-4. **Inline редактирование трансферов** — view/edit режим на карточке
-
-### Авторизация (portal-auth.js)
+## MCP операции
 
 ```javascript
-// Глобальный объект пользователя
-window.currentGuest = {
-    id, authId, email, firstName, lastName, spiritualName,
-    phone, telegram, country, city, photoUrl,
-    spiritualTeacher, noSpiritualTeacher, birthDate,
-    userType, isStaff, isProfilePublic
-};
-
-// Проверка авторизации
-const guest = await PortalAuth.checkGuestAuth();  // редиректит на login если нет сессии
+mcp__supabase__execute_sql({ project_id, query })
+mcp__supabase__apply_migration({ project_id, name, query })
+mcp__supabase__list_tables({ project_id, schemas: ['public'] })
+mcp__supabase__get_logs({ project_id, service: 'auth' })
 ```
 
-### База данных (дополнительные поля)
+---
 
-```sql
--- vaishnavas
-no_spiritual_teacher BOOLEAN DEFAULT FALSE  -- флаг "Пока нет духовного учителя"
-is_profile_public BOOLEAN DEFAULT TRUE      -- публичность профиля
-```
+## Частые проблемы
 
-## Documentation
+| Проблема | Решение |
+|----------|---------|
+| Лимит 1000 записей | Пагинация через `.range()` |
+| Кэш переводов устарел | `Cache.invalidate('translations')` |
+| RLS ошибка | Использовать `.select()` вместо `.single()` |
+| N+1 запросы | Загрузить всё через `.in()`, группировать на клиенте |
+| Tailwind desktop | Добавить `tailwind.config = { theme: { extend: { screens: { 'desktop': '1200px' } } } }` |
 
-- **PRODUCT.md** — обзор продукта (частично устарел)
-- **docs/guests-plan.md** — план модуля гостей
+---
+
+## Деплой
+
+- GitHub Pages автоматически из main
+- После коммита ~1-2 минуты
+- Cache busting: `script.js?v=2`
+
+---
+
+## Язык
+
+Весь код, комментарии и коммиты — на русском языке.
