@@ -55,7 +55,10 @@
                     <h1 class="text-2xl mb-1">
                         <span id="userName"></span><span data-i18n="welcome_suffix">, добро пожаловать!</span>
                     </h1>
-                    <p class="opacity-60 text-sm mb-4" data-i18n="welcome_subtitle">Выберите модуль для работы</p>
+                    <p class="opacity-60 text-sm mb-4">
+                        <span data-i18n="welcome_subtitle">Выберите модуль для работы</span>
+                        <span data-i18n="welcome_or"> или перейдите в </span><a id="profileLink" href="#" class="link link-hover" style="color: var(--current-color)" data-i18n="welcome_profile">свой профиль</a>
+                    </p>
                     <div class="flex items-center justify-center sm:justify-start gap-2">
                         <div class="join bg-white rounded-lg">
                             <button class="join-item btn btn-sm lang-btn bg-white hover:bg-base-200" data-lang="ru">RU</button>
@@ -226,6 +229,12 @@
             // Показать имя пользователя
             const userName = window.currentUser?.name || '';
             document.getElementById('userName').textContent = userName;
+
+            // Установить ссылку на профиль
+            const vaishnavaId = window.currentUser?.vaishnava_id;
+            if (vaishnavaId) {
+                document.getElementById('profileLink').href = `/vaishnavas/person.html?id=${vaishnavaId}`;
+            }
 
             // Показать модуль "Управление" только суперпользователям
             if (window.currentUser?.is_superuser) {
