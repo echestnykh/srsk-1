@@ -634,6 +634,223 @@ async function getCrmDeals(guestId) {
     }
 }
 
+// ==================== ADMIN: MATERIALS CRUD ====================
+
+/**
+ * Загрузить все материалы (включая неопубликованные) — для админки
+ * @returns {Promise<array>}
+ */
+async function getAllMaterials() {
+    try {
+        const { data, error } = await db
+            .from('materials')
+            .select('*')
+            .order('sort_order');
+
+        if (error) {
+            console.error('Ошибка загрузки материалов:', error);
+            return [];
+        }
+
+        return data || [];
+
+    } catch (error) {
+        console.error('Ошибка загрузки материалов:', error);
+        return [];
+    }
+}
+
+/**
+ * Получить материал по ID — для редактирования
+ * @param {string} id
+ * @returns {Promise<object|null>}
+ */
+async function getMaterialById(id) {
+    try {
+        const { data, error } = await db
+            .from('materials')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error) {
+            console.error('Ошибка загрузки материала:', error);
+            return null;
+        }
+
+        return data;
+
+    } catch (error) {
+        console.error('Ошибка загрузки материала:', error);
+        return null;
+    }
+}
+
+/**
+ * Создать материал
+ * @param {object} materialData
+ * @returns {Promise<{success: boolean, data?: object, error?: string}>}
+ */
+async function createMaterial(materialData) {
+    try {
+        const { data, error } = await db
+            .from('materials')
+            .insert({
+                slug: materialData.slug,
+                title_ru: materialData.title_ru,
+                title_en: materialData.title_en,
+                title_hi: materialData.title_hi,
+                content_ru: materialData.content_ru,
+                content_en: materialData.content_en,
+                content_hi: materialData.content_hi,
+                icon: materialData.icon || 'book',
+                sort_order: materialData.sort_order || 0,
+                is_published: materialData.is_published || false
+            })
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Ошибка создания материала:', error);
+            return { success: false, error: error.message };
+        }
+
+        return { success: true, data };
+
+    } catch (error) {
+        console.error('Ошибка создания материала:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Обновить материал
+ * @param {string} id
+ * @param {object} materialData
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+async function updateMaterial(id, materialData) {
+    try {
+        const { error } = await db
+            .from('materials')
+            .update({
+                slug: materialData.slug,
+                title_ru: materialData.title_ru,
+                title_en: materialData.title_en,
+                title_hi: materialData.title_hi,
+                content_ru: materialData.content_ru,
+                content_en: materialData.content_en,
+                content_hi: materialData.content_hi,
+                icon: materialData.icon,
+                sort_order: materialData.sort_order,
+                is_published: materialData.is_published,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', id);
+
+        if (error) {
+            console.error('Ошибка обновления материала:', error);
+            return { success: false, error: error.message };
+        }
+
+        return { success: true };
+
+    } catch (error) {
+        console.error('Ошибка обновления материала:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Удалить материал
+ * @param {string} id
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+async function deleteMaterial(id) {
+    try {
+        const { error } = await db
+            .from('materials')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            console.error('Ошибка удаления материала:', error);
+            return { success: false, error: error.message };
+        }
+
+        return { success: true };
+
+    } catch (error) {
+        console.error('Ошибка удаления материала:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Переключить публикацию материала
+ * @param {string} id
+ * @param {boolean} isPublished
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+async function toggleMaterialPublished(id, isPublished) {
+    try {
+        const { error } = await db
+            .from('materials')
+            .update({
+                is_published: isPublished,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', id);
+
+        if (error) {
+            console.error('Ошибка обновления статуса:', error);
+            return { success: false, error: error.message };
+        }
+
+        return { success: true };
+
+    } catch (error) {
+        console.error('Ошибка обновления статуса:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Загрузить изображение для материала
+ * @param {File} file
+ * @param {string} materialId
+ * @returns {Promise<{success: boolean, url?: string, error?: string}>}
+ */
+async function uploadMaterialImage(file, materialId) {
+    try {
+        const ext = file.name.split('.').pop();
+        const fileName = `${Date.now()}.${ext}`;
+        const filePath = `${materialId}/${fileName}`;
+
+        const { error: uploadError } = await db.storage
+            .from('materials')
+            .upload(filePath, file, {
+                cacheControl: '3600',
+                upsert: false
+            });
+
+        if (uploadError) {
+            console.error('Ошибка загрузки изображения:', uploadError);
+            return { success: false, error: uploadError.message };
+        }
+
+        const { data: { publicUrl } } = db.storage
+            .from('materials')
+            .getPublicUrl(filePath);
+
+        return { success: true, url: publicUrl };
+
+    } catch (error) {
+        console.error('Ошибка загрузки изображения:', error);
+        return { success: false, error: error.message };
+    }
+}
+
 // Экспорт
 window.PortalData = {
     getCurrentRetreat,
@@ -649,7 +866,15 @@ window.PortalData = {
     updateProfile,
     uploadPhoto,
     loadDashboardData,
-    loadRetreatsData
+    loadRetreatsData,
+    // Admin: Materials
+    getAllMaterials,
+    getMaterialById,
+    createMaterial,
+    updateMaterial,
+    deleteMaterial,
+    toggleMaterialPublished,
+    uploadMaterialImage
 };
 
 })();

@@ -99,6 +99,18 @@ const modules = {
             ]}
         ]
     },
+    portal: {
+        id: 'portal',
+        nameKey: 'module_portal',
+        icon: '👤',
+        hasLocations: false,
+        defaultPage: 'portal/materials.html',
+        menuConfig: [
+            { id: 'portal_content', items: [
+                { id: 'portal_materials', href: 'portal/materials.html' }
+            ]}
+        ]
+    },
     admin: {
         id: 'admin',
         nameKey: 'module_admin',
@@ -182,7 +194,10 @@ const pagePermissions = {
     'crm/currencies.html': 'edit_crm_settings',
     'crm/tags.html': 'edit_crm_settings',
     'crm/templates.html': 'edit_crm_settings',
-    'crm/managers.html': 'edit_crm_settings'
+    'crm/managers.html': 'edit_crm_settings',
+
+    // Portal (Профиль гостя)
+    'portal/materials.html': 'edit_portal_materials'
 };
 
 // ==================== STATE ====================
@@ -228,7 +243,7 @@ function getMenuConfig() {
 }
 
 // Список всех подпапок модулей
-const MODULE_FOLDERS = ['kitchen', 'stock', 'ashram', 'vaishnavas', 'placement', 'reception', 'settings', 'crm'];
+const MODULE_FOLDERS = ['kitchen', 'stock', 'ashram', 'vaishnavas', 'placement', 'reception', 'settings', 'crm', 'portal'];
 
 // Определить текущую подпапку (если есть)
 function getCurrentFolder() {
@@ -633,6 +648,16 @@ function buildLocationOptions() {
         crmBtn.dataset.module = 'crm';
         crmBtn.textContent = t('module_crm'); // безопасно
         el.appendChild(crmBtn);
+
+        // Кнопка "Профиль гостя"
+        const portalBtn = document.createElement('button');
+        portalBtn.className = 'w-full text-left px-4 py-2 hover:bg-base-200 text-base-content';
+        if (currentModule === 'portal') {
+            portalBtn.classList.add('font-medium');
+        }
+        portalBtn.dataset.module = 'portal';
+        portalBtn.textContent = t('module_portal'); // безопасно
+        el.appendChild(portalBtn);
 
         // Кнопка "Управление" — только для суперпользователей
         if (window.currentUser?.is_superuser) {
