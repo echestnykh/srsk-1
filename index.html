@@ -231,10 +231,10 @@
             const userName = window.currentUser?.name || '';
             document.getElementById('userName').textContent = userName;
 
-            // Установить ссылку на профиль
+            // Установить ссылку на профиль (гостевой портал)
             const vaishnavaId = window.currentUser?.vaishnava_id;
             if (vaishnavaId) {
-                document.getElementById('profileLink').href = `/vaishnavas/person.html?id=${vaishnavaId}`;
+                document.getElementById('profileLink').href = `/guest-portal/index.html?view=${vaishnavaId}`;
             }
 
             // Показать модуль "Управление" только суперпользователям
