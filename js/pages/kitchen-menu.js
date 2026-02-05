@@ -368,7 +368,7 @@ async function loadEatingCounts(startDate, endDate) {
 
                     if (isFirstDay) {
                         if (reg.arrival_datetime) {
-                            const hour = new Date(reg.arrival_datetime).getHours();
+                            const hour = new Date(reg.arrival_datetime.slice(0, 16)).getHours();
                             getsBreakfast = hour < BREAKFAST_CUTOFF;
                             getsLunch = hour < LUNCH_CUTOFF;
                         } else {
@@ -379,7 +379,7 @@ async function loadEatingCounts(startDate, endDate) {
 
                     if (isLastDay) {
                         if (reg.departure_datetime) {
-                            const hour = new Date(reg.departure_datetime).getHours();
+                            const hour = new Date(reg.departure_datetime.slice(0, 16)).getHours();
                             getsBreakfast = getsBreakfast && hour >= BREAKFAST_CUTOFF;
                             getsLunch = getsLunch && hour >= LUNCH_CUTOFF;
                         } else {

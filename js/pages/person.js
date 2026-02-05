@@ -440,7 +440,8 @@ function formatDate(dateStr) {
 
 function formatFlightDateTime(datetime, fallbackNotes) {
     if (!datetime) return fallbackNotes || '';
-    const date = new Date(datetime);
+    // БД хранит локальное время как UTC в TIMESTAMPTZ — убираем таймзону
+    const date = new Date(datetime.slice(0, 16));
     const day = date.getDate();
     const monthNames = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
     const month = monthNames[date.getMonth()];
@@ -859,19 +860,21 @@ function toggleDirectDeparture(checked) {
     if (checked) updateCalcDeparture();
 }
 
-// Сдвигает datetime-local значение на N часов (локальное время)
+// Сдвигает datetime значение на N часов (локальное время).
+// .slice(0,16) убирает таймзону из TIMESTAMPTZ, т.к. БД хранит локальное время как UTC.
 function addHoursToDatetime(datetimeStr, hours) {
     if (!datetimeStr) return null;
-    const d = new Date(datetimeStr);
+    const d = new Date(datetimeStr.slice(0, 16));
     d.setHours(d.getHours() + hours);
     const pad = n => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-// Форматирует datetime-local в читаемый вид: "12 фев, 14:30"
+// Форматирует datetime в читаемый вид: "12 фев, 14:30"
+// .slice(0,16) убирает таймзону из TIMESTAMPTZ.
 function formatDatetimeShort(datetimeStr) {
     if (!datetimeStr) return '—';
-    const d = new Date(datetimeStr);
+    const d = new Date(datetimeStr.slice(0, 16));
     const months = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
     const pad = n => String(n).padStart(2, '0');
     return `${d.getDate()} ${months[d.getMonth()]}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
