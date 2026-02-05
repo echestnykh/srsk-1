@@ -720,22 +720,21 @@ function openPlacementModal(registrationId) {
     const checkInInput = document.getElementById('placementCheckIn');
     const checkOutInput = document.getElementById('placementCheckOut');
 
-    if (retreat) {
-        checkInInput.value = retreat.start_date;
-        checkOutInput.value = retreat.end_date;
-    }
+    // Приоритет: размещение → arrival/departure → рейс → ретрит
+    const reg = currentPlacementRegistration;
+    const arrivalFlight = (reg.guest_transfers || []).find(t => t.direction === 'arrival');
+    const departureFlight = (reg.guest_transfers || []).find(t => t.direction === 'departure');
 
-    // Индивидуальные даты приезда/отъезда имеют приоритет над датами ретрита
-    if (currentPlacementRegistration.arrival_datetime) {
-        checkInInput.value = currentPlacementRegistration.arrival_datetime.slice(0, 10);
-    }
-    if (currentPlacementRegistration.departure_datetime) {
-        checkOutInput.value = currentPlacementRegistration.departure_datetime.slice(0, 10);
-    }
+    checkInInput.value = retreat?.start_date || '';
+    if (arrivalFlight?.flight_datetime) checkInInput.value = arrivalFlight.flight_datetime.slice(0, 10);
+    if (reg.arrival_datetime) checkInInput.value = reg.arrival_datetime.slice(0, 10);
 
-    // Существующее размещение имеет наивысший приоритет
-    if (currentPlacementRegistration.placement && currentPlacementRegistration.placement.length > 0) {
-        const p = currentPlacementRegistration.placement[0];
+    checkOutInput.value = retreat?.end_date || '';
+    if (departureFlight?.flight_datetime) checkOutInput.value = departureFlight.flight_datetime.slice(0, 10);
+    if (reg.departure_datetime) checkOutInput.value = reg.departure_datetime.slice(0, 10);
+
+    if (reg.placement && reg.placement.length > 0) {
+        const p = reg.placement[0];
         checkInInput.value = p.check_in;
         checkOutInput.value = p.check_out;
     }
