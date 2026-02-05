@@ -442,6 +442,8 @@ function renderTable() {
         const transfers = reg.guest_transfers || [];
         const arrival = transfers.find(t => t.direction === 'arrival');
         const departure = transfers.find(t => t.direction === 'departure');
+        const arrivalRetreat = transfers.find(t => t.direction === 'arrival_retreat');
+        const departureRetreat = transfers.find(t => t.direction === 'departure_retreat');
 
         // Пол и возраст
         const genderLabel = v?.gender === 'male' ? 'М' : v?.gender === 'female' ? 'Ж' : '';
@@ -506,6 +508,21 @@ function renderTable() {
                         onchange="onCheckInChange('${reg.id}', this.value)"
                         ${disabledAttr} />
                     ${(arrivalFlightNum || arrivalTransfer) ? `<div class="text-xs opacity-60 mt-0.5 whitespace-nowrap">${arrivalFlightNum}${arrivalTransfer}</div>` : ''}
+                    <label class="flex items-center gap-1 mt-1 cursor-pointer justify-center">
+                        <input type="checkbox" class="checkbox checkbox-xs"
+                            ${reg.direct_arrival !== false ? 'checked' : ''}
+                            onchange="onDirectArrivalChange('${reg.id}', this.checked, this)"
+                            ${disabledAttr} />
+                        <span class="text-xs opacity-50">сразу на ретрит</span>
+                    </label>
+                    <select class="select select-xs select-bordered w-full mt-1 ${reg.direct_arrival !== false ? 'hidden' : ''}"
+                        id="arrRetreatTransfer_${reg.id}"
+                        onchange="onArrivalRetreatTransferChange('${reg.id}', this.value)"
+                        ${disabledAttr}>
+                        <option value="">🚐 —</option>
+                        <option value="yes" ${arrivalRetreat?.needs_transfer === 'yes' ? 'selected' : ''}>🚐 Нужен</option>
+                        <option value="no" ${arrivalRetreat?.needs_transfer === 'no' ? 'selected' : ''}>🚐 Не нужен</option>
+                    </select>
                 </td>
                 <td class="text-center text-sm ${departureProblem ? 'bg-warning/30' : ''}" onclick="event.stopPropagation()">
                     <input type="datetime-local" class="input input-xs input-bordered w-full min-w-[13rem]"
@@ -513,6 +530,21 @@ function renderTable() {
                         onchange="onCheckOutChange('${reg.id}', this.value)"
                         ${disabledAttr} />
                     ${(departureFlightNum || departureTransfer) ? `<div class="text-xs opacity-60 mt-0.5 whitespace-nowrap">${departureFlightNum}${departureTransfer}</div>` : ''}
+                    <label class="flex items-center gap-1 mt-1 cursor-pointer justify-center">
+                        <input type="checkbox" class="checkbox checkbox-xs"
+                            ${reg.direct_departure !== false ? 'checked' : ''}
+                            onchange="onDirectDepartureChange('${reg.id}', this.checked, this)"
+                            ${disabledAttr} />
+                        <span class="text-xs opacity-50">сразу в аэропорт</span>
+                    </label>
+                    <select class="select select-xs select-bordered w-full mt-1 ${reg.direct_departure !== false ? 'hidden' : ''}"
+                        id="depRetreatTransfer_${reg.id}"
+                        onchange="onDepartureRetreatTransferChange('${reg.id}', this.value)"
+                        ${disabledAttr}>
+                        <option value="">🚐 —</option>
+                        <option value="yes" ${departureRetreat?.needs_transfer === 'yes' ? 'selected' : ''}>🚐 Нужен</option>
+                        <option value="no" ${departureRetreat?.needs_transfer === 'no' ? 'selected' : ''}>🚐 Не нужен</option>
+                    </select>
                 </td>
                 <td class="text-sm">${e(reg.extended_stay || '—')}</td>
                 <td class="text-sm">${e(reg.guest_questions || '—')}</td>
@@ -725,6 +757,154 @@ async function onCheckOutChange(registrationId, datetimeValue) {
     } catch (err) {
         Layout.handleError(err, 'Сохранение даты выезда');
         await loadRegistrations();
+    }
+}
+
+async function onDirectArrivalChange(registrationId, checked, checkboxEl) {
+    if (!window.hasPermission || !window.hasPermission('edit_preliminary')) {
+        Layout.showNotification('Недостаточно прав для редактирования', 'error');
+        checkboxEl.checked = !checked;
+        return;
+    }
+    const reg = registrations.find(r => r.id === registrationId);
+    if (!reg) return;
+
+    try {
+        const { error } = await Layout.db
+            .from('retreat_registrations')
+            .update({ direct_arrival: checked })
+            .eq('id', registrationId);
+        if (error) throw error;
+
+        // Показать/скрыть селект трансфера
+        const select = document.getElementById(`arrRetreatTransfer_${registrationId}`);
+        if (select) select.classList.toggle('hidden', checked);
+
+        // Если включили «сразу» — удалить arrival_retreat трансфер
+        if (checked) {
+            const arrRetreat = (reg.guest_transfers || []).find(t => t.direction === 'arrival_retreat');
+            if (arrRetreat) {
+                await Layout.db.from('guest_transfers').delete().eq('id', arrRetreat.id);
+            }
+        }
+
+        reg.direct_arrival = checked;
+    } catch (err) {
+        Layout.handleError(err, 'Сохранение direct_arrival');
+        checkboxEl.checked = !checked;
+    }
+}
+
+async function onDirectDepartureChange(registrationId, checked, checkboxEl) {
+    if (!window.hasPermission || !window.hasPermission('edit_preliminary')) {
+        Layout.showNotification('Недостаточно прав для редактирования', 'error');
+        checkboxEl.checked = !checked;
+        return;
+    }
+    const reg = registrations.find(r => r.id === registrationId);
+    if (!reg) return;
+
+    try {
+        const { error } = await Layout.db
+            .from('retreat_registrations')
+            .update({ direct_departure: checked })
+            .eq('id', registrationId);
+        if (error) throw error;
+
+        // Показать/скрыть селект трансфера
+        const select = document.getElementById(`depRetreatTransfer_${registrationId}`);
+        if (select) select.classList.toggle('hidden', checked);
+
+        // Если включили «сразу» — удалить departure_retreat трансфер
+        if (checked) {
+            const depRetreat = (reg.guest_transfers || []).find(t => t.direction === 'departure_retreat');
+            if (depRetreat) {
+                await Layout.db.from('guest_transfers').delete().eq('id', depRetreat.id);
+            }
+        }
+
+        reg.direct_departure = checked;
+    } catch (err) {
+        Layout.handleError(err, 'Сохранение direct_departure');
+        checkboxEl.checked = !checked;
+    }
+}
+
+async function onArrivalRetreatTransferChange(registrationId, value) {
+    if (!window.hasPermission || !window.hasPermission('edit_preliminary')) {
+        Layout.showNotification('Недостаточно прав для редактирования', 'error');
+        return;
+    }
+    const reg = registrations.find(r => r.id === registrationId);
+    if (!reg) return;
+
+    try {
+        const transfers = reg.guest_transfers || [];
+        const existing = transfers.find(t => t.direction === 'arrival_retreat');
+
+        if (existing) {
+            const { error } = await Layout.db
+                .from('guest_transfers')
+                .update({ needs_transfer: value || null })
+                .eq('id', existing.id);
+            if (error) throw error;
+            existing.needs_transfer = value || null;
+        } else if (value) {
+            const { data, error } = await Layout.db
+                .from('guest_transfers')
+                .insert({
+                    registration_id: registrationId,
+                    direction: 'arrival_retreat',
+                    needs_transfer: value,
+                    flight_datetime: reg.arrival_datetime || null
+                })
+                .select()
+                .single();
+            if (error) throw error;
+            if (!reg.guest_transfers) reg.guest_transfers = [];
+            reg.guest_transfers.push(data);
+        }
+    } catch (err) {
+        Layout.handleError(err, 'Сохранение трансфера на ретрит');
+    }
+}
+
+async function onDepartureRetreatTransferChange(registrationId, value) {
+    if (!window.hasPermission || !window.hasPermission('edit_preliminary')) {
+        Layout.showNotification('Недостаточно прав для редактирования', 'error');
+        return;
+    }
+    const reg = registrations.find(r => r.id === registrationId);
+    if (!reg) return;
+
+    try {
+        const transfers = reg.guest_transfers || [];
+        const existing = transfers.find(t => t.direction === 'departure_retreat');
+
+        if (existing) {
+            const { error } = await Layout.db
+                .from('guest_transfers')
+                .update({ needs_transfer: value || null })
+                .eq('id', existing.id);
+            if (error) throw error;
+            existing.needs_transfer = value || null;
+        } else if (value) {
+            const { data, error } = await Layout.db
+                .from('guest_transfers')
+                .insert({
+                    registration_id: registrationId,
+                    direction: 'departure_retreat',
+                    needs_transfer: value,
+                    flight_datetime: reg.departure_datetime || null
+                })
+                .select()
+                .single();
+            if (error) throw error;
+            if (!reg.guest_transfers) reg.guest_transfers = [];
+            reg.guest_transfers.push(data);
+        }
+    } catch (err) {
+        Layout.handleError(err, 'Сохранение трансфера с ретрита');
     }
 }
 

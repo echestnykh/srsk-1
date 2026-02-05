@@ -914,6 +914,8 @@ function openEditRegModal(registrationId) {
     const transfers = reg.guest_transfers || [];
     const arrival = transfers.find(t => t.direction === 'arrival');
     const departure = transfers.find(t => t.direction === 'departure');
+    const arrivalRetreat = transfers.find(t => t.direction === 'arrival_retreat');
+    const departureRetreat = transfers.find(t => t.direction === 'departure_retreat');
 
     // Прилёт
     document.getElementById('editArrivalDatetime').value = arrival?.flight_datetime ? arrival.flight_datetime.slice(0, 16) : '';
@@ -931,9 +933,11 @@ function openEditRegModal(registrationId) {
     document.getElementById('editDirectArrival').checked = reg.direct_arrival !== false;
     toggleDirectArrival(reg.direct_arrival !== false);
     document.getElementById('editArrivalAtAshram').value = reg.arrival_datetime ? reg.arrival_datetime.slice(0, 16) : '';
+    document.getElementById('editArrivalRetreatTransfer').value = arrivalRetreat?.needs_transfer || '';
     document.getElementById('editDirectDeparture').checked = reg.direct_departure !== false;
     toggleDirectDeparture(reg.direct_departure !== false);
     document.getElementById('editDepartureFromAshram').value = reg.departure_datetime ? reg.departure_datetime.slice(0, 16) : '';
+    document.getElementById('editDepartureRetreatTransfer').value = departureRetreat?.needs_transfer || '';
 
     // Остальные поля
     document.getElementById('editAccommodationWishes').value = reg.accommodation_wishes || '';
@@ -988,8 +992,10 @@ async function saveRegistration() {
         const transfers = reg.guest_transfers || [];
         const arrival = transfers.find(t => t.direction === 'arrival');
         const departure = transfers.find(t => t.direction === 'departure');
+        const arrivalRetreat = transfers.find(t => t.direction === 'arrival_retreat');
+        const departureRetreat = transfers.find(t => t.direction === 'departure_retreat');
 
-        // Прилёт
+        // Прилёт (аэропорт)
         const arrivalData = {
             registration_id: regId,
             direction: 'arrival',
@@ -1005,7 +1011,25 @@ async function saveRegistration() {
             await Layout.db.from('guest_transfers').insert(arrivalData);
         }
 
-        // Вылет
+        // Трансфер приезд на ретрит (если не сразу из аэропорта)
+        if (!directArrival) {
+            const arrivalRetreatData = {
+                registration_id: regId,
+                direction: 'arrival_retreat',
+                flight_datetime: document.getElementById('editArrivalAtAshram').value || null,
+                needs_transfer: document.getElementById('editArrivalRetreatTransfer').value || null
+            };
+            if (arrivalRetreat) {
+                await Layout.db.from('guest_transfers').update(arrivalRetreatData).eq('id', arrivalRetreat.id);
+            } else if (arrivalRetreatData.flight_datetime || arrivalRetreatData.needs_transfer) {
+                await Layout.db.from('guest_transfers').insert(arrivalRetreatData);
+            }
+        } else if (arrivalRetreat) {
+            // Переключили на "сразу на ретрит" — удаляем запись arrival_retreat
+            await Layout.db.from('guest_transfers').delete().eq('id', arrivalRetreat.id);
+        }
+
+        // Вылет (аэропорт)
         const departureData = {
             registration_id: regId,
             direction: 'departure',
@@ -1019,6 +1043,24 @@ async function saveRegistration() {
             await Layout.db.from('guest_transfers').update(departureData).eq('id', departure.id);
         } else if (departureData.flight_datetime || departureData.flight_number || departureData.needs_transfer || departureData.notes) {
             await Layout.db.from('guest_transfers').insert(departureData);
+        }
+
+        // Трансфер отъезд с ретрита (если не сразу в аэропорт)
+        if (!directDeparture) {
+            const departureRetreatData = {
+                registration_id: regId,
+                direction: 'departure_retreat',
+                flight_datetime: document.getElementById('editDepartureFromAshram').value || null,
+                needs_transfer: document.getElementById('editDepartureRetreatTransfer').value || null
+            };
+            if (departureRetreat) {
+                await Layout.db.from('guest_transfers').update(departureRetreatData).eq('id', departureRetreat.id);
+            } else if (departureRetreatData.flight_datetime || departureRetreatData.needs_transfer) {
+                await Layout.db.from('guest_transfers').insert(departureRetreatData);
+            }
+        } else if (departureRetreat) {
+            // Переключили на "сразу в аэропорт" — удаляем запись departure_retreat
+            await Layout.db.from('guest_transfers').delete().eq('id', departureRetreat.id);
         }
 
         // Перезагружаем данные
@@ -1327,9 +1369,11 @@ function renderRegistrations() {
         const transfers = reg.guest_transfers || [];
         const arrival = transfers.find(t => t.direction === 'arrival');
         const departure = transfers.find(t => t.direction === 'departure');
+        const arrivalRetreat = transfers.find(t => t.direction === 'arrival_retreat');
+        const departureRetreat = transfers.find(t => t.direction === 'departure_retreat');
 
         // Check if there's any detail to show
-        const hasDetails = arrival || departure || reg.arrival_datetime || reg.departure_datetime || reg.resident || reg.guest_accommodations?.[0] || reg.accommodation_wishes || reg.companions || reg.payment_notes || reg.org_notes || reg.extended_stay || reg.guest_questions;
+        const hasDetails = arrival || departure || arrivalRetreat || departureRetreat || reg.arrival_datetime || reg.departure_datetime || reg.resident || reg.guest_accommodations?.[0] || reg.accommodation_wishes || reg.companions || reg.payment_notes || reg.org_notes || reg.extended_stay || reg.guest_questions;
 
         // Build details HTML
         let detailsHtml = '';
@@ -1351,6 +1395,18 @@ function renderRegistrations() {
             `;
         }
 
+        if (arrivalRetreat) {
+            detailsHtml += `
+                <div class="detail-section">
+                    <div class="detail-label">🚐 Трансфер на ретрит</div>
+                    <div class="text-sm space-y-1">
+                        ${arrivalRetreat.flight_datetime ? `<div><span class="opacity-60">Приезд:</span> ${formatDatetimeShort(arrivalRetreat.flight_datetime)}</div>` : ''}
+                        <div><span class="opacity-60">Трансфер:</span> ${arrivalRetreat.needs_transfer === 'yes' ? '✅ Нужен' : arrivalRetreat.needs_transfer === 'no' ? '❌ Не нужен' : '—'}</div>
+                    </div>
+                </div>
+            `;
+        }
+
         if (departure) {
             const departureTime = formatFlightDateTime(departure.flight_datetime, departure.notes);
             const ashramDeparture = reg.departure_datetime
@@ -1363,6 +1419,18 @@ function renderRegistrations() {
                         ${departureTime ? `<div><span class="opacity-60">Рейс:</span> ${departureTime}${departure.flight_number ? ` (${departure.flight_number})` : ''}</div>` : ''}
                         ${ashramDeparture ? `<div><span class="opacity-60">Отъезд из ШРСК:</span> ${ashramDeparture}</div>` : ''}
                         <div><span class="opacity-60">Трансфер:</span> ${departure.needs_transfer === 'yes' ? '✅ Нужен' : departure.needs_transfer === 'no' ? '❌ Не нужен' : departure.needs_transfer || '—'}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (departureRetreat) {
+            detailsHtml += `
+                <div class="detail-section">
+                    <div class="detail-label">🚐 Трансфер с ретрита</div>
+                    <div class="text-sm space-y-1">
+                        ${departureRetreat.flight_datetime ? `<div><span class="opacity-60">Отъезд:</span> ${formatDatetimeShort(departureRetreat.flight_datetime)}</div>` : ''}
+                        <div><span class="opacity-60">Трансфер:</span> ${departureRetreat.needs_transfer === 'yes' ? '✅ Нужен' : departureRetreat.needs_transfer === 'no' ? '❌ Не нужен' : '—'}</div>
                     </div>
                 </div>
             `;

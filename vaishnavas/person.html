@@ -783,9 +783,19 @@
                                 <span class="label-text text-xs text-base-content/60">Приезд в ШРСК (рейс + 4ч):</span>
                                 <span id="calcArrivalTime" class="text-xs font-medium ml-1">—</span>
                             </div>
-                            <div id="customArrivalBlock" class="hidden mt-2">
-                                <label class="label label-text text-xs">Дата и время приезда к нам</label>
-                                <input type="datetime-local" id="editArrivalAtAshram" class="input input-bordered input-sm w-full" />
+                            <div id="customArrivalBlock" class="hidden mt-2 grid grid-cols-3 gap-2">
+                                <div class="col-span-2">
+                                    <label class="label label-text text-xs">Дата и время приезда к нам</label>
+                                    <input type="datetime-local" id="editArrivalAtAshram" class="input input-bordered input-sm w-full" />
+                                </div>
+                                <div>
+                                    <label class="label label-text text-xs">Трансфер на ретрит</label>
+                                    <select id="editArrivalRetreatTransfer" class="select select-bordered select-sm w-full">
+                                        <option value="">Не указано</option>
+                                        <option value="yes">Нужен</option>
+                                        <option value="no">Не нужен</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -826,9 +836,19 @@
                                 <span class="label-text text-xs text-base-content/60">Отъезд из ШРСК (рейс − 7ч):</span>
                                 <span id="calcDepartureTime" class="text-xs font-medium ml-1">—</span>
                             </div>
-                            <div id="customDepartureBlock" class="hidden mt-2">
-                                <label class="label label-text text-xs">Дата и время отъезда от нас</label>
-                                <input type="datetime-local" id="editDepartureFromAshram" class="input input-bordered input-sm w-full" />
+                            <div id="customDepartureBlock" class="hidden mt-2 grid grid-cols-3 gap-2">
+                                <div class="col-span-2">
+                                    <label class="label label-text text-xs">Дата и время отъезда от нас</label>
+                                    <input type="datetime-local" id="editDepartureFromAshram" class="input input-bordered input-sm w-full" />
+                                </div>
+                                <div>
+                                    <label class="label label-text text-xs">Трансфер с ретрита</label>
+                                    <select id="editDepartureRetreatTransfer" class="select select-bordered select-sm w-full">
+                                        <option value="">Не указано</option>
+                                        <option value="yes">Нужен</option>
+                                        <option value="no">Не нужен</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     </div>
