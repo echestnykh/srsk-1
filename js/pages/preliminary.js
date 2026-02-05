@@ -254,11 +254,6 @@ function formatFlightDateTime(datetime, fallbackNotes) {
     return `${day}.${month} ${hours}:${minutes}`;
 }
 
-function formatFlightTime(datetime) {
-    if (!datetime) return '';
-    const d = new Date(datetime.slice(0, 16));
-    return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-}
 
 function onSearchInput(query) {
     searchQuery = query.toLowerCase().trim();
@@ -456,14 +451,17 @@ function renderTable() {
         // Даты заезда/выезда и информация о рейсах
         const arrivalTransfer = arrival?.needs_transfer === 'yes' ? ' 🚐' : '';
         const departureTransfer = departure?.needs_transfer === 'yes' ? ' 🚐' : '';
-        const arrivalTime = formatFlightTime(arrival?.flight_datetime);
-        const departureTime = formatFlightTime(departure?.flight_datetime);
         const arrivalFlightNum = arrival?.flight_number ? e(arrival.flight_number) : '';
         const departureFlightNum = departure?.flight_number ? e(departure.flight_number) : '';
-        const arrivalFlightLine = [arrivalTime, arrivalFlightNum].filter(Boolean).join(' ');
-        const departureFlightLine = [departureTime, departureFlightNum].filter(Boolean).join(' ');
-        const effectiveCheckIn = getRegCheckIn(reg);
-        const effectiveCheckOut = getRegCheckOut(reg);
+        // datetime-local значение: arrival_datetime → flight_datetime → дата+T00:00
+        const effectiveCheckIn = reg.arrival_datetime?.slice(0, 16)
+            || arrival?.flight_datetime?.slice(0, 16)
+            || (reg.resident?.check_in ? reg.resident.check_in + 'T00:00' : null)
+            || (retreat?.start_date ? retreat.start_date + 'T00:00' : '');
+        const effectiveCheckOut = reg.departure_datetime?.slice(0, 16)
+            || departure?.flight_datetime?.slice(0, 16)
+            || (reg.resident?.check_out ? reg.resident.check_out + 'T00:00' : null)
+            || (retreat?.end_date ? retreat.end_date + 'T00:00' : '');
 
         const arrivalProblem = !arrival || (arrival?.notes && !arrival?.flight_datetime);
         const departureProblem = !departure || (departure?.notes && !departure?.flight_datetime);
@@ -503,18 +501,18 @@ function renderTable() {
                 <td class="text-sm">${e(reg.companions || '—')}</td>
                 <td class="text-sm">${e(reg.accommodation_wishes || '—')}</td>
                 <td class="text-center text-sm ${arrivalProblem ? 'bg-warning/30' : ''}" onclick="event.stopPropagation()">
-                    <input type="date" class="input input-xs input-bordered w-[7.5rem]"
+                    <input type="datetime-local" class="input input-xs input-bordered w-[10.5rem]"
                         value="${effectiveCheckIn || ''}"
                         onchange="onCheckInChange('${reg.id}', this.value)"
                         ${disabledAttr} />
-                    ${(arrivalFlightLine || arrivalTransfer) ? `<div class="text-xs opacity-60 mt-0.5 whitespace-nowrap">${arrivalFlightLine}${arrivalTransfer}</div>` : ''}
+                    ${(arrivalFlightNum || arrivalTransfer) ? `<div class="text-xs opacity-60 mt-0.5 whitespace-nowrap">${arrivalFlightNum}${arrivalTransfer}</div>` : ''}
                 </td>
                 <td class="text-center text-sm ${departureProblem ? 'bg-warning/30' : ''}" onclick="event.stopPropagation()">
-                    <input type="date" class="input input-xs input-bordered w-[7.5rem]"
+                    <input type="datetime-local" class="input input-xs input-bordered w-[10.5rem]"
                         value="${effectiveCheckOut || ''}"
                         onchange="onCheckOutChange('${reg.id}', this.value)"
                         ${disabledAttr} />
-                    ${(departureFlightLine || departureTransfer) ? `<div class="text-xs opacity-60 mt-0.5 whitespace-nowrap">${departureFlightLine}${departureTransfer}</div>` : ''}
+                    ${(departureFlightNum || departureTransfer) ? `<div class="text-xs opacity-60 mt-0.5 whitespace-nowrap">${departureFlightNum}${departureTransfer}</div>` : ''}
                 </td>
                 <td class="text-sm">${e(reg.extended_stay || '—')}</td>
                 <td class="text-sm">${e(reg.guest_questions || '—')}</td>
@@ -668,7 +666,7 @@ async function onMealTypeChange(registrationId, mealType, selectElement) {
     }
 }
 
-async function onCheckInChange(registrationId, dateValue) {
+async function onCheckInChange(registrationId, datetimeValue) {
     if (!window.hasPermission || !window.hasPermission('edit_preliminary')) {
         Layout.showNotification('Недостаточно прав для редактирования', 'error');
         return;
@@ -679,14 +677,15 @@ async function onCheckInChange(registrationId, dateValue) {
     try {
         const { error: regError } = await Layout.db
             .from('retreat_registrations')
-            .update({ arrival_datetime: dateValue || null })
+            .update({ arrival_datetime: datetimeValue || null })
             .eq('id', registrationId);
         if (regError) throw regError;
 
-        if (reg.resident?.id && dateValue) {
+        // residents.check_in — DATE, сохраняем только дату
+        if (reg.resident?.id && datetimeValue) {
             const { error: resError } = await Layout.db
                 .from('residents')
-                .update({ check_in: dateValue })
+                .update({ check_in: datetimeValue.slice(0, 10) })
                 .eq('id', reg.resident.id);
             if (resError) throw resError;
         }
@@ -698,7 +697,7 @@ async function onCheckInChange(registrationId, dateValue) {
     }
 }
 
-async function onCheckOutChange(registrationId, dateValue) {
+async function onCheckOutChange(registrationId, datetimeValue) {
     if (!window.hasPermission || !window.hasPermission('edit_preliminary')) {
         Layout.showNotification('Недостаточно прав для редактирования', 'error');
         return;
@@ -709,14 +708,15 @@ async function onCheckOutChange(registrationId, dateValue) {
     try {
         const { error: regError } = await Layout.db
             .from('retreat_registrations')
-            .update({ departure_datetime: dateValue || null })
+            .update({ departure_datetime: datetimeValue || null })
             .eq('id', registrationId);
         if (regError) throw regError;
 
-        if (reg.resident?.id && dateValue) {
+        // residents.check_out — DATE, сохраняем только дату
+        if (reg.resident?.id && datetimeValue) {
             const { error: resError } = await Layout.db
                 .from('residents')
-                .update({ check_out: dateValue })
+                .update({ check_out: datetimeValue.slice(0, 10) })
                 .eq('id', reg.resident.id);
             if (resError) throw resError;
         }
