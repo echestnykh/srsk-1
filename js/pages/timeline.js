@@ -220,7 +220,7 @@ async function loadTimelineData() {
 
                     // Получаем цвет категории
                     const category = res.resident_categories;
-                    const color = category?.color || '#fef08a';
+                    const color = category?.color || '#3b82f6';
                     // Делаем border темнее
                     const border = color;
 
@@ -557,7 +557,7 @@ function renderLegend() {
 
     // Категории заселений
     const categoriesHtml = categories.map(c => {
-        const color = c.color || '#fef08a';
+        const color = c.color || '#3b82f6';
         return `<div class="flex items-center gap-1.5">
             <span class="w-4 h-4 rounded" style="background: ${color}; border: 1px solid rgba(0,0,0,0.15);"></span>
             <span class="text-sm text-gray-600">${Layout.getName(c)}</span>
@@ -566,7 +566,7 @@ function renderLegend() {
 
     // Бронирования (штриховка)
     const bookingHtml = `<div class="flex items-center gap-1.5">
-        <span class="w-4 h-4 rounded" style="background: repeating-linear-gradient(45deg, #fef08a, #fef08a 2px, rgba(255,255,255,0.5) 2px, rgba(255,255,255,0.5) 4px); border: 1px dashed rgba(0,0,0,0.3);"></span>
+        <span class="w-4 h-4 rounded" style="background: repeating-linear-gradient(45deg, #3b82f6, #3b82f6 2px, rgba(255,255,255,0.5) 2px, rgba(255,255,255,0.5) 4px); border: 1px dashed rgba(0,0,0,0.3);"></span>
         <span class="text-sm text-gray-600">Бронь</span>
     </div>`;
 
@@ -1801,7 +1801,7 @@ function renderTable() {
                         const width = spanCells * CELL_WIDTH - 2;
 
                         const firstGuest = segment.guests[0];
-                        const bgColor = firstGuest?.color || '#fef08a';
+                        const bgColor = firstGuest?.color || '#3b82f6';
                         const isBooking = segment.guests.some(g => g.isBooking);
                         const isCheckedOut = segment.guests.some(g => g.isCheckedOut);
                         const isPartial = segment.count < totalBeds;
@@ -1891,11 +1891,11 @@ function renderTable() {
 
                         if (guest.isBooking) {
                             // Бронирование — штриховка
-                            const bgColor = guest.color || '#fef08a';
+                            const bgColor = guest.color || '#3b82f6';
                             html += `<div class="guest-bar booking${checkedOutClass}" style="width: ${width}px; --bar-color: ${bgColor}; border-color: ${bgColor};" onclick="event.stopPropagation(); openResidentFromMap('${guest.id}', event)">${guest.name}</div>`;
                         } else {
                             // Обычное заселение
-                            const bgColor = guest.color || '#fef08a';
+                            const bgColor = guest.color || '#3b82f6';
                             const borderColor = guest.border || '#facc15';
                             html += `<div class="guest-bar${checkedOutClass}" style="width: ${width}px; background: ${bgColor}; border-color: ${borderColor};" onclick="event.stopPropagation(); openResidentFromMap('${guest.id}', event)">${guest.name}</div>`;
                         }

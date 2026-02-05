@@ -799,7 +799,8 @@ async function onRoomChange(registrationId, roomId) {
         retreat_id: retreatId,
         check_in: getRegCheckIn(reg),
         check_out: getRegCheckOut(reg),
-        status: 'confirmed'
+        status: 'confirmed',
+        category_id: STATUS_CATEGORY_MAP[reg.status] || DEFAULT_CATEGORY_ID
     };
 
     try {
@@ -856,7 +857,8 @@ async function saveSelfAccommodation(registrationId) {
         retreat_id: retreatId,
         check_in: getRegCheckIn(reg),
         check_out: getRegCheckOut(reg),
-        status: 'confirmed'
+        status: 'confirmed',
+        category_id: STATUS_CATEGORY_MAP[reg.status] || DEFAULT_CATEGORY_ID
     };
 
     try {
@@ -1219,6 +1221,13 @@ let buildings = [];
 let floorPlans = [];
 
 // Состояние модалки размещения
+// Маппинг статуса регистрации → category_id для шахматки
+const STATUS_CATEGORY_MAP = {
+    'team': '10c4c929-6aaf-4b73-a15a-b7c5ab70f64b',   // Команда
+    'guest': 'a825c26c-597c-4c9c-a68d-7bf6f1a66ee8'    // Участник ретрита
+};
+const DEFAULT_CATEGORY_ID = '6ad3bfdd-cb95-453a-b589-986717615736'; // Гость
+
 let placementState = {
     registrationId: null,
     vaishnavId: null,
@@ -1229,7 +1238,8 @@ let placementState = {
     occupancy: {},  // roomId => count занятости
     currentBuildingId: null,
     currentFloor: 1,
-    existingResidentId: null  // для переселения
+    existingResidentId: null,  // для переселения
+    regStatus: null  // статус регистрации для определения категории
 };
 
 async function loadBuildingsAndRooms() {
@@ -1285,7 +1295,8 @@ function openPlacementModal(registrationId) {
         occupancy: {},
         currentBuildingId: buildings[0]?.id || null,
         currentFloor: 1,
-        existingResidentId: reg.resident?.id || null
+        existingResidentId: reg.resident?.id || null,
+        regStatus: reg.status || null
     };
 
     const modal = document.getElementById('placementModal');
@@ -1565,7 +1576,8 @@ async function selectPlacementRoom(roomId, buildingId) {
         retreat_id: placementState.retreatId,
         check_in: placementState.checkIn || null,
         check_out: placementState.checkOut || null,
-        status: 'confirmed'
+        status: 'confirmed',
+        category_id: STATUS_CATEGORY_MAP[placementState.regStatus] || DEFAULT_CATEGORY_ID
     };
 
     try {
