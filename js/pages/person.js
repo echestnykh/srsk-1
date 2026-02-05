@@ -1021,7 +1021,7 @@ async function saveRegistration() {
         }
 
         // Перезагружаем данные
-        await loadRegistrations();
+        await loadRegistrations(person.id);
         renderRegistrations();
 
         editRegModal.close();
