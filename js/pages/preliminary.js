@@ -254,6 +254,12 @@ function formatFlightDateTime(datetime, fallbackNotes) {
     return `${day}.${month} ${hours}:${minutes}`;
 }
 
+function formatFlightTime(datetime) {
+    if (!datetime) return '';
+    const d = new Date(datetime.slice(0, 16));
+    return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+}
+
 function onSearchInput(query) {
     searchQuery = query.toLowerCase().trim();
     document.getElementById('searchClear').classList.toggle('hidden', !query);
@@ -447,13 +453,18 @@ function renderTable() {
         const age = v?.birth_date ? calculateAge(v.birth_date) : '';
         const genderAge = [genderLabel, age].filter(Boolean).join(', ') || '—';
 
-        // Format arrival/departure info
-        const arrivalDate = formatFlightDateTime(arrival?.flight_datetime, arrival?.notes);
+        // Даты заезда/выезда и информация о рейсах
         const arrivalTransfer = arrival?.needs_transfer === 'yes' ? ' 🚐' : '';
-        const departureDate = formatFlightDateTime(departure?.flight_datetime, departure?.notes);
         const departureTransfer = departure?.needs_transfer === 'yes' ? ' 🚐' : '';
+        const arrivalTime = formatFlightTime(arrival?.flight_datetime);
+        const departureTime = formatFlightTime(departure?.flight_datetime);
+        const arrivalFlightNum = arrival?.flight_number ? e(arrival.flight_number) : '';
+        const departureFlightNum = departure?.flight_number ? e(departure.flight_number) : '';
+        const arrivalFlightLine = [arrivalTime, arrivalFlightNum].filter(Boolean).join(' ');
+        const departureFlightLine = [departureTime, departureFlightNum].filter(Boolean).join(' ');
+        const effectiveCheckIn = getRegCheckIn(reg);
+        const effectiveCheckOut = getRegCheckOut(reg);
 
-        // Проверка на проблемы: нет данных вообще, или есть notes но нет datetime
         const arrivalProblem = !arrival || (arrival?.notes && !arrival?.flight_datetime);
         const departureProblem = !departure || (departure?.notes && !departure?.flight_datetime);
 
@@ -491,11 +502,19 @@ function renderTable() {
                 <td class="text-sm">${e(v?.india_experience || '—')}</td>
                 <td class="text-sm">${e(reg.companions || '—')}</td>
                 <td class="text-sm">${e(reg.accommodation_wishes || '—')}</td>
-                <td class="text-center text-sm whitespace-nowrap ${arrivalProblem ? 'bg-warning/30' : ''}">
-                    ${arrivalDate ? `${arrivalDate}${arrivalTransfer}` : '<span class="opacity-30">—</span>'}
+                <td class="text-center text-sm ${arrivalProblem ? 'bg-warning/30' : ''}" onclick="event.stopPropagation()">
+                    <input type="date" class="input input-xs input-bordered w-[7.5rem]"
+                        value="${effectiveCheckIn || ''}"
+                        onchange="onCheckInChange('${reg.id}', this.value)"
+                        ${disabledAttr} />
+                    ${(arrivalFlightLine || arrivalTransfer) ? `<div class="text-xs opacity-60 mt-0.5 whitespace-nowrap">${arrivalFlightLine}${arrivalTransfer}</div>` : ''}
                 </td>
-                <td class="text-center text-sm whitespace-nowrap ${departureProblem ? 'bg-warning/30' : ''}">
-                    ${departureDate ? `${departureDate}${departureTransfer}` : '<span class="opacity-30">—</span>'}
+                <td class="text-center text-sm ${departureProblem ? 'bg-warning/30' : ''}" onclick="event.stopPropagation()">
+                    <input type="date" class="input input-xs input-bordered w-[7.5rem]"
+                        value="${effectiveCheckOut || ''}"
+                        onchange="onCheckOutChange('${reg.id}', this.value)"
+                        ${disabledAttr} />
+                    ${(departureFlightLine || departureTransfer) ? `<div class="text-xs opacity-60 mt-0.5 whitespace-nowrap">${departureFlightLine}${departureTransfer}</div>` : ''}
                 </td>
                 <td class="text-sm">${e(reg.extended_stay || '—')}</td>
                 <td class="text-sm">${e(reg.guest_questions || '—')}</td>
@@ -646,6 +665,66 @@ async function onMealTypeChange(registrationId, mealType, selectElement) {
         }
     } catch (err) {
         Layout.handleError(err, 'Сохранение типа питания');
+    }
+}
+
+async function onCheckInChange(registrationId, dateValue) {
+    if (!window.hasPermission || !window.hasPermission('edit_preliminary')) {
+        Layout.showNotification('Недостаточно прав для редактирования', 'error');
+        return;
+    }
+    const reg = registrations.find(r => r.id === registrationId);
+    if (!reg) return;
+
+    try {
+        const { error: regError } = await Layout.db
+            .from('retreat_registrations')
+            .update({ arrival_datetime: dateValue || null })
+            .eq('id', registrationId);
+        if (regError) throw regError;
+
+        if (reg.resident?.id && dateValue) {
+            const { error: resError } = await Layout.db
+                .from('residents')
+                .update({ check_in: dateValue })
+                .eq('id', reg.resident.id);
+            if (resError) throw resError;
+        }
+
+        await loadRegistrations();
+    } catch (err) {
+        Layout.handleError(err, 'Сохранение даты заезда');
+        await loadRegistrations();
+    }
+}
+
+async function onCheckOutChange(registrationId, dateValue) {
+    if (!window.hasPermission || !window.hasPermission('edit_preliminary')) {
+        Layout.showNotification('Недостаточно прав для редактирования', 'error');
+        return;
+    }
+    const reg = registrations.find(r => r.id === registrationId);
+    if (!reg) return;
+
+    try {
+        const { error: regError } = await Layout.db
+            .from('retreat_registrations')
+            .update({ departure_datetime: dateValue || null })
+            .eq('id', registrationId);
+        if (regError) throw regError;
+
+        if (reg.resident?.id && dateValue) {
+            const { error: resError } = await Layout.db
+                .from('residents')
+                .update({ check_out: dateValue })
+                .eq('id', reg.resident.id);
+            if (resError) throw resError;
+        }
+
+        await loadRegistrations();
+    } catch (err) {
+        Layout.handleError(err, 'Сохранение даты выезда');
+        await loadRegistrations();
     }
 }
 
