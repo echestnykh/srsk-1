@@ -544,41 +544,64 @@
                     </div>
                 </div>
 
-                <!-- Заезд / Выезд -->
-                <div class="divider text-sm opacity-60">Заезд / Выезд</div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <!-- Прилёт -->
+                <div class="divider text-sm opacity-60">Прилёт</div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                        <label class="label py-0.5"><span class="label-text">Дата и время заезда</span></label>
-                        <input type="datetime-local" name="arrival_datetime" class="input input-bordered input-sm w-full" />
+                        <label class="label py-0.5"><span class="label-text">Дата и время рейса</span></label>
+                        <input type="datetime-local" name="arrival_flight_datetime" class="input input-bordered input-sm w-full" />
                     </div>
                     <div>
-                        <label class="label py-0.5"><span class="label-text">Дата и время выезда</span></label>
-                        <input type="datetime-local" name="departure_datetime" class="input input-bordered input-sm w-full" />
-                    </div>
-                    <div>
-                        <label class="label py-0.5"><span class="label-text">Рейс прилёта</span></label>
+                        <label class="label py-0.5"><span class="label-text">Номер рейса</span></label>
                         <input type="text" name="arrival_flight" class="input input-bordered input-sm w-full" placeholder="AI156" />
                     </div>
                     <div>
-                        <label class="label py-0.5"><span class="label-text">Рейс вылета</span></label>
-                        <input type="text" name="departure_flight" class="input input-bordered input-sm w-full" placeholder="AI155" />
-                    </div>
-                    <div>
-                        <label class="label py-0.5"><span class="label-text">Трансфер из аэропорта</span></label>
+                        <label class="label py-0.5"><span class="label-text">Трансфер</span></label>
                         <select name="arrival_transfer" class="select select-bordered select-sm w-full">
                             <option value="">Не указано</option>
                             <option value="yes">Нужен</option>
                             <option value="no">Не нужен</option>
                         </select>
                     </div>
+                </div>
+                <label class="label cursor-pointer justify-start gap-2 py-1">
+                    <input type="checkbox" name="direct_arrival" class="checkbox checkbox-sm" checked
+                        onchange="document.getElementById('arrivalDatetimeRow').classList.toggle('hidden', this.checked)" />
+                    <span class="label-text">Сразу на ретрит (из аэропорта)</span>
+                </label>
+                <div id="arrivalDatetimeRow" class="hidden">
+                    <label class="label py-0.5"><span class="label-text">Дата и время приезда на ретрит</span></label>
+                    <input type="datetime-local" name="arrival_datetime" class="input input-bordered input-sm w-full sm:w-1/2" />
+                </div>
+
+                <!-- Вылет -->
+                <div class="divider text-sm opacity-60">Вылет</div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                        <label class="label py-0.5"><span class="label-text">Трансфер в аэропорт</span></label>
+                        <label class="label py-0.5"><span class="label-text">Дата и время рейса</span></label>
+                        <input type="datetime-local" name="departure_flight_datetime" class="input input-bordered input-sm w-full" />
+                    </div>
+                    <div>
+                        <label class="label py-0.5"><span class="label-text">Номер рейса</span></label>
+                        <input type="text" name="departure_flight" class="input input-bordered input-sm w-full" placeholder="AI155" />
+                    </div>
+                    <div>
+                        <label class="label py-0.5"><span class="label-text">Трансфер</span></label>
                         <select name="departure_transfer" class="select select-bordered select-sm w-full">
                             <option value="">Не указано</option>
                             <option value="yes">Нужен</option>
                             <option value="no">Не нужен</option>
                         </select>
                     </div>
+                </div>
+                <label class="label cursor-pointer justify-start gap-2 py-1">
+                    <input type="checkbox" name="direct_departure" class="checkbox checkbox-sm" checked
+                        onchange="document.getElementById('departureDatetimeRow').classList.toggle('hidden', this.checked)" />
+                    <span class="label-text">С ретрита на самолёт</span>
+                </label>
+                <div id="departureDatetimeRow" class="hidden">
+                    <label class="label py-0.5"><span class="label-text">Дата и время отъезда с ретрита</span></label>
+                    <input type="datetime-local" name="departure_datetime" class="input input-bordered input-sm w-full sm:w-1/2" />
                 </div>
 
                 <p class="text-xs opacity-50">* Пол, телефон или email, духовное имя или имя+фамилия — обязательны</p>

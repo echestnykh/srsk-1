@@ -911,6 +911,9 @@ function openNewGuestModal() {
     }
     const form = document.getElementById('newGuestForm');
     form.reset();
+    // Сброс: галочки включены → скрыть отдельные поля приезда/отъезда
+    document.getElementById('arrivalDatetimeRow').classList.add('hidden');
+    document.getElementById('departureDatetimeRow').classList.add('hidden');
     document.getElementById('newGuestModal').showModal();
 }
 
@@ -957,6 +960,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (vErr) throw vErr;
 
             // 2. Создать регистрацию на ретрит
+            const directArrival = f.direct_arrival.checked;
+            const directDeparture = f.direct_departure.checked;
+            // Если «сразу на ретрит» — arrival_datetime = время рейса, иначе отдельное поле
+            const arrivalDt = directArrival
+                ? (f.arrival_flight_datetime.value || null)
+                : (f.arrival_datetime.value || f.arrival_flight_datetime.value || null);
+            const departureDt = directDeparture
+                ? (f.departure_flight_datetime.value || null)
+                : (f.departure_datetime.value || f.departure_flight_datetime.value || null);
+
             const { data: regData, error: regErr } = await Layout.db
                 .from('retreat_registrations')
                 .insert({
@@ -969,8 +982,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     extended_stay: f.extended_stay.value.trim() || null,
                     guest_questions: f.guest_questions.value.trim() || null,
                     org_notes: f.org_notes.value.trim() || null,
-                    arrival_datetime: f.arrival_datetime.value || null,
-                    departure_datetime: f.departure_datetime.value || null
+                    arrival_datetime: arrivalDt,
+                    departure_datetime: departureDt,
+                    direct_arrival: directArrival,
+                    direct_departure: directDeparture
                 })
                 .select('id')
                 .single();
@@ -978,20 +993,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 3. Создать трансферы (если есть данные)
             const transfers = [];
-            if (f.arrival_datetime.value || f.arrival_flight.value.trim()) {
+            if (f.arrival_flight_datetime.value || f.arrival_flight.value.trim()) {
                 transfers.push({
                     registration_id: regData.id,
                     direction: 'arrival',
-                    flight_datetime: f.arrival_datetime.value || null,
+                    flight_datetime: f.arrival_flight_datetime.value || null,
                     flight_number: f.arrival_flight.value.trim() || null,
                     needs_transfer: f.arrival_transfer.value || null
                 });
             }
-            if (f.departure_datetime.value || f.departure_flight.value.trim()) {
+            if (f.departure_flight_datetime.value || f.departure_flight.value.trim()) {
                 transfers.push({
                     registration_id: regData.id,
                     direction: 'departure',
-                    flight_datetime: f.departure_datetime.value || null,
+                    flight_datetime: f.departure_flight_datetime.value || null,
                     flight_number: f.departure_flight.value.trim() || null,
                     needs_transfer: f.departure_transfer.value || null
                 });
