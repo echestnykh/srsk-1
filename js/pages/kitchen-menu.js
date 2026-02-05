@@ -996,14 +996,6 @@ function prevPeriod() {
         currentDate.setDate(currentDate.getDate() - 1);
     } else if (currentView === 'week') {
         currentWeekStart.setDate(currentWeekStart.getDate() - 7);
-    } else if (currentView === 'period') {
-        if (periodStart && periodEnd) {
-            const dayCount = Math.ceil((periodEnd - periodStart) / (1000 * 60 * 60 * 24)) + 1;
-            periodStart.setDate(periodStart.getDate() - dayCount);
-            periodEnd.setDate(periodEnd.getDate() - dayCount);
-            Layout.$('#periodStartDate').value = formatDate(periodStart);
-            Layout.$('#periodEndDate').value = formatDate(periodEnd);
-        }
     } else {
         currentMonth.setMonth(currentMonth.getMonth() - 1);
     }
@@ -1015,14 +1007,6 @@ function nextPeriod() {
         currentDate.setDate(currentDate.getDate() + 1);
     } else if (currentView === 'week') {
         currentWeekStart.setDate(currentWeekStart.getDate() + 7);
-    } else if (currentView === 'period') {
-        if (periodStart && periodEnd) {
-            const dayCount = Math.ceil((periodEnd - periodStart) / (1000 * 60 * 60 * 24)) + 1;
-            periodStart.setDate(periodStart.getDate() + dayCount);
-            periodEnd.setDate(periodEnd.getDate() + dayCount);
-            Layout.$('#periodStartDate').value = formatDate(periodStart);
-            Layout.$('#periodEndDate').value = formatDate(periodEnd);
-        }
     } else {
         currentMonth.setMonth(currentMonth.getMonth() + 1);
     }
