@@ -930,6 +930,10 @@ document.addEventListener('DOMContentLoaded', () => {
             Layout.showNotification('Укажите телефон или email', 'warning');
             return;
         }
+        if (!f.spiritual_name.value.trim() && (!f.first_name.value.trim() || !f.last_name.value.trim())) {
+            Layout.showNotification('Укажите духовное имя или имя и фамилию', 'warning');
+            return;
+        }
 
         try {
             // 1. Создать вайшнава
