@@ -6,6 +6,8 @@ let currentView = 'day';
 let currentDate = new Date();
 let currentWeekStart = getWeekStart(new Date());
 let currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+let periodStart = null; // Date — начало произвольного периода
+let periodEnd = null;   // Date — конец произвольного периода
 
 let recipes = [];
 let categories = [];
@@ -252,6 +254,10 @@ async function loadMenuData() {
         const weekEnd = new Date(currentWeekStart);
         weekEnd.setDate(weekEnd.getDate() + 6);
         endDate = formatDate(weekEnd);
+    } else if (currentView === 'period') {
+        if (!periodStart || !periodEnd) return;
+        startDate = formatDate(periodStart);
+        endDate = formatDate(periodEnd);
     } else {
         startDate = formatDate(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1));
         endDate = formatDate(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0));
@@ -375,6 +381,8 @@ function render() {
         renderDay();
     } else if (currentView === 'week') {
         renderWeek();
+    } else if (currentView === 'period') {
+        renderPeriod();
     } else {
         renderMonth();
     }
@@ -391,6 +399,10 @@ function updatePeriodRange() {
         const end = new Date(currentWeekStart);
         end.setDate(end.getDate() + 6);
         text = `${currentWeekStart.getDate()} – ${end.getDate()} ${m[end.getMonth()]} ${end.getFullYear()}`;
+    } else if (currentView === 'period') {
+        if (periodStart && periodEnd) {
+            text = `${periodStart.getDate()} ${m[periodStart.getMonth()]} – ${periodEnd.getDate()} ${m[periodEnd.getMonth()]} ${periodEnd.getFullYear()}`;
+        }
     } else {
         text = `${m[currentMonth.getMonth()]} ${currentMonth.getFullYear()}`;
     }
@@ -720,6 +732,122 @@ function renderWeek() {
     }).join('');
 }
 
+function renderPeriod() {
+    const grid = Layout.$('#periodGrid');
+    if (!periodStart || !periodEnd) {
+        grid.innerHTML = '';
+        return;
+    }
+
+    const today = formatDate(new Date());
+    const m = getMonthNames();
+    const d = getDayNames();
+    const canEdit = canEditMenu();
+
+    // Генерируем массив дней периода
+    const dayCount = Math.ceil((periodEnd - periodStart) / (1000 * 60 * 60 * 24)) + 1;
+    const days = Array.from({ length: dayCount }, (_, i) => {
+        const date = new Date(periodStart);
+        date.setDate(date.getDate() + i);
+        return date;
+    });
+
+    // Print header
+    const printHeader = Layout.$('#periodPrintHeader');
+    if (printHeader) {
+        const first = days[0];
+        const last = days[days.length - 1];
+        printHeader.innerHTML = getPrintHeader(`${first.getDate()} ${m[first.getMonth()]} – ${last.getDate()} ${m[last.getMonth()]} ${last.getFullYear()}`);
+    }
+
+    // Рендерим карточки в том же формате, что и renderWeek
+    grid.innerHTML = days.map(date => {
+        const dateStr = formatDate(date);
+        const dayMenu = menuData[dateStr] || {};
+        const isEkadashiDay = isEkadashi(dateStr);
+        const majorFestival = getMajorFestival(dateStr);
+        const acharyaEvents = getAcharyaEvents(dateStr);
+        const retreat = getRetreat(dateStr);
+        const isToday = dateStr === today;
+        const styles = getDayStyles(retreat, majorFestival, isEkadashiDay);
+
+        let holidayLine = '';
+        if (majorFestival) {
+            holidayLine = `<div class="text-xs text-yellow-700 font-medium mt-1">${getName(majorFestival)}</div>`;
+        } else if (isEkadashiDay) {
+            holidayLine = `<div class="text-xs text-amber-600 mt-1">${t('ekadashi')}</div>`;
+        }
+
+        let acharyaLine = '';
+        if (acharyaEvents.length > 0) {
+            acharyaLine = `<div class="mt-1 text-xs opacity-60 truncate">${acharyaEvents.map(e => getName(e)).join(' · ')}</div>`;
+        }
+
+        return `
+            <div class="rounded-xl shadow-sm overflow-hidden flex flex-col ${isToday ? 'ring-2 ring-offset-2' : ''}" style="${styles.bg}">
+                <div class="p-3 border-b border-base-200" style="${styles.header}">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="font-semibold">${date.getDate()} ${m[date.getMonth()]}, <span class="font-normal opacity-60">${d[date.getDay()]}</span></div>
+                            ${holidayLine}
+                        </div>
+                        ${canEdit ? `
+                        <button class="btn btn-ghost btn-sm btn-square opacity-50 hover:opacity-100 no-print" onclick="openDayDetail('${dateStr}')">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                        </button>
+                        ` : ''}
+                    </div>
+                    ${retreat ? `<div class="mt-1 text-xs font-bold uppercase tracking-wide" style="color: ${retreat.color};">${getName(retreat)}</div>` : ''}
+                    ${(() => {
+                        const counts = eatingCounts[dateStr];
+                        if (counts && (counts.guests > 0 || counts.team > 0)) {
+                            const total = counts.guests + counts.team;
+                            return `<div class="text-xs text-gray-500 font-medium mt-1" title="Гости + Команда = Итого">🍽 ${counts.guests}+${counts.team}=${total}</div>`;
+                        }
+                        return '';
+                    })()}
+                    ${acharyaLine}
+                </div>
+
+                <div class="p-3 space-y-2">
+                    ${getMealTypes().map((mt, i) => {
+                        const meal = dayMenu[mt];
+                        if (!meal?.dishes?.length) {
+                            return '';
+                        }
+                        const isCafe = Layout.currentLocation === 'cafe';
+                        const dishesText = meal.dishes.map(d => {
+                            const name = getName(d.recipe);
+                            const portion = d.portion_size ? `${d.portion_size}${getUnitShort(d.portion_unit)}` : '';
+                            const link = d.recipe?.id ? `<a href="recipe.html?id=${d.recipe.id}" class="hover:text-primary hover:underline">${name}</a>` : name;
+                            return portion ? `${link} (${portion})` : link;
+                        }).join(', ');
+                        if (isCafe) {
+                            return `
+                                <div class="text-sm py-1">
+                                    <div class="text-xs leading-tight">${dishesText}</div>
+                                </div>
+                            `;
+                        }
+                        return `
+                            <div class="text-sm py-1">
+                                <div class="flex items-center">
+                                    <span class="w-4 text-center font-medium">${i + 1}.</span>
+                                    <span class="ml-1 flex-1 truncate font-medium">${getPersonName(meal.cook) || '—'}</span>
+                                    <span class="font-medium ml-2">${meal.portions}</span>
+                                </div>
+                                <div class="text-xs opacity-60 ml-5 leading-tight">${dishesText}</div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
 function renderMonth() {
     const grid = Layout.$('#monthGrid');
     const dayNamesContainer = Layout.$('#monthDayNames');
@@ -835,16 +963,30 @@ function setView(view) {
     Layout.$('#weekBtn').classList.toggle('hidden', view === 'week');
     Layout.$('#monthNav').classList.toggle('hidden', view !== 'month');
     Layout.$('#monthBtn').classList.toggle('hidden', view === 'month');
+    Layout.$('#periodNav').classList.toggle('hidden', view !== 'period');
+    Layout.$('#periodBtn').classList.toggle('hidden', view === 'period');
 
     // Show/hide views
     Layout.$('#dayView').classList.toggle('hidden', view !== 'day');
     Layout.$('#weekView').classList.toggle('hidden', view !== 'week');
     Layout.$('#monthView').classList.toggle('hidden', view !== 'month');
+    Layout.$('#periodView').classList.toggle('hidden', view !== 'period');
 
-    // Show/hide template buttons (only in week/month view)
-    const showTemplateButtons = view === 'week' || view === 'month';
+    // Show/hide template buttons (only in week/month/period view)
+    const showTemplateButtons = view === 'week' || view === 'month' || view === 'period';
     Layout.$('#saveTemplateBtn')?.classList.toggle('hidden', !showTemplateButtons);
     Layout.$('#applyTemplateBtn')?.classList.toggle('hidden', !showTemplateButtons);
+
+    // Для периода: при первом открытии — ставим даты текущей недели
+    if (view === 'period') {
+        if (!periodStart || !periodEnd) {
+            periodStart = new Date(currentWeekStart);
+            periodEnd = new Date(currentWeekStart);
+            periodEnd.setDate(periodEnd.getDate() + 6);
+            Layout.$('#periodStartDate').value = formatDate(periodStart);
+            Layout.$('#periodEndDate').value = formatDate(periodEnd);
+        }
+    }
 
     loadMenuData();
 }
@@ -854,6 +996,14 @@ function prevPeriod() {
         currentDate.setDate(currentDate.getDate() - 1);
     } else if (currentView === 'week') {
         currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+    } else if (currentView === 'period') {
+        if (periodStart && periodEnd) {
+            const dayCount = Math.ceil((periodEnd - periodStart) / (1000 * 60 * 60 * 24)) + 1;
+            periodStart.setDate(periodStart.getDate() - dayCount);
+            periodEnd.setDate(periodEnd.getDate() - dayCount);
+            Layout.$('#periodStartDate').value = formatDate(periodStart);
+            Layout.$('#periodEndDate').value = formatDate(periodEnd);
+        }
     } else {
         currentMonth.setMonth(currentMonth.getMonth() - 1);
     }
@@ -865,6 +1015,14 @@ function nextPeriod() {
         currentDate.setDate(currentDate.getDate() + 1);
     } else if (currentView === 'week') {
         currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+    } else if (currentView === 'period') {
+        if (periodStart && periodEnd) {
+            const dayCount = Math.ceil((periodEnd - periodStart) / (1000 * 60 * 60 * 24)) + 1;
+            periodStart.setDate(periodStart.getDate() + dayCount);
+            periodEnd.setDate(periodEnd.getDate() + dayCount);
+            Layout.$('#periodStartDate').value = formatDate(periodStart);
+            Layout.$('#periodEndDate').value = formatDate(periodEnd);
+        }
     } else {
         currentMonth.setMonth(currentMonth.getMonth() + 1);
     }
@@ -873,6 +1031,22 @@ function nextPeriod() {
 
 function goToToday() {
     currentDate = new Date();
+    loadMenuData();
+}
+
+function onPeriodDatesChange() {
+    const startVal = Layout.$('#periodStartDate').value;
+    const endVal = Layout.$('#periodEndDate').value;
+    if (!startVal || !endVal) return;
+
+    periodStart = parseLocalDate(startVal);
+    periodEnd = parseLocalDate(endVal);
+
+    if (periodEnd < periodStart) {
+        periodEnd = new Date(periodStart);
+        Layout.$('#periodEndDate').value = formatDate(periodEnd);
+    }
+
     loadMenuData();
 }
 
