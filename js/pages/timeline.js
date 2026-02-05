@@ -939,6 +939,11 @@ function openResidentModal(guestData, buildingName, roomName) {
         <span class="text-gray-500">Заезд:</span>
         <span class="font-medium">${formatDisplayDate(res.check_in)}${res.early_checkin ? ' (ранний)' : ''}</span>
     </div>`;
+    // Плейсхолдер для времени приезда (заполняется асинхронно)
+    infoHtml += `<div id="residentArrivalTime" class="hidden flex justify-between py-1 border-b">
+        <span class="text-gray-500">Время приезда:</span>
+        <span class="font-medium" id="residentArrivalTimeValue"></span>
+    </div>`;
 
     if (res.check_out) {
         infoHtml += `<div class="flex justify-between py-1 border-b">
@@ -946,6 +951,11 @@ function openResidentModal(guestData, buildingName, roomName) {
             <span class="font-medium">${formatDisplayDate(res.check_out)}${res.late_checkout ? ' (поздний)' : ''}</span>
         </div>`;
     }
+    // Плейсхолдер для времени отъезда
+    infoHtml += `<div id="residentDepartureTime" class="hidden flex justify-between py-1 border-b">
+        <span class="text-gray-500">Время отъезда:</span>
+        <span class="font-medium" id="residentDepartureTimeValue"></span>
+    </div>`;
 
     // Телефон
     if (res.guest_phone) {
@@ -1056,6 +1066,50 @@ function openResidentModal(guestData, buildingName, roomName) {
 
     // Открываем модалку
     document.getElementById('residentModal').showModal();
+
+    // Подгружаем время приезда/отъезда из retreat_registrations
+    if (res.retreat_id && res.vaishnava_id) {
+        loadRetreatTimes(res.retreat_id, res.vaishnava_id);
+    }
+}
+
+// Подгрузка arrival/departure datetime из retreat_registrations
+async function loadRetreatTimes(retreatId, vaishnavId) {
+    const { data } = await Layout.db
+        .from('retreat_registrations')
+        .select('arrival_datetime, departure_datetime')
+        .eq('retreat_id', retreatId)
+        .eq('vaishnava_id', vaishnavId)
+        .eq('is_deleted', false)
+        .maybeSingle();
+
+    if (!data) return;
+
+    if (data.arrival_datetime) {
+        const el = document.getElementById('residentArrivalTime');
+        const val = document.getElementById('residentArrivalTimeValue');
+        if (el && val) {
+            val.textContent = formatTimestampShort(data.arrival_datetime);
+            el.classList.remove('hidden');
+        }
+    }
+    if (data.departure_datetime) {
+        const el = document.getElementById('residentDepartureTime');
+        const val = document.getElementById('residentDepartureTimeValue');
+        if (el && val) {
+            val.textContent = formatTimestampShort(data.departure_datetime);
+            el.classList.remove('hidden');
+        }
+    }
+}
+
+// Форматирует TIMESTAMPTZ в читаемый вид: "7 фев, 10:35"
+function formatTimestampShort(datetimeStr) {
+    if (!datetimeStr) return '—';
+    const d = new Date(datetimeStr.slice(0, 16));
+    const months = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getDate()} ${months[d.getMonth()]}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 // Форматирование даты для отображения
