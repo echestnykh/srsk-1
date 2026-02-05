@@ -902,6 +902,7 @@ function openEditRegModal(registrationId) {
 
     currentEditRegId = registrationId;
     document.getElementById('editRegId').value = registrationId;
+    document.getElementById('editRegPersonName').textContent = person ? getVaishnavName(person) : '';
 
     // Статус
     document.getElementById('editRegStatus').value = reg.status || 'guest';
@@ -1028,6 +1029,32 @@ async function saveRegistration() {
     } catch (err) {
         console.error('Error saving registration:', err);
         Layout.showNotification(t('error_saving') + ': ' + err.message, 'error');
+    }
+}
+
+async function deleteRegistration(registrationId) {
+    const reg = registrations.find(r => r.id === registrationId);
+    if (!reg) return;
+
+    const retreat = reg.retreats;
+    const retreatName = retreat ? Layout.getName(retreat) : 'ретрит';
+    if (!confirm(`Удалить регистрацию на «${retreatName}»? Связанные трансферы и размещение тоже будут удалены.`)) return;
+
+    try {
+        // Удалить трансферы
+        await Layout.db.from('guest_transfers').delete().eq('registration_id', registrationId);
+        // Удалить размещение
+        await Layout.db.from('residents').delete().eq('vaishnava_id', person.id).eq('retreat_id', reg.retreat_id);
+        // Удалить регистрацию
+        const { error } = await Layout.db.from('retreat_registrations').delete().eq('id', registrationId);
+        if (error) throw error;
+
+        await loadRegistrations(person.id);
+        renderRegistrations();
+        Layout.showNotification('Регистрация удалена', 'success');
+    } catch (err) {
+        console.error('Error deleting registration:', err);
+        Layout.showNotification('Ошибка удаления: ' + err.message, 'error');
     }
 }
 
@@ -1464,6 +1491,12 @@ function renderRegistrations() {
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                     Изменить
+                </button>
+                <button class="btn btn-xs btn-ghost text-error gap-1" onclick="event.stopPropagation(); deleteRegistration('${reg.id}')">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Удалить
                 </button>
             </div>
         `;
