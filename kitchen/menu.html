@@ -148,6 +148,12 @@
 
     <main class="container mx-auto px-4 py-6 flex-1">
 
+        <!-- Title Row -->
+        <h1 class="text-2xl font-bold mb-4 no-print">
+            <span data-i18n="menu_title">Меню</span>
+            <span class="opacity-60 ml-2 font-normal text-lg" id="periodRange"></span>
+        </h1>
+
         <!-- Navigation Row -->
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 no-print">
             <div class="flex items-center gap-2">
@@ -206,13 +212,6 @@
                     <input type="date" id="periodEndDate" class="input input-sm input-bordered w-36" onchange="onPeriodDatesChange()" />
                 </div>
                 <button id="periodBtn" class="btn btn-sm btn-ghost view-btn" data-view="period" onclick="setView('period')" data-i18n="period">Период</button>
-            </div>
-
-            <div class="flex items-center gap-2">
-                <h1 class="text-2xl font-bold">
-                    <span data-i18n="menu_title">Меню</span>
-                    <span class="opacity-60 ml-2 font-normal text-lg" id="periodRange"></span>
-                </h1>
             </div>
 
             <div class="flex items-center gap-2">
