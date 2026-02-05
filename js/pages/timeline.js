@@ -722,6 +722,7 @@ async function saveCheckin(e) {
         check_out: form.check_out.value || null,
         early_checkin: form.early_checkin.checked,
         late_checkout: form.late_checkout.checked,
+        meal_type: form.meal_type.value || 'prasad',
         notes: form.notes.value || null,
         status: 'active'
     };
@@ -951,6 +952,15 @@ function openResidentModal(guestData, buildingName, roomName) {
         infoHtml += `<div class="flex justify-between py-1 border-b">
             <span class="text-gray-500">Телефон:</span>
             <span class="font-medium">${e(res.guest_phone)}</span>
+        </div>`;
+    }
+
+    // Питание
+    if (!isBooking) {
+        const mealLabels = { prasad: 'С нами', child: 'Детское', self: 'Самостоятельно' };
+        infoHtml += `<div class="flex justify-between py-1 border-b">
+            <span class="text-gray-500">Питание:</span>
+            <span class="font-medium">${mealLabels[res.meal_type] || 'С нами'}</span>
         </div>`;
     }
 

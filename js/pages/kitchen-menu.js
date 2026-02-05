@@ -312,8 +312,8 @@ async function loadEatingCounts(startDate, endDate) {
     );
     const retreatIds = retreatsInPeriod.map(r => r.id);
 
-    // Один параллельный запрос (staffIds уже загружены в loadData)
-    const [guestRegResult, teamStaysResult] = await Promise.all([
+    // Параллельные запросы (staffIds уже загружены в loadData)
+    const [guestRegResult, teamStaysResult, residentsResult] = await Promise.all([
         retreatIds.length > 0
             ? Layout.db
                 .from('retreat_registrations')
@@ -330,11 +330,20 @@ async function loadEatingCounts(startDate, endDate) {
                 .in('vaishnava_id', staffIds)
                 .lte('start_date', endDate)
                 .gte('end_date', startDate)
-            : Promise.resolve({ data: [] })
+            : Promise.resolve({ data: [] }),
+        // Проживающие, которые едят с нами (meal_type = prasad или не указано)
+        Layout.db
+            .from('residents')
+            .select('id, check_in, check_out')
+            .eq('status', 'active')
+            .or('meal_type.eq.prasad,meal_type.is.null')
+            .lte('check_in', endDate)
+            .or(`check_out.gte.${startDate},check_out.is.null`)
     ]);
 
     const guestRegistrations = guestRegResult.data || [];
     const teamStays = teamStaysResult.data || [];
+    const residentsData = residentsResult.data || [];
 
     // Подсчитываем для каждого дня
     const firstDay = new Date(startDate + 'T00:00:00');
@@ -360,8 +369,16 @@ async function loadEatingCounts(startDate, endDate) {
         }
         const teamCount = teamInDay.size;
 
-        // Всегда создаём запись, даже если 0+0=0
-        eatingCounts[dateStr] = { guests: guestsCount, team: teamCount };
+        // Проживающие: активные резиденты с meal_type=prasad на эту дату
+        let residentsCount = 0;
+        for (const r of residentsData) {
+            if (r.check_in <= dateStr && (!r.check_out || r.check_out >= dateStr)) {
+                residentsCount++;
+            }
+        }
+
+        // Всегда создаём запись, даже если 0+0+0=0
+        eatingCounts[dateStr] = { guests: guestsCount, team: teamCount, residents: residentsCount };
     }
 }
 
@@ -369,7 +386,7 @@ async function loadEatingCounts(startDate, endDate) {
 function getEatingTotal(dateStr) {
     const counts = eatingCounts[dateStr];
     if (counts) {
-        const total = counts.guests + counts.team;
+        const total = counts.guests + counts.team + (counts.residents || 0);
         return total > 0 ? total : 50; // минимум 50 если никого
     }
     return 50; // по умолчанию
@@ -444,7 +461,7 @@ function renderDay() {
     // Количество питающихся
     const counts = eatingCounts[dateStr];
     const eatingLine = counts
-        ? `<div class="text-sm text-gray-500 font-medium mt-1" title="Гости + Команда = Итого">🍽 ${counts.guests}+${counts.team}=${counts.guests + counts.team}</div>`
+        ? `<div class="text-sm text-gray-500 font-medium mt-1" title="Ретрит + Команда + Проживающие = Итого">🍽 ${counts.guests}+${counts.team}+${counts.residents || 0}=${counts.guests + counts.team + (counts.residents || 0)}</div>`
         : '';
 
     container.innerHTML = `
@@ -685,9 +702,9 @@ function renderWeek() {
                     ${retreat ? `<div class="mt-1 text-xs font-bold uppercase tracking-wide" style="color: ${retreat.color};">${getName(retreat)}</div>` : ''}
                     ${(() => {
                         const counts = eatingCounts[dateStr];
-                        if (counts && (counts.guests > 0 || counts.team > 0)) {
-                            const total = counts.guests + counts.team;
-                            return `<div class="text-xs text-gray-500 font-medium mt-1" title="Гости + Команда = Итого">🍽 ${counts.guests}+${counts.team}=${total}</div>`;
+                        if (counts && (counts.guests > 0 || counts.team > 0 || (counts.residents || 0) > 0)) {
+                            const total = counts.guests + counts.team + (counts.residents || 0);
+                            return `<div class="text-xs text-gray-500 font-medium mt-1" title="Ретрит + Команда + Проживающие = Итого">🍽 ${counts.guests}+${counts.team}+${counts.residents || 0}=${total}</div>`;
                         }
                         return '';
                     })()}
@@ -802,9 +819,9 @@ function renderPeriod() {
                     ${retreat ? `<div class="mt-1 text-xs font-bold uppercase tracking-wide" style="color: ${retreat.color};">${getName(retreat)}</div>` : ''}
                     ${(() => {
                         const counts = eatingCounts[dateStr];
-                        if (counts && (counts.guests > 0 || counts.team > 0)) {
-                            const total = counts.guests + counts.team;
-                            return `<div class="text-xs text-gray-500 font-medium mt-1" title="Гости + Команда = Итого">🍽 ${counts.guests}+${counts.team}=${total}</div>`;
+                        if (counts && (counts.guests > 0 || counts.team > 0 || (counts.residents || 0) > 0)) {
+                            const total = counts.guests + counts.team + (counts.residents || 0);
+                            return `<div class="text-xs text-gray-500 font-medium mt-1" title="Ретрит + Команда + Проживающие = Итого">🍽 ${counts.guests}+${counts.team}+${counts.residents || 0}=${total}</div>`;
                         }
                         return '';
                     })()}
@@ -931,9 +948,9 @@ function renderMonth() {
         // Количество едоков
         const counts = eatingCounts[dateStr];
         let eatingLine = '';
-        if (counts && (counts.guests > 0 || counts.team > 0)) {
-            const total = counts.guests + counts.team;
-            eatingLine = `<div class="text-xs text-gray-500 font-medium" title="Гости + Команда = Итого">🍽 ${counts.guests}+${counts.team}=${total}</div>`;
+        if (counts && (counts.guests > 0 || counts.team > 0 || (counts.residents || 0) > 0)) {
+            const total = counts.guests + counts.team + (counts.residents || 0);
+            eatingLine = `<div class="text-xs text-gray-500 font-medium" title="Ретрит + Команда + Проживающие = Итого">🍽 ${counts.guests}+${counts.team}+${counts.residents || 0}=${total}</div>`;
         }
 
         return `
