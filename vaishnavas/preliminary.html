@@ -509,9 +509,9 @@
                     <div>
                         <label class="label py-0.5"><span class="label-text">Статус</span></label>
                         <select name="status" class="select select-bordered select-sm w-full">
-                            <option value="pending">Планирует</option>
-                            <option value="confirmed">Подтверждено</option>
+                            <option value="guest">Гость</option>
                             <option value="team">Команда</option>
+                            <option value="cancelled">Отказ</option>
                         </select>
                     </div>
                     <div>
@@ -569,9 +569,19 @@
                         onchange="document.getElementById('arrivalDatetimeRow').classList.toggle('hidden', this.checked)" />
                     <span class="label-text">Сразу на ретрит (из аэропорта)</span>
                 </label>
-                <div id="arrivalDatetimeRow" class="hidden">
-                    <label class="label py-0.5"><span class="label-text">Дата и время приезда на ретрит</span></label>
-                    <input type="datetime-local" name="arrival_datetime" class="input input-bordered input-sm w-full sm:w-1/2" />
+                <div id="arrivalDatetimeRow" class="hidden grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div class="sm:col-span-2">
+                        <label class="label py-0.5"><span class="label-text">Дата и время приезда на ретрит</span></label>
+                        <input type="datetime-local" name="arrival_datetime" class="input input-bordered input-sm w-full" />
+                    </div>
+                    <div>
+                        <label class="label py-0.5"><span class="label-text">Трансфер на ретрит</span></label>
+                        <select name="arrival_retreat_transfer" class="select select-bordered select-sm w-full">
+                            <option value="">Не указано</option>
+                            <option value="yes">Нужен</option>
+                            <option value="no">Не нужен</option>
+                        </select>
+                    </div>
                 </div>
 
                 <!-- Вылет -->
@@ -599,9 +609,19 @@
                         onchange="document.getElementById('departureDatetimeRow').classList.toggle('hidden', this.checked)" />
                     <span class="label-text">С ретрита на самолёт</span>
                 </label>
-                <div id="departureDatetimeRow" class="hidden">
-                    <label class="label py-0.5"><span class="label-text">Дата и время отъезда с ретрита</span></label>
-                    <input type="datetime-local" name="departure_datetime" class="input input-bordered input-sm w-full sm:w-1/2" />
+                <div id="departureDatetimeRow" class="hidden grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div class="sm:col-span-2">
+                        <label class="label py-0.5"><span class="label-text">Дата и время отъезда с ретрита</span></label>
+                        <input type="datetime-local" name="departure_datetime" class="input input-bordered input-sm w-full" />
+                    </div>
+                    <div>
+                        <label class="label py-0.5"><span class="label-text">Трансфер с ретрита</span></label>
+                        <select name="departure_retreat_transfer" class="select select-bordered select-sm w-full">
+                            <option value="">Не указано</option>
+                            <option value="yes">Нужен</option>
+                            <option value="no">Не нужен</option>
+                        </select>
+                    </div>
                 </div>
 
                 <p class="text-xs opacity-50">* Пол, телефон или email, духовное имя или имя+фамилия — обязательны</p>

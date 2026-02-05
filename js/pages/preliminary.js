@@ -975,7 +975,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 .insert({
                     retreat_id: retreatId,
                     vaishnava_id: vData.id,
-                    status: f.status.value || 'pending',
+                    status: f.status.value || 'guest',
                     meal_type: f.meal_type.value || 'prasad',
                     companions: f.companions.value.trim() || null,
                     accommodation_wishes: f.accommodation_wishes.value.trim() || null,
@@ -993,6 +993,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 3. Создать трансферы (если есть данные)
             const transfers = [];
+            // Трансфер прилёт (аэропорт)
             if (f.arrival_flight_datetime.value || f.arrival_flight.value.trim()) {
                 transfers.push({
                     registration_id: regData.id,
@@ -1002,6 +1003,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     needs_transfer: f.arrival_transfer.value || null
                 });
             }
+            // Трансфер приезд на ретрит (если не сразу из аэропорта)
+            if (!directArrival && (f.arrival_datetime.value || f.arrival_retreat_transfer.value)) {
+                transfers.push({
+                    registration_id: regData.id,
+                    direction: 'arrival_retreat',
+                    flight_datetime: f.arrival_datetime.value || null,
+                    needs_transfer: f.arrival_retreat_transfer.value || null
+                });
+            }
+            // Трансфер отъезд с ретрита (если не сразу в аэропорт)
+            if (!directDeparture && (f.departure_datetime.value || f.departure_retreat_transfer.value)) {
+                transfers.push({
+                    registration_id: regData.id,
+                    direction: 'departure_retreat',
+                    flight_datetime: f.departure_datetime.value || null,
+                    needs_transfer: f.departure_retreat_transfer.value || null
+                });
+            }
+            // Трансфер вылет (аэропорт)
             if (f.departure_flight_datetime.value || f.departure_flight.value.trim()) {
                 transfers.push({
                     registration_id: regData.id,

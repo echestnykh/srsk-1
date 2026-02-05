@@ -1,13 +1,32 @@
 # CLAUDE.md
 
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 ## Проект
 
 **ШРСК** (Sri Rupa Seva Kunja) — веб-приложение для управления ашрамом.
 
-- **Stack**: Vanilla JS + DaisyUI + Tailwind CSS + Supabase
+- **Stack**: Vanilla JS + DaisyUI + Tailwind CSS + Supabase (без сборки)
 - **Production**: https://in.rupaseva.com
 - **Supabase Project ID**: `llttmftapmwebidgevmg`
-- **Языки**: русский, английский, хинди
+- **Языки интерфейса**: русский, английский, хинди
+
+---
+
+## Команды
+
+```bash
+npm run serve          # Локальный сервер на :3000
+npm test               # Все Playwright-тесты
+npm run test:headed    # Тесты с браузером
+npm run test:ui        # Тесты с UI-интерфейсом
+npm run test:kitchen   # Только тесты кухни
+npm run test:vaishnavas # Только тесты вайшнавов
+npm run test:housing   # Только тесты размещения
+npm run test:stock     # Только тесты склада
+```
+
+Тесты в `tests/*.spec.js`, Playwright config в `playwright.config.js`, base URL `http://localhost:3000`.
 
 ---
 
@@ -32,23 +51,26 @@
 
 ---
 
-## Быстрый старт
+## Архитектура
 
 ### Структура страницы
 
+Каждая HTML-страница загружает скрипты в строгом порядке:
+
 ```html
 <head>
-    <script src="js/color-init.js"></script>
+    <script src="js/color-init.js"></script>   <!-- ПЕРВЫМ — тема модуля -->
 </head>
 <body>
     <div id="header-placeholder"></div>
     <main>...</main>
     <div id="footer-placeholder"></div>
 
-    <script src="js/config.js"></script>
+    <script src="js/config.js"></script>        <!-- Supabase credentials -->
     <script src="js/cache.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/layout.js"></script>
+    <script src="js/pages/timeline.js"></script> <!-- Опционально: page-specific JS -->
     <script>
         async function init() {
             await Layout.init({ module: 'housing', menuId: 'placement', itemId: 'timeline' });
@@ -59,26 +81,42 @@
 </body>
 ```
 
+### Page-specific JS (`js/pages/`)
+
+Тяжёлая логика страниц вынесена в отдельные файлы:
+
+| JS-файл | HTML-страница |
+|---------|--------------|
+| `preliminary.js` | `vaishnavas/preliminary.html` — управление регистрациями на ретрит |
+| `timeline.js` | `placement/timeline.html` — шахматка размещения |
+| `person.js` | `vaishnavas/person.html` — профиль вайшнава |
+| `retreat-guests.js` | `vaishnavas/retreat-guests.html` — гости ретрита |
+| `bookings.js` | `placement/bookings.html` — бронирования |
+| `kitchen-menu.js` | `kitchen/menu.html` — планирование меню |
+| `stock-requests.js` | `stock/requests.html` — заявки на склад |
+
 ### Работа с БД
 
 ```javascript
-// Загрузка данных
 const { data, error } = await Layout.db
     .from('vaishnavas')
     .select('id, spiritual_name, first_name, last_name')
     .order('spiritual_name');
 
-if (error) {
-    Layout.handleError(error, 'Загрузка');
-    return;
-}
+if (error) { Layout.handleError(error, 'Загрузка'); return; }
 
-// Локализованное имя
 Layout.getName(item)  // item.name_ru | name_en | name_hi
-
-// Перевод интерфейса
-Layout.t('save')  // "Сохранить"
+Layout.t('save')      // "Сохранить" (i18n)
 ```
+
+### Модули
+
+| Модуль | Цвет | Папки |
+|--------|------|-------|
+| Kitchen | #f49800 | kitchen/, stock/ |
+| Housing | #8b5cf6 | vaishnavas/, placement/, reception/ |
+| CRM | #10b981 | crm/ |
+| Admin | #374151 | ashram/, settings/ (только superuser) |
 
 ---
 
@@ -86,7 +124,7 @@ Layout.t('save')  // "Сохранить"
 
 ### Имена вайшнавов
 ```javascript
-// Правильно: spiritual_name → first_name + last_name
+// spiritual_name → first_name + last_name
 const name = vaishnava.spiritual_name ||
              `${vaishnava.first_name || ''} ${vaishnava.last_name || ''}`.trim();
 ```
@@ -101,45 +139,66 @@ return `${d.getDate()}.${d.getMonth()+1}.${d.getFullYear()}`;
 date.toISOString().split('T')[0];  // ❌
 ```
 
-**ВАЖНО:** datetime-local инпуты сохраняют время БЕЗ таймзоны → PostgreSQL TIMESTAMPTZ хранит его как UTC. При чтении из БД приходит `+00:00`, и `new Date()` сдвигает на таймзону браузера. Поэтому ВСЕГДА используй `.slice(0, 16)` перед `new Date()` для значений из TIMESTAMPTZ — это убирает ложную таймзону и парсит как локальное время. Все расчёты (приезд = рейс + 4ч, отъезд = рейс − 7ч) — в локальном времени.
+**ВАЖНО:** datetime-local инпуты сохраняют время БЕЗ таймзоны → PostgreSQL TIMESTAMPTZ хранит его как UTC. При чтении из БД приходит `+00:00`, и `new Date()` сдвигает на таймзону браузера. Поэтому ВСЕГДА используй `.slice(0, 16)` перед `new Date()` для значений из TIMESTAMPTZ — это убирает ложную таймзону и парсит как локальное время.
+
+### Приоритет дат размещения
+
+Даты заезда/выезда гостя определяются цепочкой fallback (`js/pages/preliminary.js`):
+
+```
+resident.check_in/check_out       ← существующее размещение (DATE)
+→ arrival/departure_datetime      ← индивидуальная дата приезда/отъезда (TIMESTAMPTZ, .slice(0,10))
+→ guest_transfers.flight_datetime ← дата рейса (TIMESTAMPTZ, .slice(0,10))
+→ retreat.start_date/end_date     ← даты ретрита (DATE)
+```
+
+Занятость комнат считается по **пиковой одновременной** загрузке (sweep line), а не по суммарному количеству проживавших.
 
 ### XSS защита
 ```javascript
-// Экранировать пользовательские данные
-Layout.escapeHtml(user.name)
-
-// Валидировать цвета
-Utils.isValidColor(color) ? color : '#ccc'
+Layout.escapeHtml(user.name)                    // экранировать пользовательские данные
+Utils.isValidColor(color) ? color : '#ccc'      // валидировать цвета
 ```
 
 ### Права доступа
 ```javascript
-// Проверка права
 if (!window.hasPermission?.('edit_products')) return;
-
-// Ожидание авторизации
 await waitForAuth();
 if (window.currentUser?.is_superuser) { ... }
 ```
 
 ---
 
-## Модули
+## Ключевые таблицы БД
 
-| Модуль | Цвет | Папки |
-|--------|------|-------|
-| Kitchen | #f49800 | kitchen/, stock/ |
-| Housing | #8b5cf6 | vaishnavas/, placement/, reception/ |
-| CRM | #10b981 | crm/ |
-| Admin | #374151 | ashram/, settings/ (только superuser) |
+### Связь: ретрит → регистрация → трансферы → размещение
+
+```
+retreats (start_date, end_date)
+  └─ retreat_registrations (vaishnava_id, arrival_datetime, departure_datetime,
+                            meal_type, status, direct_arrival, direct_departure)
+       └─ guest_transfers (direction: 'arrival'|'departure', flight_datetime,
+                           flight_number, needs_transfer)
+
+vaishnavas (spiritual_name, first_name, last_name, gender, phone, email, ...)
+  └─ residents (room_id, retreat_id, check_in DATE, check_out DATE, status)
+       └─ rooms (number, capacity, building_id, floor)
+            └─ buildings (name_ru, name_en, name_hi)
+```
 
 ---
 
-## MCP операции
+## Миграции
+
+SQL-миграции в `supabase/` нумеруются `001_` — `107_`. Новые миграции через MCP:
 
 ```javascript
+mcp__supabase__apply_migration({ project_id: 'llttmftapmwebidgevmg', name: '108_description', query: 'SQL...' })
+```
+
+Другие MCP-операции:
+```javascript
 mcp__supabase__execute_sql({ project_id, query })
-mcp__supabase__apply_migration({ project_id, name, query })
 mcp__supabase__list_tables({ project_id, schemas: ['public'] })
 mcp__supabase__get_logs({ project_id, service: 'auth' })
 ```
@@ -154,7 +213,7 @@ mcp__supabase__get_logs({ project_id, service: 'auth' })
 | Кэш переводов устарел | `Cache.invalidate('translations')` |
 | RLS ошибка | Использовать `.select()` вместо `.single()` |
 | N+1 запросы | Загрузить всё через `.in()`, группировать на клиенте |
-| Tailwind desktop | Добавить `tailwind.config = { theme: { extend: { screens: { 'desktop': '1200px' } } } }` |
+| Tailwind desktop | `tailwind.config = { theme: { extend: { screens: { 'desktop': '1200px' } } } }` |
 
 ---
 
@@ -162,6 +221,7 @@ mcp__supabase__get_logs({ project_id, service: 'auth' })
 
 - GitHub Pages автоматически из main
 - После коммита ~1-2 минуты
+- Нет шага сборки — статические HTML/JS/CSS
 - Cache busting: `script.js?v=2`
 
 ---
