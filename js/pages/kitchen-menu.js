@@ -16,7 +16,7 @@ let menuData = {}; // { 'YYYY-MM-DD': { breakfast: {...}, lunch: {...}, dinner: 
 let retreats = [];
 let holidays = [];
 let cooks = [];
-let eatingCounts = {}; // { 'YYYY-MM-DD': { guests: N, team: N } }
+let eatingCounts = {}; // { 'YYYY-MM-DD': { breakfast: { guests, team, residents }, lunch: { guests, team, residents } } }
 let staffIds = []; // Кеш ID сотрудников для loadEatingCounts
 
 let selectedDate = null;
@@ -317,7 +317,7 @@ async function loadEatingCounts(startDate, endDate) {
         retreatIds.length > 0
             ? Layout.db
                 .from('retreat_registrations')
-                .select('retreat_id')
+                .select('retreat_id, early_checkin, late_checkout')
                 .in('retreat_id', retreatIds)
                 .eq('is_deleted', false)
                 .not('status', 'in', '("cancelled","rejected")')
@@ -326,7 +326,7 @@ async function loadEatingCounts(startDate, endDate) {
         staffIds.length > 0
             ? Layout.db
                 .from('vaishnava_stays')
-                .select('vaishnava_id, start_date, end_date')
+                .select('vaishnava_id, start_date, end_date, early_checkin, late_checkout')
                 .in('vaishnava_id', staffIds)
                 .lte('start_date', endDate)
                 .gte('end_date', startDate)
@@ -334,7 +334,7 @@ async function loadEatingCounts(startDate, endDate) {
         // Проживающие, которые едят с нами (meal_type = prasad или не указано)
         Layout.db
             .from('residents')
-            .select('id, check_in, check_out')
+            .select('id, check_in, check_out, early_checkin, late_checkout')
             .eq('status', 'active')
             .or('meal_type.eq.prasad,meal_type.is.null')
             .lte('check_in', endDate)
@@ -345,51 +345,91 @@ async function loadEatingCounts(startDate, endDate) {
     const teamStays = teamStaysResult.data || [];
     const residentsData = residentsResult.data || [];
 
-    // Подсчитываем для каждого дня
+    // Подсчитываем для каждого дня отдельно завтрак и обед
     const firstDay = new Date(startDate + 'T00:00:00');
     const lastDay = new Date(endDate + 'T00:00:00');
     for (let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
         const dateStr = formatDate(d);
 
-        // Гости: считаем регистрации на ретриты, которые включают этот день
-        let guestsCount = 0;
+        let breakfastGuests = 0, lunchGuests = 0;
+
+        // Гости: привязаны к ретриту, день заезда = retreat.start_date, выезда = retreat.end_date
         for (const retreat of retreatsInPeriod) {
             if (dateStr >= retreat.start_date && dateStr <= retreat.end_date) {
-                guestsCount += guestRegistrations.filter(r => r.retreat_id === retreat.id).length;
+                const regsForRetreat = guestRegistrations.filter(r => r.retreat_id === retreat.id);
+                for (const reg of regsForRetreat) {
+                    const isFirstDay = (dateStr === retreat.start_date);
+                    const isLastDay = (dateStr === retreat.end_date);
+                    if (!isFirstDay || reg.early_checkin) breakfastGuests++;
+                    if (!isLastDay || reg.late_checkout) lunchGuests++;
+                }
             }
         }
 
-        // Команда: staff, которые в этот день в ШРСК (по vaishnava_stays)
-        // Используем Set чтобы не считать одного человека дважды (если несколько периодов)
-        const teamInDay = new Set();
+        // Команда: staff по vaishnava_stays (Set для уникальности)
+        const teamBreakfast = new Set();
+        const teamLunch = new Set();
         for (const stay of teamStays) {
             if (stay.start_date <= dateStr && stay.end_date >= dateStr) {
-                teamInDay.add(stay.vaishnava_id);
+                const isFirstDay = (dateStr === stay.start_date);
+                const isLastDay = (dateStr === stay.end_date);
+                if (!isFirstDay || stay.early_checkin) teamBreakfast.add(stay.vaishnava_id);
+                if (!isLastDay || stay.late_checkout) teamLunch.add(stay.vaishnava_id);
             }
         }
-        const teamCount = teamInDay.size;
 
-        // Проживающие: активные резиденты с meal_type=prasad на эту дату
-        let residentsCount = 0;
+        // Проживающие: активные резиденты с meal_type=prasad
+        let breakfastResidents = 0, lunchResidents = 0;
         for (const r of residentsData) {
             if (r.check_in <= dateStr && (!r.check_out || r.check_out >= dateStr)) {
-                residentsCount++;
+                const isFirstDay = (dateStr === r.check_in);
+                const isLastDay = (r.check_out && dateStr === r.check_out);
+                if (!isFirstDay || r.early_checkin) breakfastResidents++;
+                if (!isLastDay || r.late_checkout) lunchResidents++;
             }
         }
 
-        // Всегда создаём запись, даже если 0+0+0=0
-        eatingCounts[dateStr] = { guests: guestsCount, team: teamCount, residents: residentsCount };
+        eatingCounts[dateStr] = {
+            breakfast: { guests: breakfastGuests, team: teamBreakfast.size, residents: breakfastResidents },
+            lunch:     { guests: lunchGuests,     team: teamLunch.size,     residents: lunchResidents }
+        };
     }
 }
 
-// Получить количество питающихся на дату (для порций)
-function getEatingTotal(dateStr) {
+// Получить количество питающихся на дату и приём пищи (для порций)
+function getEatingTotal(dateStr, mealType) {
     const counts = eatingCounts[dateStr];
-    if (counts) {
-        const total = counts.guests + counts.team + (counts.residents || 0);
-        return total > 0 ? total : 50; // минимум 50 если никого
+    if (!counts) return 50;
+    // Для dinner/menu используем данные обеда (те же люди)
+    const key = (mealType === 'breakfast') ? 'breakfast' : 'lunch';
+    const mc = counts[key];
+    if (!mc) return 50;
+    const total = mc.guests + mc.team + (mc.residents || 0);
+    return total > 0 ? total : 50;
+}
+
+// Строка с подсчётом питающихся (завтрак / обед)
+function formatEatingLine(dateStr, cssClass) {
+    const counts = eatingCounts[dateStr];
+    if (!counts) return '';
+
+    const bf = counts.breakfast;
+    const ln = counts.lunch;
+    if (!bf && !ln) return '';
+
+    const bfTotal = bf ? bf.guests + bf.team + (bf.residents || 0) : 0;
+    const lnTotal = ln ? ln.guests + ln.team + (ln.residents || 0) : 0;
+    if (bfTotal === 0 && lnTotal === 0) return '';
+
+    const titleText = 'Ретрит + Команда + Проживающие';
+
+    // Если числа совпадают — одна строка
+    if (bfTotal === lnTotal) {
+        return `<div class="${cssClass}" title="${titleText}">🍽 ${bf.guests}+${bf.team}+${bf.residents || 0}=${bfTotal}</div>`;
     }
-    return 50; // по умолчанию
+
+    // Разные — показываем завтрак и обед
+    return `<div class="${cssClass}" title="${titleText}">🌅${bfTotal} 🍽${lnTotal}</div>`;
 }
 
 // ==================== RENDERING ====================
@@ -459,10 +499,7 @@ function renderDay() {
     }
 
     // Количество питающихся
-    const counts = eatingCounts[dateStr];
-    const eatingLine = counts
-        ? `<div class="text-sm text-gray-500 font-medium mt-1" title="Ретрит + Команда + Проживающие = Итого">🍽 ${counts.guests}+${counts.team}+${counts.residents || 0}=${counts.guests + counts.team + (counts.residents || 0)}</div>`
-        : '';
+    const eatingLine = formatEatingLine(dateStr, 'text-sm text-gray-500 font-medium mt-1');
 
     container.innerHTML = `
         <div class="print-only print-header">${getPrintHeader(dateText, extraInfo)}</div>
@@ -493,7 +530,7 @@ function renderDay() {
 function renderMealSection(dateStr, mealType, index, mealData, isEkadashiDay) {
     const dishes = mealData?.dishes || [];
     // Если порции = 50 (дефолт), используем рассчитанное значение
-    const portions = (mealData?.portions && mealData.portions !== 50) ? mealData.portions : getEatingTotal(dateStr);
+    const portions = (mealData?.portions && mealData.portions !== 50) ? mealData.portions : getEatingTotal(dateStr, mealType);
     const cook = mealData?.cook;
     const isCafe = Layout.currentLocation === 'cafe';
 
@@ -700,14 +737,7 @@ function renderWeek() {
                         ` : ''}
                     </div>
                     ${retreat ? `<div class="mt-1 text-xs font-bold uppercase tracking-wide" style="color: ${retreat.color};">${getName(retreat)}</div>` : ''}
-                    ${(() => {
-                        const counts = eatingCounts[dateStr];
-                        if (counts && (counts.guests > 0 || counts.team > 0 || (counts.residents || 0) > 0)) {
-                            const total = counts.guests + counts.team + (counts.residents || 0);
-                            return `<div class="text-xs text-gray-500 font-medium mt-1" title="Ретрит + Команда + Проживающие = Итого">🍽 ${counts.guests}+${counts.team}+${counts.residents || 0}=${total}</div>`;
-                        }
-                        return '';
-                    })()}
+                    ${formatEatingLine(dateStr, 'text-xs text-gray-500 font-medium mt-1')}
                     ${acharyaLine}
                 </div>
 
@@ -817,14 +847,7 @@ function renderPeriod() {
                         ` : ''}
                     </div>
                     ${retreat ? `<div class="mt-1 text-xs font-bold uppercase tracking-wide" style="color: ${retreat.color};">${getName(retreat)}</div>` : ''}
-                    ${(() => {
-                        const counts = eatingCounts[dateStr];
-                        if (counts && (counts.guests > 0 || counts.team > 0 || (counts.residents || 0) > 0)) {
-                            const total = counts.guests + counts.team + (counts.residents || 0);
-                            return `<div class="text-xs text-gray-500 font-medium mt-1" title="Ретрит + Команда + Проживающие = Итого">🍽 ${counts.guests}+${counts.team}+${counts.residents || 0}=${total}</div>`;
-                        }
-                        return '';
-                    })()}
+                    ${formatEatingLine(dateStr, 'text-xs text-gray-500 font-medium mt-1')}
                     ${acharyaLine}
                 </div>
 
@@ -946,12 +969,7 @@ function renderMonth() {
         }
 
         // Количество едоков
-        const counts = eatingCounts[dateStr];
-        let eatingLine = '';
-        if (counts && (counts.guests > 0 || counts.team > 0 || (counts.residents || 0) > 0)) {
-            const total = counts.guests + counts.team + (counts.residents || 0);
-            eatingLine = `<div class="text-xs text-gray-500 font-medium" title="Ретрит + Команда + Проживающие = Итого">🍽 ${counts.guests}+${counts.team}+${counts.residents || 0}=${total}</div>`;
-        }
+        const eatingLine = formatEatingLine(dateStr, 'text-xs text-gray-500 font-medium');
 
         return `
             <div class="min-h-20 rounded shadow-sm p-1.5 ${isToday ? 'ring-2' : ''} cursor-pointer hover:opacity-80 flex flex-col" style="${bgStyle} ${borderStyle}" onclick="openDayDetail('${dateStr}')">
@@ -1360,7 +1378,7 @@ async function saveDish() {
 
     // Ensure meal exists
     let mealId = mealData?.id;
-    const defaultPortions = getEatingTotal(selectedDate);
+    const defaultPortions = getEatingTotal(selectedDate, selectedMealType);
     if (!mealId) {
         const { data: newMeal } = await Layout.db
             .from('menu_meals')
@@ -1704,7 +1722,7 @@ async function applySelectedTemplate() {
                 // Get portions from eating counts (guests + team)
                 let portions = templateMeal.portions || 50;
                 if (!isCafe) {
-                    portions = getEatingTotal(targetDateStr);
+                    portions = getEatingTotal(targetDateStr, templateMeal.meal_type);
                 }
 
                 // Delete existing meal for this date/type
