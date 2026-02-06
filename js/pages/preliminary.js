@@ -472,19 +472,33 @@ function renderTable() {
         const genderAge = [genderLabel, age].filter(Boolean).join(', ') || '—';
 
         // Даты заезда/выезда и информация о рейсах
-        const arrivalTransfer = arrival?.needs_transfer === 'yes' ? ' 🚐' : '';
-        const departureTransfer = departure?.needs_transfer === 'yes' ? ' 🚐' : '';
+        const arrivalFlightDt = arrival?.flight_datetime?.slice(0, 16) || '';
+        const departureFlightDt = departure?.flight_datetime?.slice(0, 16) || '';
         const arrivalFlightNum = arrival?.flight_number ? e(arrival.flight_number) : '';
         const departureFlightNum = departure?.flight_number ? e(departure.flight_number) : '';
-        // Дата заезда/выезда: arrival_datetime всегда приоритетна (независимо от direct_arrival)
+
+        // Основная дата (время приезда/отъезда из ШРСК)
         const effectiveCheckIn = reg.arrival_datetime?.slice(0, 16)
-            || arrival?.flight_datetime?.slice(0, 16)
+            || arrivalFlightDt
             || (reg.resident?.check_in ? reg.resident.check_in + 'T00:00' : null)
             || (retreat?.start_date ? retreat.start_date + 'T00:00' : '');
         const effectiveCheckOut = reg.departure_datetime?.slice(0, 16)
-            || departure?.flight_datetime?.slice(0, 16)
+            || departureFlightDt
             || (reg.resident?.check_out ? reg.resident.check_out + 'T00:00' : null)
             || (retreat?.end_date ? retreat.end_date + 'T00:00' : '');
+
+        // Подстрока о рейсе: время (если отличается от основной даты) + номер + трансфер
+        const arrivalFlightParts = [];
+        if (arrivalFlightDt && arrivalFlightDt !== effectiveCheckIn) arrivalFlightParts.push('✈️' + formatDatetimeShort(arrivalFlightDt));
+        if (arrivalFlightNum) arrivalFlightParts.push(arrivalFlightNum);
+        if (arrival?.needs_transfer === 'yes') arrivalFlightParts.push('🚐');
+        const arrivalFlightInfo = arrivalFlightParts.join(' ');
+
+        const departureFlightParts = [];
+        if (departureFlightDt && departureFlightDt !== effectiveCheckOut) departureFlightParts.push('✈️' + formatDatetimeShort(departureFlightDt));
+        if (departureFlightNum) departureFlightParts.push(departureFlightNum);
+        if (departure?.needs_transfer === 'yes') departureFlightParts.push('🚐');
+        const departureFlightInfo = departureFlightParts.join(' ');
 
         // Проблема: нет данных о прибытии/отъезде.
         // При самостоятельном приезде (direct_arrival=false) отсутствие трансфера arrival — нормально.
@@ -531,12 +545,12 @@ function renderTable() {
                 <td class="text-sm">${e(reg.accommodation_wishes || '—')}</td>
                 <td class="text-center text-sm whitespace-nowrap ${arrivalProblem ? 'bg-warning/30' : ''}" onclick="event.stopPropagation()">
                     <div class="font-medium">${effectiveCheckIn ? formatDatetimeShort(effectiveCheckIn) : '—'}</div>
-                    ${arrivalFlightNum ? `<div class="text-xs opacity-60">${arrivalFlightNum}${arrivalTransfer}</div>` : (arrivalTransfer ? `<div class="text-xs">${arrivalTransfer}</div>` : '')}
+                    ${arrivalFlightInfo ? `<div class="text-xs opacity-60">${arrivalFlightInfo}</div>` : ''}
                     ${canEdit ? `<a class="text-xs link opacity-60 hover:opacity-100 cursor-pointer" onclick="openTransferModal('${reg.id}')">ред.</a>` : ''}
                 </td>
                 <td class="text-center text-sm whitespace-nowrap ${departureProblem ? 'bg-warning/30' : ''}" onclick="event.stopPropagation()">
                     <div class="font-medium">${effectiveCheckOut ? formatDatetimeShort(effectiveCheckOut) : '—'}</div>
-                    ${departureFlightNum ? `<div class="text-xs opacity-60">${departureFlightNum}${departureTransfer}</div>` : (departureTransfer ? `<div class="text-xs">${departureTransfer}</div>` : '')}
+                    ${departureFlightInfo ? `<div class="text-xs opacity-60">${departureFlightInfo}</div>` : ''}
                     ${canEdit ? `<a class="text-xs link opacity-60 hover:opacity-100 cursor-pointer" onclick="openTransferModal('${reg.id}')">ред.</a>` : ''}
                 </td>
                 <td class="text-sm">${e(reg.extended_stay || '—')}</td>
