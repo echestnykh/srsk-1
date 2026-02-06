@@ -803,7 +803,11 @@
             } else {
                 container.innerHTML = requests.map(req => {
                     const items = req.purchase_request_items || [];
-                    const total = items.reduce((sum, i) => sum + (i.quantity * (i.price || 0)), 0);
+                    const total = items.reduce((sum, i) => {
+                        const product = i.products || products.find(p => p.id === i.product_id);
+                        const qty = convertFromBase(i.quantity, product?.unit);
+                        return sum + (qty * (i.price || 0));
+                    }, 0);
                     const date = new Date(req.created_at).toLocaleDateString('ru-RU');
                     return `
                         <div class="p-3 border border-base-300 rounded-lg hover:bg-base-200 cursor-pointer" onclick="loadFromRequest('${req.id}')">
@@ -839,11 +843,13 @@
 
             receiptItemsList = [];
             (req.purchase_request_items || []).forEach(item => {
-                // quantity уже в единицах продукта, spent = quantity × price
-                const spent = item.quantity * (item.price || 0);
+                // quantity в БД хранится в граммах (toGrams), конвертируем в единицы продукта
+                const product = item.products || products.find(p => p.id === item.product_id);
+                const quantity = convertFromBase(item.quantity, product?.unit);
+                const spent = item.price ? quantity * item.price : 0;
                 receiptItemsList.push({
                     product_id: item.product_id,
-                    quantity: item.quantity,
+                    quantity: quantity,
                     spent: spent
                 });
             });

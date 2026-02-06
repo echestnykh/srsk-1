@@ -949,11 +949,14 @@
                     return;
                 }
 
-                const items = issuanceItemsList.map(i => ({
-                    issuance_id: issuance.id,
-                    product_id: i.product_id,
-                    quantity: i.quantity
-                }));
+                const items = issuanceItemsList.map(i => {
+                    const product = products.find(p => p.id === i.product_id);
+                    return {
+                        issuance_id: issuance.id,
+                        product_id: i.product_id,
+                        quantity: toStockUnit(i.quantity, i.display_unit, product?.unit)
+                    };
+                });
 
                 const { error: itemsError } = await Layout.db.from('stock_issuance_items').insert(items);
 
@@ -961,8 +964,11 @@
                     console.error('Error saving items:', itemsError);
                 }
 
-                // Update stock quantities (SUBTRACT)
+                // Update stock quantities (SUBTRACT) — конвертируем в единицы продукта
                 for (const item of issuanceItemsList) {
+                    const product = products.find(p => p.id === item.product_id);
+                    const qtyInStockUnit = toStockUnit(item.quantity, item.display_unit, product?.unit);
+
                     const { data: stockItem } = await Layout.db
                         .from('stock')
                         .select('id, current_quantity')
@@ -971,7 +977,7 @@
                         .single();
 
                     if (stockItem) {
-                        const newQty = Math.max(0, stockItem.current_quantity - item.quantity);
+                        const newQty = Math.max(0, stockItem.current_quantity - qtyInStockUnit);
                         await Layout.db.from('stock').update({
                             current_quantity: newQty
                         }).eq('id', stockItem.id);
