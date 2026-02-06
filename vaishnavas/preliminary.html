@@ -732,6 +732,124 @@
         <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
 
+    <!-- Transfer Modal -->
+    <dialog id="transferModal" class="modal">
+        <div class="modal-box max-w-2xl">
+            <button type="button" class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" onclick="transferModal.close()">✕</button>
+            <h3 class="font-bold text-lg mb-1">Трансферы</h3>
+            <p id="transferModalName" class="text-sm opacity-60 mb-4"></p>
+            <input type="hidden" id="transferRegId" />
+
+            <div class="space-y-4">
+                <!-- Прилёт -->
+                <div class="border rounded-lg p-3">
+                    <div class="font-medium mb-2">✈️ Прилёт</div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="form-control">
+                            <label class="label label-text text-xs">Дата и время рейса</label>
+                            <input type="datetime-local" id="tmArrivalDatetime" class="input input-bordered input-sm"
+                                   onchange="updateCalcArrivalModal()" />
+                        </div>
+                        <div class="form-control">
+                            <label class="label label-text text-xs">Номер рейса</label>
+                            <input type="text" id="tmArrivalFlight" class="input input-bordered input-sm" placeholder="AI 156" />
+                        </div>
+                        <div class="form-control">
+                            <label class="label label-text text-xs">Трансфер из аэропорта</label>
+                            <select id="tmArrivalTransfer" class="select select-bordered select-sm">
+                                <option value="">Не указано</option>
+                                <option value="yes">Нужен</option>
+                                <option value="no">Не нужен</option>
+                            </select>
+                        </div>
+                        <div></div>
+                        <div class="col-span-2 mt-1">
+                            <label class="label cursor-pointer justify-start gap-2 py-0">
+                                <input type="checkbox" id="tmDirectArrival" class="checkbox checkbox-xs checkbox-primary"
+                                       onchange="toggleDirectArrivalModal(this.checked)" checked />
+                                <span class="label-text text-xs">Сразу на ретрит</span>
+                            </label>
+                            <div id="tmCalcArrivalBlock" class="mt-2">
+                                <span class="label-text text-xs text-base-content/60">Время приезда в ШРСК (рейс + 4ч):</span>
+                                <span id="tmCalcArrivalTime" class="text-xs font-medium ml-1">—</span>
+                            </div>
+                            <div id="tmCustomArrivalBlock" class="hidden mt-2 grid grid-cols-3 gap-2">
+                                <div class="col-span-2">
+                                    <label class="label label-text text-xs">Время приезда в ШРСК</label>
+                                    <input type="datetime-local" id="tmArrivalAtAshram" class="input input-bordered input-sm w-full" />
+                                </div>
+                                <div>
+                                    <label class="label label-text text-xs">Трансфер в ШРСК</label>
+                                    <select id="tmArrivalRetreatTransfer" class="select select-bordered select-sm w-full">
+                                        <option value="">Не указано</option>
+                                        <option value="yes">Нужен</option>
+                                        <option value="no">Не нужен</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Вылет -->
+                <div class="border rounded-lg p-3">
+                    <div class="font-medium mb-2">✈️ Вылет</div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="form-control">
+                            <label class="label label-text text-xs">Дата и время рейса</label>
+                            <input type="datetime-local" id="tmDepartureDatetime" class="input input-bordered input-sm"
+                                   onchange="updateCalcDepartureModal()" />
+                        </div>
+                        <div class="form-control">
+                            <label class="label label-text text-xs">Номер рейса</label>
+                            <input type="text" id="tmDepartureFlight" class="input input-bordered input-sm" placeholder="AI 155" />
+                        </div>
+                        <div class="form-control">
+                            <label class="label label-text text-xs">Трансфер в аэропорт</label>
+                            <select id="tmDepartureTransfer" class="select select-bordered select-sm">
+                                <option value="">Не указано</option>
+                                <option value="yes">Нужен</option>
+                                <option value="no">Не нужен</option>
+                            </select>
+                        </div>
+                        <div></div>
+                        <div class="col-span-2 mt-1">
+                            <label class="label cursor-pointer justify-start gap-2 py-0">
+                                <input type="checkbox" id="tmDirectDeparture" class="checkbox checkbox-xs checkbox-primary"
+                                       onchange="toggleDirectDepartureModal(this.checked)" checked />
+                                <span class="label-text text-xs">С ретрита на самолёт</span>
+                            </label>
+                            <div id="tmCalcDepartureBlock" class="mt-2">
+                                <span class="label-text text-xs text-base-content/60">Время выезда из ШРСК (рейс − 7ч):</span>
+                                <span id="tmCalcDepartureTime" class="text-xs font-medium ml-1">—</span>
+                            </div>
+                            <div id="tmCustomDepartureBlock" class="hidden mt-2 grid grid-cols-3 gap-2">
+                                <div class="col-span-2">
+                                    <label class="label label-text text-xs">Время выезда из ШРСК</label>
+                                    <input type="datetime-local" id="tmDepartureFromAshram" class="input input-bordered input-sm w-full" />
+                                </div>
+                                <div>
+                                    <label class="label label-text text-xs">Трансфер из ШРСК</label>
+                                    <select id="tmDepartureRetreatTransfer" class="select select-bordered select-sm w-full">
+                                        <option value="">Не указано</option>
+                                        <option value="yes">Нужен</option>
+                                        <option value="no">Не нужен</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost" onclick="transferModal.close()">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="saveTransfers()">Сохранить</button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+
     <script src="../js/config.js"></script>
     <script src="../js/auth-check.js?v=3"></script>
     <script src="../js/cache.js"></script>
@@ -739,7 +857,7 @@
     <script src="../js/translit.js"></script>
     <script src="../js/auto-translate.js"></script>
     <script src="../js/layout.js?v=4"></script>
-    <script src="../js/pages/preliminary.js?v=3"></script>
+    <script src="../js/pages/preliminary.js?v=4"></script>
 
 </body>
 </html>

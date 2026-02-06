@@ -26,6 +26,15 @@ function addHoursToDatetime(datetimeStr, hours) {
     return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+// Форматирует datetime в читаемый вид: "12 фев, 14:30"
+function formatDatetimeShort(datetimeStr) {
+    if (!datetimeStr) return '—';
+    const d = new Date(datetimeStr.slice(0, 16));
+    const months = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getDate()} ${months[d.getMonth()]}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 // ==================== DATA LOADING ====================
 let allRetreats = [];
 
@@ -513,63 +522,15 @@ function renderTable() {
                 <td class="text-sm">${e(v?.india_experience || '—')}</td>
                 <td class="text-sm">${e(reg.companions || '—')}</td>
                 <td class="text-sm">${e(reg.accommodation_wishes || '—')}</td>
-                <td class="text-center text-sm ${arrivalProblem ? 'bg-warning/30' : ''}" onclick="event.stopPropagation()">
-                    <input type="datetime-local" class="input input-xs input-bordered w-full min-w-[13rem]"
-                        value="${effectiveCheckIn || ''}"
-                        onchange="onCheckInChange('${reg.id}', this.value)"
-                        ${disabledAttr} />
-                    ${(arrivalFlightNum || arrivalTransfer) ? `<div class="text-xs opacity-60 mt-0.5 whitespace-nowrap">${arrivalFlightNum}${arrivalTransfer}</div>` : ''}
-                    <label class="flex items-center gap-1 mt-1 cursor-pointer justify-center">
-                        <input type="checkbox" class="checkbox checkbox-xs"
-                            ${reg.direct_arrival !== false ? 'checked' : ''}
-                            onchange="onDirectArrivalChange('${reg.id}', this.checked, this)"
-                            ${disabledAttr} />
-                        <span class="text-xs opacity-50">сразу на ретрит</span>
-                    </label>
-                    <div id="arrRetreatBlock_${reg.id}" class="${reg.direct_arrival !== false ? 'hidden' : ''}">
-                        <input type="datetime-local" class="input input-xs input-bordered w-full mt-1"
-                            value="${arrivalRetreat?.flight_datetime?.slice(0, 16) || reg.arrival_datetime?.slice(0, 16) || ''}"
-                            onchange="onArrivalRetreatDatetimeChange('${reg.id}', this.value)"
-                            placeholder="Время приезда в ШРСК"
-                            ${disabledAttr} />
-                        <select class="select select-xs select-bordered w-full mt-1"
-                            id="arrRetreatTransfer_${reg.id}"
-                            onchange="onArrivalRetreatTransferChange('${reg.id}', this.value)"
-                            ${disabledAttr}>
-                            <option value="">🚐 —</option>
-                            <option value="yes" ${arrivalRetreat?.needs_transfer === 'yes' ? 'selected' : ''}>🚐 Нужен</option>
-                            <option value="no" ${arrivalRetreat?.needs_transfer === 'no' ? 'selected' : ''}>🚐 Не нужен</option>
-                        </select>
-                    </div>
+                <td class="text-center text-sm whitespace-nowrap ${arrivalProblem ? 'bg-warning/30' : ''}" onclick="event.stopPropagation()">
+                    <div class="font-medium">${effectiveCheckIn ? formatDatetimeShort(effectiveCheckIn) : '—'}</div>
+                    ${arrivalFlightNum ? `<div class="text-xs opacity-60">${arrivalFlightNum}${arrivalTransfer}</div>` : (arrivalTransfer ? `<div class="text-xs">${arrivalTransfer}</div>` : '')}
+                    ${canEdit ? `<a class="text-xs link opacity-60 hover:opacity-100 cursor-pointer" onclick="openTransferModal('${reg.id}')">ред.</a>` : ''}
                 </td>
-                <td class="text-center text-sm ${departureProblem ? 'bg-warning/30' : ''}" onclick="event.stopPropagation()">
-                    <input type="datetime-local" class="input input-xs input-bordered w-full min-w-[13rem]"
-                        value="${effectiveCheckOut || ''}"
-                        onchange="onCheckOutChange('${reg.id}', this.value)"
-                        ${disabledAttr} />
-                    ${(departureFlightNum || departureTransfer) ? `<div class="text-xs opacity-60 mt-0.5 whitespace-nowrap">${departureFlightNum}${departureTransfer}</div>` : ''}
-                    <label class="flex items-center gap-1 mt-1 cursor-pointer justify-center">
-                        <input type="checkbox" class="checkbox checkbox-xs"
-                            ${reg.direct_departure !== false ? 'checked' : ''}
-                            onchange="onDirectDepartureChange('${reg.id}', this.checked, this)"
-                            ${disabledAttr} />
-                        <span class="text-xs opacity-50">с ретрита на самолёт</span>
-                    </label>
-                    <div id="depRetreatBlock_${reg.id}" class="${reg.direct_departure !== false ? 'hidden' : ''}">
-                        <input type="datetime-local" class="input input-xs input-bordered w-full mt-1"
-                            value="${departureRetreat?.flight_datetime?.slice(0, 16) || reg.departure_datetime?.slice(0, 16) || ''}"
-                            onchange="onDepartureRetreatDatetimeChange('${reg.id}', this.value)"
-                            placeholder="Время выезда из ШРСК"
-                            ${disabledAttr} />
-                        <select class="select select-xs select-bordered w-full mt-1"
-                            id="depRetreatTransfer_${reg.id}"
-                            onchange="onDepartureRetreatTransferChange('${reg.id}', this.value)"
-                            ${disabledAttr}>
-                            <option value="">🚐 —</option>
-                            <option value="yes" ${departureRetreat?.needs_transfer === 'yes' ? 'selected' : ''}>🚐 Нужен</option>
-                            <option value="no" ${departureRetreat?.needs_transfer === 'no' ? 'selected' : ''}>🚐 Не нужен</option>
-                        </select>
-                    </div>
+                <td class="text-center text-sm whitespace-nowrap ${departureProblem ? 'bg-warning/30' : ''}" onclick="event.stopPropagation()">
+                    <div class="font-medium">${effectiveCheckOut ? formatDatetimeShort(effectiveCheckOut) : '—'}</div>
+                    ${departureFlightNum ? `<div class="text-xs opacity-60">${departureFlightNum}${departureTransfer}</div>` : (departureTransfer ? `<div class="text-xs">${departureTransfer}</div>` : '')}
+                    ${canEdit ? `<a class="text-xs link opacity-60 hover:opacity-100 cursor-pointer" onclick="openTransferModal('${reg.id}')">ред.</a>` : ''}
                 </td>
                 <td class="text-sm">${e(reg.extended_stay || '—')}</td>
                 <td class="text-sm">${e(reg.guest_questions || '—')}</td>
@@ -723,333 +684,203 @@ async function onMealTypeChange(registrationId, mealType, selectElement) {
     }
 }
 
-async function onCheckInChange(registrationId, datetimeValue) {
-    if (!window.hasPermission || !window.hasPermission('edit_preliminary')) {
-        Layout.showNotification('Недостаточно прав для редактирования', 'error');
-        return;
-    }
-    const reg = registrations.find(r => r.id === registrationId);
-    if (!reg) return;
+// ==================== TRANSFER MODAL ====================
 
-    try {
-        if (reg.direct_arrival === false) {
-            // Не сразу на ретрит → верхний инпут = время рейса → сохраняем в arrival transfer
-            const transfers = reg.guest_transfers || [];
-            const arrival = transfers.find(t => t.direction === 'arrival');
-            if (arrival) {
-                await Layout.db.from('guest_transfers')
-                    .update({ flight_datetime: datetimeValue || null })
-                    .eq('id', arrival.id);
-            } else if (datetimeValue) {
-                await Layout.db.from('guest_transfers')
-                    .insert({ registration_id: registrationId, direction: 'arrival', flight_datetime: datetimeValue });
-            }
-        } else {
-            // Сразу на ретрит → сохраняем в arrival_datetime
-            const { error: regError } = await Layout.db
-                .from('retreat_registrations')
-                .update({ arrival_datetime: datetimeValue || null })
-                .eq('id', registrationId);
-            if (regError) throw regError;
-        }
+let currentTransferRegId = null;
 
-        // residents.check_in — DATE, сохраняем только дату
-        if (reg.resident?.id && datetimeValue) {
-            const { error: resError } = await Layout.db
-                .from('residents')
-                .update({ check_in: datetimeValue.slice(0, 10) })
-                .eq('id', reg.resident.id);
-            if (resError) throw resError;
-        }
-
-        await loadRegistrations();
-    } catch (err) {
-        Layout.handleError(err, 'Сохранение даты заезда');
-        await loadRegistrations();
-    }
+function toggleDirectArrivalModal(checked) {
+    document.getElementById('tmCustomArrivalBlock').classList.toggle('hidden', checked);
+    document.getElementById('tmCalcArrivalBlock').classList.toggle('hidden', !checked);
+    if (checked) updateCalcArrivalModal();
 }
 
-async function onCheckOutChange(registrationId, datetimeValue) {
-    if (!window.hasPermission || !window.hasPermission('edit_preliminary')) {
-        Layout.showNotification('Недостаточно прав для редактирования', 'error');
-        return;
-    }
-    const reg = registrations.find(r => r.id === registrationId);
-    if (!reg) return;
-
-    try {
-        if (reg.direct_departure === false) {
-            // Не сразу в аэропорт → верхний инпут = время рейса → сохраняем в departure transfer
-            const transfers = reg.guest_transfers || [];
-            const departure = transfers.find(t => t.direction === 'departure');
-            if (departure) {
-                await Layout.db.from('guest_transfers')
-                    .update({ flight_datetime: datetimeValue || null })
-                    .eq('id', departure.id);
-            } else if (datetimeValue) {
-                await Layout.db.from('guest_transfers')
-                    .insert({ registration_id: registrationId, direction: 'departure', flight_datetime: datetimeValue });
-            }
-        } else {
-            // Сразу в аэропорт → сохраняем в departure_datetime
-            const { error: regError } = await Layout.db
-                .from('retreat_registrations')
-                .update({ departure_datetime: datetimeValue || null })
-                .eq('id', registrationId);
-            if (regError) throw regError;
-        }
-
-        // residents.check_out — DATE, сохраняем только дату
-        if (reg.resident?.id && datetimeValue) {
-            const { error: resError } = await Layout.db
-                .from('residents')
-                .update({ check_out: datetimeValue.slice(0, 10) })
-                .eq('id', reg.resident.id);
-            if (resError) throw resError;
-        }
-
-        await loadRegistrations();
-    } catch (err) {
-        Layout.handleError(err, 'Сохранение даты выезда');
-        await loadRegistrations();
-    }
+function toggleDirectDepartureModal(checked) {
+    document.getElementById('tmCustomDepartureBlock').classList.toggle('hidden', checked);
+    document.getElementById('tmCalcDepartureBlock').classList.toggle('hidden', !checked);
+    if (checked) updateCalcDepartureModal();
 }
 
-async function onDirectArrivalChange(registrationId, checked, checkboxEl) {
-    if (!window.hasPermission || !window.hasPermission('edit_preliminary')) {
-        Layout.showNotification('Недостаточно прав для редактирования', 'error');
-        checkboxEl.checked = !checked;
-        return;
-    }
-    const reg = registrations.find(r => r.id === registrationId);
-    if (!reg) return;
-
-    try {
-        const { error } = await Layout.db
-            .from('retreat_registrations')
-            .update({ direct_arrival: checked })
-            .eq('id', registrationId);
-        if (error) throw error;
-
-        // Показать/скрыть блок (datetime + трансфер)
-        const block = document.getElementById(`arrRetreatBlock_${registrationId}`);
-        if (block) block.classList.toggle('hidden', checked);
-
-        // Если включили «сразу» — удалить arrival_retreat трансфер
-        if (checked) {
-            const arrRetreat = (reg.guest_transfers || []).find(t => t.direction === 'arrival_retreat');
-            if (arrRetreat) {
-                await Layout.db.from('guest_transfers').delete().eq('id', arrRetreat.id);
-            }
-        }
-
-        reg.direct_arrival = checked;
-    } catch (err) {
-        Layout.handleError(err, 'Сохранение direct_arrival');
-        checkboxEl.checked = !checked;
-    }
+function updateCalcArrivalModal() {
+    const flightVal = document.getElementById('tmArrivalDatetime').value;
+    const calc = addHoursToDatetime(flightVal, 4);
+    document.getElementById('tmCalcArrivalTime').textContent = formatDatetimeShort(calc);
 }
 
-async function onDirectDepartureChange(registrationId, checked, checkboxEl) {
-    if (!window.hasPermission || !window.hasPermission('edit_preliminary')) {
-        Layout.showNotification('Недостаточно прав для редактирования', 'error');
-        checkboxEl.checked = !checked;
-        return;
-    }
-    const reg = registrations.find(r => r.id === registrationId);
-    if (!reg) return;
-
-    try {
-        const { error } = await Layout.db
-            .from('retreat_registrations')
-            .update({ direct_departure: checked })
-            .eq('id', registrationId);
-        if (error) throw error;
-
-        // Показать/скрыть блок (datetime + трансфер)
-        const block = document.getElementById(`depRetreatBlock_${registrationId}`);
-        if (block) block.classList.toggle('hidden', checked);
-
-        // Если включили «сразу» — удалить departure_retreat трансфер
-        if (checked) {
-            const depRetreat = (reg.guest_transfers || []).find(t => t.direction === 'departure_retreat');
-            if (depRetreat) {
-                await Layout.db.from('guest_transfers').delete().eq('id', depRetreat.id);
-            }
-        }
-
-        reg.direct_departure = checked;
-    } catch (err) {
-        Layout.handleError(err, 'Сохранение direct_departure');
-        checkboxEl.checked = !checked;
-    }
+function updateCalcDepartureModal() {
+    const flightVal = document.getElementById('tmDepartureDatetime').value;
+    const calc = addHoursToDatetime(flightVal, -7);
+    document.getElementById('tmCalcDepartureTime').textContent = formatDatetimeShort(calc);
 }
 
-async function onArrivalRetreatDatetimeChange(registrationId, datetimeValue) {
-    if (!window.hasPermission || !window.hasPermission('edit_preliminary')) {
-        Layout.showNotification('Недостаточно прав для редактирования', 'error');
-        return;
-    }
+function openTransferModal(registrationId) {
     const reg = registrations.find(r => r.id === registrationId);
     if (!reg) return;
 
+    currentTransferRegId = registrationId;
+    document.getElementById('transferRegId').value = registrationId;
+
+    // Имя гостя
+    const v = reg.vaishnavas;
+    const name = v?.spiritual_name || `${v?.first_name || ''} ${v?.last_name || ''}`.trim() || '';
+    document.getElementById('transferModalName').textContent = name;
+
+    // Трансферы
+    const transfers = reg.guest_transfers || [];
+    const arrival = transfers.find(t => t.direction === 'arrival');
+    const departure = transfers.find(t => t.direction === 'departure');
+    const arrivalRetreat = transfers.find(t => t.direction === 'arrival_retreat');
+    const departureRetreat = transfers.find(t => t.direction === 'departure_retreat');
+
+    // Прилёт
+    document.getElementById('tmArrivalDatetime').value = arrival?.flight_datetime ? arrival.flight_datetime.slice(0, 16) : '';
+    document.getElementById('tmArrivalFlight').value = arrival?.flight_number || '';
+    document.getElementById('tmArrivalTransfer').value = arrival?.needs_transfer || '';
+
+    // Вылет
+    document.getElementById('tmDepartureDatetime').value = departure?.flight_datetime ? departure.flight_datetime.slice(0, 16) : '';
+    document.getElementById('tmDepartureFlight').value = departure?.flight_number || '';
+    document.getElementById('tmDepartureTransfer').value = departure?.needs_transfer || '';
+
+    // Прямой приезд/отъезд
+    const directArrival = reg.direct_arrival !== false;
+    document.getElementById('tmDirectArrival').checked = directArrival;
+    toggleDirectArrivalModal(directArrival);
+    document.getElementById('tmArrivalAtAshram').value = reg.arrival_datetime ? reg.arrival_datetime.slice(0, 16) : '';
+    document.getElementById('tmArrivalRetreatTransfer').value = arrivalRetreat?.needs_transfer || '';
+
+    const directDeparture = reg.direct_departure !== false;
+    document.getElementById('tmDirectDeparture').checked = directDeparture;
+    toggleDirectDepartureModal(directDeparture);
+    document.getElementById('tmDepartureFromAshram').value = reg.departure_datetime ? reg.departure_datetime.slice(0, 16) : '';
+    document.getElementById('tmDepartureRetreatTransfer').value = departureRetreat?.needs_transfer || '';
+
+    document.getElementById('transferModal').showModal();
+}
+
+async function saveTransfers() {
+    const regId = currentTransferRegId;
+    if (!regId) return;
+
+    if (!window.hasPermission || !window.hasPermission('edit_preliminary')) {
+        Layout.showNotification('Недостаточно прав', 'error');
+        return;
+    }
+
+    const reg = registrations.find(r => r.id === regId);
+    if (!reg) return;
+
     try {
-        // Сохраняем в arrival_datetime регистрации
+        const directArrival = document.getElementById('tmDirectArrival').checked;
+        const directDeparture = document.getElementById('tmDirectDeparture').checked;
+
+        // arrival_datetime: расчёт из рейса +4ч или ручной ввод
+        const arrivalDatetime = directArrival
+            ? addHoursToDatetime(document.getElementById('tmArrivalDatetime').value, 4)
+            : (document.getElementById('tmArrivalAtAshram').value || null);
+
+        // departure_datetime: расчёт из рейса −7ч или ручной ввод
+        const departureDatetime = directDeparture
+            ? addHoursToDatetime(document.getElementById('tmDepartureDatetime').value, -7)
+            : (document.getElementById('tmDepartureFromAshram').value || null);
+
+        // 1. Обновляем регистрацию
         const { error: regError } = await Layout.db
             .from('retreat_registrations')
-            .update({ arrival_datetime: datetimeValue || null })
-            .eq('id', registrationId);
+            .update({
+                direct_arrival: directArrival,
+                direct_departure: directDeparture,
+                arrival_datetime: arrivalDatetime,
+                departure_datetime: departureDatetime
+            })
+            .eq('id', regId);
         if (regError) throw regError;
-        reg.arrival_datetime = datetimeValue || null;
 
-        // Обновляем flight_datetime в arrival_retreat трансфере
+        // 2. Обновляем residents.check_in/check_out
+        if (reg.resident?.id) {
+            const resUpdate = {};
+            if (arrivalDatetime) resUpdate.check_in = arrivalDatetime.slice(0, 10);
+            if (departureDatetime) resUpdate.check_out = departureDatetime.slice(0, 10);
+            if (Object.keys(resUpdate).length > 0) {
+                await Layout.db.from('residents').update(resUpdate).eq('id', reg.resident.id);
+            }
+        }
+
+        // 3. Upsert трансферов
         const transfers = reg.guest_transfers || [];
-        const existing = transfers.find(t => t.direction === 'arrival_retreat');
-        if (existing) {
-            await Layout.db.from('guest_transfers')
-                .update({ flight_datetime: datetimeValue || null })
-                .eq('id', existing.id);
-            existing.flight_datetime = datetimeValue || null;
-        } else if (datetimeValue) {
-            const { data, error } = await Layout.db.from('guest_transfers')
-                .insert({ registration_id: registrationId, direction: 'arrival_retreat', flight_datetime: datetimeValue })
-                .select().single();
-            if (error) throw error;
-            if (!reg.guest_transfers) reg.guest_transfers = [];
-            reg.guest_transfers.push(data);
+        const arrival = transfers.find(t => t.direction === 'arrival');
+        const departure = transfers.find(t => t.direction === 'departure');
+        const arrivalRetreat = transfers.find(t => t.direction === 'arrival_retreat');
+        const departureRetreat = transfers.find(t => t.direction === 'departure_retreat');
+
+        // Прилёт (аэропорт)
+        const arrData = {
+            registration_id: regId,
+            direction: 'arrival',
+            flight_datetime: document.getElementById('tmArrivalDatetime').value || null,
+            flight_number: document.getElementById('tmArrivalFlight').value || null,
+            needs_transfer: document.getElementById('tmArrivalTransfer').value || null
+        };
+        if (arrival) {
+            await Layout.db.from('guest_transfers').update(arrData).eq('id', arrival.id);
+        } else if (arrData.flight_datetime || arrData.flight_number || arrData.needs_transfer) {
+            await Layout.db.from('guest_transfers').insert(arrData);
         }
 
-        // Обновляем residents.check_in
-        if (reg.resident?.id && datetimeValue) {
-            await Layout.db.from('residents')
-                .update({ check_in: datetimeValue.slice(0, 10) })
-                .eq('id', reg.resident.id);
+        // Трансфер приезд в ШРСК (если не сразу из аэропорта)
+        if (!directArrival) {
+            const arrRetreatData = {
+                registration_id: regId,
+                direction: 'arrival_retreat',
+                flight_datetime: document.getElementById('tmArrivalAtAshram').value || null,
+                needs_transfer: document.getElementById('tmArrivalRetreatTransfer').value || null
+            };
+            if (arrivalRetreat) {
+                await Layout.db.from('guest_transfers').update(arrRetreatData).eq('id', arrivalRetreat.id);
+            } else if (arrRetreatData.flight_datetime || arrRetreatData.needs_transfer) {
+                await Layout.db.from('guest_transfers').insert(arrRetreatData);
+            }
+        } else if (arrivalRetreat) {
+            await Layout.db.from('guest_transfers').delete().eq('id', arrivalRetreat.id);
         }
+
+        // Вылет (аэропорт)
+        const depData = {
+            registration_id: regId,
+            direction: 'departure',
+            flight_datetime: document.getElementById('tmDepartureDatetime').value || null,
+            flight_number: document.getElementById('tmDepartureFlight').value || null,
+            needs_transfer: document.getElementById('tmDepartureTransfer').value || null
+        };
+        if (departure) {
+            await Layout.db.from('guest_transfers').update(depData).eq('id', departure.id);
+        } else if (depData.flight_datetime || depData.flight_number || depData.needs_transfer) {
+            await Layout.db.from('guest_transfers').insert(depData);
+        }
+
+        // Трансфер выезд из ШРСК (если не сразу в аэропорт)
+        if (!directDeparture) {
+            const depRetreatData = {
+                registration_id: regId,
+                direction: 'departure_retreat',
+                flight_datetime: document.getElementById('tmDepartureFromAshram').value || null,
+                needs_transfer: document.getElementById('tmDepartureRetreatTransfer').value || null
+            };
+            if (departureRetreat) {
+                await Layout.db.from('guest_transfers').update(depRetreatData).eq('id', departureRetreat.id);
+            } else if (depRetreatData.flight_datetime || depRetreatData.needs_transfer) {
+                await Layout.db.from('guest_transfers').insert(depRetreatData);
+            }
+        } else if (departureRetreat) {
+            await Layout.db.from('guest_transfers').delete().eq('id', departureRetreat.id);
+        }
+
+        // Перезагружаем данные и перерисовываем таблицу
+        await loadRegistrations();
+        document.getElementById('transferModal').close();
+        Layout.showNotification('Трансферы сохранены', 'success');
     } catch (err) {
-        Layout.handleError(err, 'Сохранение даты приезда на ретрит');
-    }
-}
-
-async function onDepartureRetreatDatetimeChange(registrationId, datetimeValue) {
-    if (!window.hasPermission || !window.hasPermission('edit_preliminary')) {
-        Layout.showNotification('Недостаточно прав для редактирования', 'error');
-        return;
-    }
-    const reg = registrations.find(r => r.id === registrationId);
-    if (!reg) return;
-
-    try {
-        // Сохраняем в departure_datetime регистрации
-        const { error: regError } = await Layout.db
-            .from('retreat_registrations')
-            .update({ departure_datetime: datetimeValue || null })
-            .eq('id', registrationId);
-        if (regError) throw regError;
-        reg.departure_datetime = datetimeValue || null;
-
-        // Обновляем flight_datetime в departure_retreat трансфере
-        const transfers = reg.guest_transfers || [];
-        const existing = transfers.find(t => t.direction === 'departure_retreat');
-        if (existing) {
-            await Layout.db.from('guest_transfers')
-                .update({ flight_datetime: datetimeValue || null })
-                .eq('id', existing.id);
-            existing.flight_datetime = datetimeValue || null;
-        } else if (datetimeValue) {
-            const { data, error } = await Layout.db.from('guest_transfers')
-                .insert({ registration_id: registrationId, direction: 'departure_retreat', flight_datetime: datetimeValue })
-                .select().single();
-            if (error) throw error;
-            if (!reg.guest_transfers) reg.guest_transfers = [];
-            reg.guest_transfers.push(data);
-        }
-
-        // Обновляем residents.check_out
-        if (reg.resident?.id && datetimeValue) {
-            await Layout.db.from('residents')
-                .update({ check_out: datetimeValue.slice(0, 10) })
-                .eq('id', reg.resident.id);
-        }
-    } catch (err) {
-        Layout.handleError(err, 'Сохранение даты отъезда с ретрита');
-    }
-}
-
-async function onArrivalRetreatTransferChange(registrationId, value) {
-    if (!window.hasPermission || !window.hasPermission('edit_preliminary')) {
-        Layout.showNotification('Недостаточно прав для редактирования', 'error');
-        return;
-    }
-    const reg = registrations.find(r => r.id === registrationId);
-    if (!reg) return;
-
-    try {
-        const transfers = reg.guest_transfers || [];
-        const existing = transfers.find(t => t.direction === 'arrival_retreat');
-
-        if (existing) {
-            const { error } = await Layout.db
-                .from('guest_transfers')
-                .update({ needs_transfer: value || null })
-                .eq('id', existing.id);
-            if (error) throw error;
-            existing.needs_transfer = value || null;
-        } else if (value) {
-            const { data, error } = await Layout.db
-                .from('guest_transfers')
-                .insert({
-                    registration_id: registrationId,
-                    direction: 'arrival_retreat',
-                    needs_transfer: value,
-                    flight_datetime: reg.arrival_datetime || null
-                })
-                .select()
-                .single();
-            if (error) throw error;
-            if (!reg.guest_transfers) reg.guest_transfers = [];
-            reg.guest_transfers.push(data);
-        }
-    } catch (err) {
-        Layout.handleError(err, 'Сохранение трансфера на ретрит');
-    }
-}
-
-async function onDepartureRetreatTransferChange(registrationId, value) {
-    if (!window.hasPermission || !window.hasPermission('edit_preliminary')) {
-        Layout.showNotification('Недостаточно прав для редактирования', 'error');
-        return;
-    }
-    const reg = registrations.find(r => r.id === registrationId);
-    if (!reg) return;
-
-    try {
-        const transfers = reg.guest_transfers || [];
-        const existing = transfers.find(t => t.direction === 'departure_retreat');
-
-        if (existing) {
-            const { error } = await Layout.db
-                .from('guest_transfers')
-                .update({ needs_transfer: value || null })
-                .eq('id', existing.id);
-            if (error) throw error;
-            existing.needs_transfer = value || null;
-        } else if (value) {
-            const { data, error } = await Layout.db
-                .from('guest_transfers')
-                .insert({
-                    registration_id: registrationId,
-                    direction: 'departure_retreat',
-                    needs_transfer: value,
-                    flight_datetime: reg.departure_datetime || null
-                })
-                .select()
-                .single();
-            if (error) throw error;
-            if (!reg.guest_transfers) reg.guest_transfers = [];
-            reg.guest_transfers.push(data);
-        }
-    } catch (err) {
-        Layout.handleError(err, 'Сохранение трансфера с ретрита');
+        console.error('Error saving transfers:', err);
+        Layout.handleError(err, 'Сохранение трансферов');
     }
 }
 
