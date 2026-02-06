@@ -1019,7 +1019,14 @@
         }
 
         // ==================== SAVE / DELETE ====================
+        let saving = false;
+
         async function saveRecipe() {
+            if (saving) return;
+            saving = true;
+            // Блокируем все кнопки сохранения
+            document.querySelectorAll('[onclick="saveRecipe()"], #recipeForm [type="submit"]').forEach(btn => btn.disabled = true);
+
             const f = form();
 
             // Build instructions text
@@ -1118,6 +1125,8 @@
             } catch (err) {
                 console.error('Error saving recipe:', err);
                 Layout.showNotification(t('save_error') + ': ' + (err.message || JSON.stringify(err)), 'error');
+                saving = false;
+                document.querySelectorAll('[onclick="saveRecipe()"], #recipeForm [type="submit"]').forEach(btn => btn.disabled = false);
             }
         }
 
