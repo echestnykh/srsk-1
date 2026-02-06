@@ -539,6 +539,18 @@ document.getElementById('guestForm').addEventListener('submit', async (e) => {
             Layout.showNotification(t('error'), 'error');
             return;
         }
+
+        // Синхронизируем residents.check_in/check_out
+        const reg = registrations.find(r => r.id === registrationId);
+        const residentId = reg?.placement?.[0]?.id;
+        if (residentId) {
+            const resUpdate = {};
+            if (arrivalDatetime) resUpdate.check_in = arrivalDatetime.slice(0, 10);
+            if (departureDatetime) resUpdate.check_out = departureDatetime.slice(0, 10);
+            if (Object.keys(resUpdate).length > 0) {
+                await Layout.db.from('residents').update(resUpdate).eq('id', residentId);
+            }
+        }
     } else {
         // Create new
         const { error } = await Layout.db

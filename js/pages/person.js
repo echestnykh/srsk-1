@@ -993,6 +993,16 @@ async function saveRegistration() {
 
         if (regError) throw regError;
 
+        // Синхронизируем residents.check_in/check_out с arrival/departure_datetime
+        if (reg.resident?.id) {
+            const resUpdate = {};
+            if (regData.arrival_datetime) resUpdate.check_in = regData.arrival_datetime.slice(0, 10);
+            if (regData.departure_datetime) resUpdate.check_out = regData.departure_datetime.slice(0, 10);
+            if (Object.keys(resUpdate).length > 0) {
+                await Layout.db.from('residents').update(resUpdate).eq('id', reg.resident.id);
+            }
+        }
+
         // Обновляем/создаём трансферы
         const transfers = reg.guest_transfers || [];
         const arrival = transfers.find(t => t.direction === 'arrival');
