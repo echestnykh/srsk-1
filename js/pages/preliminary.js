@@ -433,6 +433,13 @@ function updateSortIcons() {
     });
 }
 
+// SVG-иконки для ячеек таблицы (Heroicons outline, 16x16)
+const IC = {
+    plane: `<svg class="w-4 h-4 inline -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/></svg>`,
+    pin: `<svg class="w-4 h-4 inline -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>`,
+    bus: `<svg class="w-4 h-4 inline -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18"/><circle cx="7.5" cy="18" r="1.5"/><circle cx="16.5" cy="18" r="1.5"/></svg>`,
+};
+
 function renderTable() {
     const filtered = filterRegistrations();
     const tbody = document.getElementById('guestsTable');
@@ -474,31 +481,46 @@ function renderTable() {
         // Даты заезда/выезда и информация о рейсах
         const arrivalFlightDt = arrival?.flight_datetime?.slice(0, 16) || '';
         const departureFlightDt = departure?.flight_datetime?.slice(0, 16) || '';
-        const arrivalFlightNum = arrival?.flight_number ? e(arrival.flight_number) : '';
-        const departureFlightNum = departure?.flight_number ? e(departure.flight_number) : '';
+        const arrivalAtAshram = reg.arrival_datetime?.slice(0, 16) || '';
+        const departureFromAshram = reg.departure_datetime?.slice(0, 16) || '';
 
-        // Основная дата (время приезда/отъезда из ШРСК)
-        const effectiveCheckIn = reg.arrival_datetime?.slice(0, 16)
-            || arrivalFlightDt
-            || (reg.resident?.check_in ? reg.resident.check_in + 'T00:00' : null)
-            || (retreat?.start_date ? retreat.start_date + 'T00:00' : '');
-        const effectiveCheckOut = reg.departure_datetime?.slice(0, 16)
-            || departureFlightDt
-            || (reg.resident?.check_out ? reg.resident.check_out + 'T00:00' : null)
-            || (retreat?.end_date ? retreat.end_date + 'T00:00' : '');
+        // Собираем строки для ячейки Заезд (сначала рейс, потом приезд в ШРСК)
+        const arrivalLines = [];
+        if (arrivalFlightDt) {
+            const p = [IC.plane, formatDatetimeShort(arrivalFlightDt)];
+            if (arrival?.flight_number) p.push(e(arrival.flight_number));
+            if (arrival?.needs_transfer === 'yes') p.push(IC.bus);
+            arrivalLines.push(p.join(' '));
+        }
+        if (arrivalAtAshram && arrivalAtAshram !== arrivalFlightDt) {
+            const p = [IC.pin, formatDatetimeShort(arrivalAtAshram)];
+            if (arrivalRetreat?.needs_transfer === 'yes') p.push(IC.bus);
+            arrivalLines.push(p.join(' '));
+        }
+        if (!arrivalLines.length) {
+            const fallback = (reg.resident?.check_in ? reg.resident.check_in + 'T00:00' : null)
+                || (retreat?.start_date ? retreat.start_date + 'T00:00' : '');
+            arrivalLines.push(fallback ? formatDatetimeShort(fallback) : '—');
+        }
 
-        // Подстрока о рейсе: время (если отличается от основной даты) + номер + трансфер
-        const arrivalFlightParts = [];
-        if (arrivalFlightDt && arrivalFlightDt !== effectiveCheckIn) arrivalFlightParts.push('✈️' + formatDatetimeShort(arrivalFlightDt));
-        if (arrivalFlightNum) arrivalFlightParts.push(arrivalFlightNum);
-        if (arrival?.needs_transfer === 'yes') arrivalFlightParts.push('🚐');
-        const arrivalFlightInfo = arrivalFlightParts.join(' ');
-
-        const departureFlightParts = [];
-        if (departureFlightDt && departureFlightDt !== effectiveCheckOut) departureFlightParts.push('✈️' + formatDatetimeShort(departureFlightDt));
-        if (departureFlightNum) departureFlightParts.push(departureFlightNum);
-        if (departure?.needs_transfer === 'yes') departureFlightParts.push('🚐');
-        const departureFlightInfo = departureFlightParts.join(' ');
+        // Собираем строки для ячейки Выезд
+        const departureLines = [];
+        if (departureFromAshram && departureFromAshram !== departureFlightDt) {
+            const p = [IC.pin, formatDatetimeShort(departureFromAshram)];
+            if (departureRetreat?.needs_transfer === 'yes') p.push(IC.bus);
+            departureLines.push(p.join(' '));
+        }
+        if (departureFlightDt) {
+            const p = [IC.plane, formatDatetimeShort(departureFlightDt)];
+            if (departure?.flight_number) p.push(e(departure.flight_number));
+            if (departure?.needs_transfer === 'yes') p.push(IC.bus);
+            departureLines.push(p.join(' '));
+        }
+        if (!departureLines.length) {
+            const fallback = (reg.resident?.check_out ? reg.resident.check_out + 'T00:00' : null)
+                || (retreat?.end_date ? retreat.end_date + 'T00:00' : '');
+            departureLines.push(fallback ? formatDatetimeShort(fallback) : '—');
+        }
 
         // Проблема: нет данных о прибытии/отъезде.
         // При самостоятельном приезде (direct_arrival=false) отсутствие трансфера arrival — нормально.
@@ -544,13 +566,11 @@ function renderTable() {
                 <td class="text-sm">${e(reg.companions || '—')}</td>
                 <td class="text-sm">${e(reg.accommodation_wishes || '—')}</td>
                 <td class="text-center text-sm whitespace-nowrap ${arrivalProblem ? 'bg-warning/30' : ''}" onclick="event.stopPropagation()">
-                    <div>${effectiveCheckIn ? formatDatetimeShort(effectiveCheckIn) : '—'}</div>
-                    ${arrivalFlightInfo ? `<div>${arrivalFlightInfo}</div>` : ''}
+                    ${arrivalLines.map(l => `<div>${l}</div>`).join('')}
                     ${canEdit ? `<a class="text-xs link opacity-60 hover:opacity-100 cursor-pointer" onclick="openTransferModal('${reg.id}')">ред.</a>` : ''}
                 </td>
                 <td class="text-center text-sm whitespace-nowrap ${departureProblem ? 'bg-warning/30' : ''}" onclick="event.stopPropagation()">
-                    <div>${effectiveCheckOut ? formatDatetimeShort(effectiveCheckOut) : '—'}</div>
-                    ${departureFlightInfo ? `<div>${departureFlightInfo}</div>` : ''}
+                    ${departureLines.map(l => `<div>${l}</div>`).join('')}
                     ${canEdit ? `<a class="text-xs link opacity-60 hover:opacity-100 cursor-pointer" onclick="openTransferModal('${reg.id}')">ред.</a>` : ''}
                 </td>
                 <td class="text-sm">${e(reg.extended_stay || '—')}</td>
