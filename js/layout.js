@@ -1108,6 +1108,15 @@ async function initLayout(page = { module: null, menuId: 'kitchen', itemId: null
     initHeaderEvents();
     updateUserInfo();
 
+    // Если auth ещё не готов — перестроить меню после авторизации (фильтрация по правам)
+    if (!window.currentUser) {
+        window.addEventListener('authReady', () => {
+            buildMobileMenu();
+            buildSubmenuBar();
+            updateUserInfo();
+        }, { once: true });
+    }
+
     // На главной странице (без menuId) скрываем селектор локаций
     if (!page.menuId) {
         $$('.location-selector').forEach(el => el.classList.add('hidden'));

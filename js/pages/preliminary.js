@@ -2845,6 +2845,11 @@ async function init() {
     updateSortIcons();
     subscribeToRealtime();
 
+    // Если auth ещё не готов — перерисовать таблицу после готовности прав
+    if (!window.currentUser) {
+        window.addEventListener('authReady', () => renderTable(), { once: true });
+    }
+
     Layout.hideLoader();
 }
 
