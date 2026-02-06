@@ -544,13 +544,13 @@ function renderTable() {
                 <td class="text-sm">${e(reg.companions || '—')}</td>
                 <td class="text-sm">${e(reg.accommodation_wishes || '—')}</td>
                 <td class="text-center text-sm whitespace-nowrap ${arrivalProblem ? 'bg-warning/30' : ''}" onclick="event.stopPropagation()">
-                    <div class="font-medium">${effectiveCheckIn ? formatDatetimeShort(effectiveCheckIn) : '—'}</div>
-                    ${arrivalFlightInfo ? `<div class="text-xs opacity-60">${arrivalFlightInfo}</div>` : ''}
+                    <div>${effectiveCheckIn ? formatDatetimeShort(effectiveCheckIn) : '—'}</div>
+                    ${arrivalFlightInfo ? `<div>${arrivalFlightInfo}</div>` : ''}
                     ${canEdit ? `<a class="text-xs link opacity-60 hover:opacity-100 cursor-pointer" onclick="openTransferModal('${reg.id}')">ред.</a>` : ''}
                 </td>
                 <td class="text-center text-sm whitespace-nowrap ${departureProblem ? 'bg-warning/30' : ''}" onclick="event.stopPropagation()">
-                    <div class="font-medium">${effectiveCheckOut ? formatDatetimeShort(effectiveCheckOut) : '—'}</div>
-                    ${departureFlightInfo ? `<div class="text-xs opacity-60">${departureFlightInfo}</div>` : ''}
+                    <div>${effectiveCheckOut ? formatDatetimeShort(effectiveCheckOut) : '—'}</div>
+                    ${departureFlightInfo ? `<div>${departureFlightInfo}</div>` : ''}
                     ${canEdit ? `<a class="text-xs link opacity-60 hover:opacity-100 cursor-pointer" onclick="openTransferModal('${reg.id}')">ред.</a>` : ''}
                 </td>
                 <td class="text-sm">${e(reg.extended_stay || '—')}</td>
