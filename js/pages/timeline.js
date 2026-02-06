@@ -106,6 +106,9 @@ async function loadTimelineData() {
         return b.available_from <= endDateStr && b.available_until >= startDateStr;
     });
 
+    // Сортируем: сначала постоянные, потом временные (внутри — по sort_order)
+    buildings.sort((a, b) => (a.is_temporary ? 1 : 0) - (b.is_temporary ? 1 : 0) || (a.sort_order || 0) - (b.sort_order || 0));
+
     // Очищаем хранилища
     guestsMap.clear();
     cleaningsMap.clear();
