@@ -1035,9 +1035,8 @@ function setView(view) {
     Layout.$('#monthView').classList.toggle('hidden', view !== 'month');
     Layout.$('#periodView').classList.toggle('hidden', view !== 'period');
 
-    // Show/hide template buttons (only in week/month/period view)
+    // Show/hide template button (only in week/month/period view)
     const showTemplateButtons = view === 'week' || view === 'month' || view === 'period';
-    Layout.$('#saveTemplateBtn')?.classList.toggle('hidden', !showTemplateButtons);
     Layout.$('#applyTemplateBtn')?.classList.toggle('hidden', !showTemplateButtons);
 
     // Для периода: при первом открытии — ставим даты текущей недели
