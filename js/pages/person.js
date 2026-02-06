@@ -986,6 +986,19 @@ async function saveRegistration() {
             guest_questions: document.getElementById('editGuestQuestions').value || null
         };
 
+        // Предупреждение, если даты выходят за пределы ретрита
+        const retreat = reg.retreats;
+        if (retreat) {
+            const warnings = [];
+            if (regData.arrival_datetime && regData.arrival_datetime.slice(0, 10) < retreat.start_date) {
+                warnings.push(`Прибытие (${regData.arrival_datetime.slice(0, 10)}) раньше начала ретрита (${retreat.start_date})`);
+            }
+            if (regData.departure_datetime && regData.departure_datetime.slice(0, 10) > retreat.end_date) {
+                warnings.push(`Выезд (${regData.departure_datetime.slice(0, 10)}) позже окончания ретрита (${retreat.end_date}). Возможно, вылет относится к другому ретриту?`);
+            }
+            if (warnings.length && !confirm(warnings.join('\n') + '\n\nВсё равно сохранить?')) return;
+        }
+
         const { error: regError } = await Layout.db
             .from('retreat_registrations')
             .update(regData)

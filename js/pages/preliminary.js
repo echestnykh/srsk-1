@@ -824,6 +824,18 @@ async function saveTransfers() {
             ? addHoursToDatetime(document.getElementById('tmDepartureDatetime').value, -7)
             : (document.getElementById('tmDepartureFromAshram').value || null);
 
+        // Предупреждение, если даты выходят за пределы ретрита
+        if (retreat) {
+            const warnings = [];
+            if (arrivalDatetime && arrivalDatetime.slice(0, 10) < retreat.start_date) {
+                warnings.push(`Прибытие (${arrivalDatetime.slice(0, 10)}) раньше начала ретрита (${retreat.start_date})`);
+            }
+            if (departureDatetime && departureDatetime.slice(0, 10) > retreat.end_date) {
+                warnings.push(`Выезд (${departureDatetime.slice(0, 10)}) позже окончания ретрита (${retreat.end_date}). Возможно, вылет относится к другому ретриту?`);
+            }
+            if (warnings.length && !confirm(warnings.join('\n') + '\n\nВсё равно сохранить?')) return;
+        }
+
         // 1. Обновляем регистрацию
         const { error: regError } = await Layout.db
             .from('retreat_registrations')
