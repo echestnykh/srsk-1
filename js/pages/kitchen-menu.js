@@ -669,6 +669,15 @@ function renderMealSection(dateStr, mealType, index, mealData, isEkadashiDay) {
                     const notEkadashiWarning = isEkadashiDay && !recipe.ekadashi;
                     const categoryName = recipe.category ? getName(recipe.category) : '';
 
+                    // Итого на все порции
+                    const dpu = dish.portion_unit?.toLowerCase();
+                    const dishTotal = (dish.portion_size || 0) * portions;
+                    const dishTotalStr = dish.portion_size ? (
+                        (dpu === 'г' || dpu === 'g') ? `${parseFloat((dishTotal / 1000).toFixed(1))} ${getUnitShort('kg')}` :
+                        (dpu === 'мл' || dpu === 'ml') ? `${parseFloat((dishTotal / 1000).toFixed(1))} ${getUnitShort('l')}` :
+                        `${dishTotal} ${getUnitShort(dish.portion_unit)}`
+                    ) : '';
+
                     // Редактируемое количество (если есть права), иначе — бейдж
                     const quantityHtml = canEdit ? `
                         <div class="join no-print">
@@ -681,8 +690,9 @@ function renderMealSection(dateStr, mealType, index, mealData, isEkadashiDay) {
                             />
                             <span class="btn btn-sm join-item no-animation pointer-events-none bg-base-200">${getUnitShort(dish.portion_unit)}</span>
                         </div>
-                        <span class="hidden print:inline badge badge-lg">${dish.portion_size || ''} ${getUnitShort(dish.portion_unit)}</span>
-                    ` : `<span class="badge badge-lg">${dish.portion_size ? `${dish.portion_size} ${getUnitShort(dish.portion_unit)}` : ''}</span>`;
+                        ${dishTotalStr ? `<span class="text-sm opacity-50 no-print whitespace-nowrap">= ${dishTotalStr}</span>` : ''}
+                        <span class="hidden print:inline badge badge-lg">${dish.portion_size || ''} ${getUnitShort(dish.portion_unit)}${dishTotalStr ? ` = ${dishTotalStr}` : ''}</span>
+                    ` : `<span class="badge badge-lg">${dish.portion_size ? `${dish.portion_size} ${getUnitShort(dish.portion_unit)} = ${dishTotalStr}` : ''}</span>`;
 
                     return `
                         <div class="flex justify-between items-center py-2 border-b border-base-300 last:border-0 ${notEkadashiWarning ? 'bg-error/10 -mx-2 px-2 rounded' : ''}">
@@ -1893,11 +1903,20 @@ function renderMealDetailsContent(dishes, portions) {
         const targetAmount = portions * portionSize;
         const multiplier = recipeOutput > 0 ? targetAmount / recipeOutput : 1;
 
+        // Итого в крупных единицах
+        const totalAmount = portionSize * portions;
+        const pu = portionUnit?.toLowerCase();
+        const totalStr = (pu === 'г' || pu === 'g')
+            ? `${parseFloat((totalAmount / 1000).toFixed(1))} ${getUnitShort('kg')}`
+            : (pu === 'мл' || pu === 'ml')
+                ? `${parseFloat((totalAmount / 1000).toFixed(1))} ${getUnitShort('l')}`
+                : `${totalAmount} ${getUnitShort(portionUnit)}`;
+
         return `
             <div class="border border-base-300 rounded-lg overflow-hidden ingredient-card">
                 <div class="bg-base-200 px-4 py-3 flex justify-between items-center">
                     <span class="font-bold text-lg">${getName(recipe)}</span>
-                    <span class="badge badge-lg">${portionSize} ${getUnitShort(portionUnit)} × ${portions}</span>
+                    <span class="badge badge-lg">${portionSize} ${getUnitShort(portionUnit)} × ${portions} = ${totalStr}</span>
                 </div>
                 <div class="p-4">
                     ${ingredients.length > 0 ? `
@@ -1940,14 +1959,24 @@ function formatIngredientAmount(amount, unit) {
     return { value: Layout.formatQuantity(amount, unit), unit: unit };
 }
 
+function printMenu() {
+    const origTitle = document.title;
+    document.title = `menu-${formatDate(currentDate)}`;
+    window.print();
+    setTimeout(() => { document.title = origTitle; }, 200);
+}
+
 function printMealDetails() {
+    const origTitle = document.title;
+    document.title = `menu-${formatDate(currentDate)}`;
     document.body.classList.add('printing-modal');
     mealDetailsModal.classList.add('print-modal-active');
     window.print();
     setTimeout(() => {
         document.body.classList.remove('printing-modal');
         mealDetailsModal.classList.remove('print-modal-active');
-    }, 100);
+        document.title = origTitle;
+    }, 200);
 }
 
 // ==================== INIT ====================
