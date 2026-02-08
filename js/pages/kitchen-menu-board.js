@@ -406,7 +406,8 @@ function renderBoard() {
             if (mc) {
                 const total = mc.guests + mc.team + (mc.residents || 0);
                 if (total > 0) {
-                    eatingHtml = `<div class="eating-badge">${mc.guests}+${mc.team}+${mc.residents || 0}=${total}</div>`;
+                    const mealLabel = t(mt) || mt;
+                    eatingHtml = `<div class="eating-badge"><b style="color:#111">${e(mealLabel)}</b> ${mc.guests}+${mc.team}+${mc.residents || 0}=${total}</div>`;
                 }
             }
 
