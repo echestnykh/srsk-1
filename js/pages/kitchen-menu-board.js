@@ -3,7 +3,7 @@
 
 // ==================== CONFIG ====================
 const DAYS_TO_SHOW = 35;
-const COL_WIDTH = 160;
+const COL_WIDTH = 190;
 const LABEL_WIDTH = 120;
 
 const e = str => Layout.escapeHtml(str);
@@ -1032,6 +1032,15 @@ function setupDelegation() {
             case 'open-dish-modal':
                 openDishModal(btn.dataset.date, btn.dataset.mealType);
                 break;
+            case 'open-import-modal':
+                openImportModal();
+                break;
+            case 'close-import-modal':
+                importModal.close();
+                break;
+            case 'do-import':
+                doImport();
+                break;
             case 'edit-dish':
                 // Не открывать модалку если идёт drag
                 if (!ev.target.closest('.dragging')) {
@@ -1063,6 +1072,160 @@ function setupDelegation() {
     const portionSize = document.getElementById('portionSize');
     if (portionSize) {
         portionSize.addEventListener('input', updateTotalCalculation);
+    }
+
+    // Даты в модалке импорта
+    const importFrom = document.getElementById('importFromDate');
+    const importTo = document.getElementById('importToDate');
+    if (importFrom) importFrom.addEventListener('change', updateImportPreview);
+    if (importTo) importTo.addEventListener('change', updateImportPreview);
+}
+
+// ==================== IMPORT FROM MENU ====================
+const DAY_FORMS = { ru: ['день', 'дня', 'дней'], en: ['day', 'days'], hi: 'दिन' };
+const DISH_FORMS = { ru: ['блюдо', 'блюда', 'блюд'], en: ['dish', 'dishes'], hi: 'व्यंजन' };
+const MEAL_FORMS = { ru: ['приём пищи', 'приёма пищи', 'приёмов пищи'], en: ['meal', 'meals'], hi: 'भोजन' };
+
+function openImportModal() {
+    const today = new Date();
+    const dow = today.getDay();
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+
+    document.getElementById('importFromDate').value = formatDate(monday);
+    document.getElementById('importToDate').value = formatDate(sunday);
+    document.getElementById('importTemplateName').value = '';
+    document.getElementById('importBtn').disabled = true;
+    document.getElementById('importPreview').classList.add('hidden');
+
+    updateImportPreview();
+    importModal.showModal();
+}
+
+async function updateImportPreview() {
+    const fromDate = document.getElementById('importFromDate').value;
+    const toDate = document.getElementById('importToDate').value;
+
+    if (!fromDate || !toDate) {
+        document.getElementById('importPreview').classList.add('hidden');
+        document.getElementById('importBtn').disabled = true;
+        return;
+    }
+
+    const from = parseLocalDate(fromDate);
+    const to = parseLocalDate(toDate);
+    const dayCount = Math.ceil((to - from) / (1000 * 60 * 60 * 24)) + 1;
+
+    if (dayCount < 1) {
+        document.getElementById('importPreview').classList.add('hidden');
+        document.getElementById('importBtn').disabled = true;
+        return;
+    }
+
+    const locationId = getCurrentLocation()?.id;
+    if (!locationId) return;
+
+    const { data: mealsData } = await Layout.db
+        .from('menu_meals')
+        .select('id, date, meal_type, dishes:menu_dishes(id)')
+        .eq('location_id', locationId)
+        .gte('date', fromDate)
+        .lte('date', toDate);
+
+    const mealsCount = mealsData?.length || 0;
+    const dishesCount = mealsData?.reduce((sum, m) => sum + (m.dishes?.length || 0), 0) || 0;
+
+    document.getElementById('importDayCountText').textContent = Layout.pluralize(dayCount, DAY_FORMS);
+    document.getElementById('importMealsCount').textContent = mealsCount > 0
+        ? `${Layout.pluralize(mealsCount, MEAL_FORMS)}, ${Layout.pluralize(dishesCount, DISH_FORMS)}`
+        : (t('nothing_found') || 'Нет данных');
+    document.getElementById('importPreview').classList.remove('hidden');
+    document.getElementById('importBtn').disabled = mealsCount === 0;
+}
+
+async function doImport() {
+    const name = document.getElementById('importTemplateName').value.trim();
+    const fromDate = document.getElementById('importFromDate').value;
+    const toDate = document.getElementById('importToDate').value;
+
+    if (!name) {
+        Layout.showNotification(t('enter_template_name') || 'Введите название', 'warning');
+        return;
+    }
+
+    const from = parseLocalDate(fromDate);
+    const to = parseLocalDate(toDate);
+    const dayCount = Math.ceil((to - from) / (1000 * 60 * 60 * 24)) + 1;
+
+    const locationId = getCurrentLocation()?.id;
+    if (!locationId) return;
+
+    const importBtn = document.getElementById('importBtn');
+    importBtn.disabled = true;
+    importBtn.textContent = '...';
+
+    try {
+        // Загрузить меню за диапазон
+        const { data: mealsData } = await Layout.db
+            .from('menu_meals')
+            .select('*, dishes:menu_dishes(*, recipe:recipes(*))')
+            .eq('location_id', locationId)
+            .gte('date', fromDate)
+            .lte('date', toDate);
+
+        // Создать шаблон
+        const { data: template, error: templateError } = await Layout.db
+            .from('menu_templates')
+            .insert({
+                location_id: locationId,
+                name_ru: name,
+                day_count: dayCount
+            })
+            .select()
+            .single();
+
+        if (templateError) throw templateError;
+
+        // Заполнить шаблон из меню
+        for (const meal of (mealsData || [])) {
+            const mealDate = parseLocalDate(meal.date);
+            const dayNumber = Math.ceil((mealDate - from) / (1000 * 60 * 60 * 24)) + 1;
+
+            const { data: newMeal, error: mealError } = await Layout.db
+                .from('menu_template_meals')
+                .insert({
+                    template_id: template.id,
+                    day_number: dayNumber,
+                    meal_type: meal.meal_type,
+                    portions: meal.portions || 50
+                })
+                .select()
+                .single();
+
+            if (mealError) throw mealError;
+
+            if (meal.dishes?.length > 0) {
+                await Layout.db
+                    .from('menu_template_dishes')
+                    .insert(meal.dishes.map((d, i) => ({
+                        template_meal_id: newMeal.id,
+                        recipe_id: d.recipe_id,
+                        portion_size: d.portion_size,
+                        portion_unit: d.portion_unit,
+                        sort_order: i
+                    })));
+            }
+        }
+
+        importModal.close();
+        Layout.showNotification(t('template_saved') || 'Шаблон сохранён', 'success');
+    } catch (error) {
+        Layout.showNotification(t('error') || 'Ошибка', 'error');
+    } finally {
+        importBtn.disabled = false;
+        importBtn.textContent = t('import') || 'Импортировать';
     }
 }
 
