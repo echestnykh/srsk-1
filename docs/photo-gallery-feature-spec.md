@@ -939,6 +939,730 @@ ALTER TABLE vaishnavas ADD COLUMN telegram_chat_id BIGINT;
 
 ---
 
+## Приложение A. Supabase Storage — детальная конфигурация
+
+### A.1 Bucket `retreat-photos`
+
+**Тип:** Public bucket (фото доступны по прямой ссылке, контроль через RLS на таблице `retreat_photos`)
+
+**Создание bucket (Supabase Dashboard → Storage → New Bucket):**
+
+| Параметр | Значение |
+|----------|---------|
+| Name | `retreat-photos` |
+| Public | Yes |
+| File size limit | 25 MB (25600000 bytes) |
+| Allowed MIME types | `image/jpeg, image/png` |
+
+**Конвенция путей:**
+
+```
+retreat-photos/
+  {retreat_id}/
+    {uuid}.jpg        ← оригинал (загруженный фотографом)
+```
+
+Пример: `retreat-photos/a1b2c3d4-e5f6-7890-abcd-ef1234567890/f47ac10b-58cc-4372-a567-0e02b2c3d479.jpg`
+
+### A.2 Storage RLS Policies
+
+**Важно:** Public bucket пропускает SELECT (чтение) без RLS. Контроль доступа к просмотру фото — через RLS на таблице `retreat_photos` (участники ретрита). Storage RLS нужен для записи/удаления.
+
+```sql
+-- Политика: загрузка фото (INSERT)
+-- Только пользователи с permission upload_photos
+CREATE POLICY "Фотограф загружает фото"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (
+  bucket_id = 'retreat-photos'
+  AND EXISTS (
+    SELECT 1 FROM permissions
+    WHERE user_id = auth.uid()
+    AND permission = 'upload_photos'
+  )
+);
+
+-- Политика: удаление фото (DELETE)
+-- Только пользователи с permission upload_photos
+CREATE POLICY "Фотограф удаляет фото"
+ON storage.objects FOR DELETE
+TO authenticated
+USING (
+  bucket_id = 'retreat-photos'
+  AND EXISTS (
+    SELECT 1 FROM permissions
+    WHERE user_id = auth.uid()
+    AND permission = 'upload_photos'
+  )
+);
+```
+
+### A.3 CDN Image Transforms (thumbnails)
+
+**Требование:** Supabase Pro Plan (подтверждён)
+
+**Как работает:** Supabase генерирует трансформированные изображения на лету по первому запросу, далее кеширует в CDN (285+ городов).
+
+**Получение URL миниатюры (JS SDK):**
+
+```javascript
+// Thumbnail 400px для сетки галереи
+const { data } = Layout.db.storage
+  .from('retreat-photos')
+  .getPublicUrl(`${retreatId}/${photoUuid}.jpg`, {
+    transform: {
+      width: 400,
+      quality: 80,
+      resize: 'cover'
+    }
+  });
+// data.publicUrl → https://{project}.supabase.co/storage/v1/render/image/public/retreat-photos/{path}?width=400&quality=80&resize=cover
+
+// Полноразмерное фото (без transform)
+const { data: full } = Layout.db.storage
+  .from('retreat-photos')
+  .getPublicUrl(`${retreatId}/${photoUuid}.jpg`);
+```
+
+**Параметры transform:**
+
+| Параметр | Значение | Описание |
+|----------|---------|----------|
+| `width` | 400 | Ширина thumbnail (px) |
+| `quality` | 80 | Качество JPEG (1-100) |
+| `resize` | `cover` | Режим: `cover` (обрезка), `contain` (вписать), `fill` (растянуть) |
+
+**Кэширование:** `Cache-Control: public, max-age=31536000` (1 год). Фото не меняются после загрузки.
+
+### A.4 Upload в Storage (JS)
+
+```javascript
+// Загрузка одного файла в Storage
+const filePath = `${retreatId}/${crypto.randomUUID()}.jpg`;
+const { data, error } = await Layout.db.storage
+  .from('retreat-photos')
+  .upload(filePath, file, {
+    contentType: file.type,
+    cacheControl: '31536000',  // 1 год
+    upsert: false              // не перезаписывать
+  });
+
+if (error) throw error;
+// data.path → путь в bucket
+```
+
+**Удаление файлов:**
+
+```javascript
+// Удаление одного или нескольких файлов
+const { error } = await Layout.db.storage
+  .from('retreat-photos')
+  .remove([`${retreatId}/${uuid1}.jpg`, `${retreatId}/${uuid2}.jpg`]);
+```
+
+---
+
+## Приложение B. AWS Rekognition — API reference для Edge Functions
+
+### B.0 SDK в Deno Edge Functions
+
+AWS SDK v3 модульный — импортируем только `@aws-sdk/client-rekognition` через `npm:` спецификатор (требование Deno runtime). Автоподписание запросов, retry, типизация — из коробки.
+
+```typescript
+// supabase/functions/_shared/rekognition.ts
+import {
+  RekognitionClient,
+  CreateCollectionCommand,
+  IndexFacesCommand,
+  SearchFacesByImageCommand,
+  DeleteFacesCommand,
+} from 'npm:@aws-sdk/client-rekognition@3';
+
+export const rekognition = new RekognitionClient({
+  region: Deno.env.get('AWS_REGION')!,           // ap-south-1
+  credentials: {
+    accessKeyId: Deno.env.get('AWS_ACCESS_KEY_ID')!,
+    secretAccessKey: Deno.env.get('AWS_SECRET_ACCESS_KEY')!,
+  },
+});
+```
+
+**Переменные окружения** (уже настроены в Supabase Edge Function Secrets):
+
+| Переменная | Значение |
+|-----------|---------|
+| `AWS_ACCESS_KEY_ID` | Ключ IAM user `srsk-rekognition` |
+| `AWS_SECRET_ACCESS_KEY` | Секрет IAM user `srsk-rekognition` |
+| `AWS_REGION` | `ap-south-1` |
+
+### B.1 CreateCollection — создание коллекции ретрита
+
+```typescript
+import { CreateCollectionCommand } from 'npm:@aws-sdk/client-rekognition@3';
+import { rekognition } from '../_shared/rekognition.ts';
+
+async function ensureCollection(retreatId: string): Promise<void> {
+  try {
+    await rekognition.send(new CreateCollectionCommand({
+      CollectionId: `retreat_${retreatId}`,
+    }));
+    console.log(`Collection retreat_${retreatId} created`);
+  } catch (err: any) {
+    if (err.name === 'ResourceAlreadyExistsException') {
+      // Коллекция уже существует — ОК
+      return;
+    }
+    throw err;
+  }
+}
+```
+
+**CollectionId формат:** `retreat_{retreat_uuid}` (только `[a-zA-Z0-9_.\-]+`)
+
+### B.2 IndexFaces — индексация лиц на фото
+
+```typescript
+import { IndexFacesCommand } from 'npm:@aws-sdk/client-rekognition@3';
+
+const response = await rekognition.send(new IndexFacesCommand({
+  CollectionId: `retreat_${retreatId}`,
+  Image: {
+    Bytes: imageBytes,  // Uint8Array, макс 5 МБ
+  },
+  ExternalImageId: photoId,  // UUID фото из retreat_photos
+  MaxFaces: 100,              // индексировать все обнаруженные лица
+  QualityFilter: 'AUTO',      // отфильтровать размытые/тёмные
+  DetectionAttributes: ['DEFAULT'],
+}));
+
+// response.FaceRecords — массив проиндексированных лиц
+for (const record of response.FaceRecords ?? []) {
+  const face = record.Face!;
+  // face.FaceId        — UUID лица в коллекции (сохранить в photo_faces)
+  // face.BoundingBox   — { Width, Height, Left, Top } (доли от размера фото)
+  // face.Confidence    — уверенность что это лицо (0-100)
+  // face.ExternalImageId — наш photoId
+}
+
+// response.UnindexedFaces — лица не прошедшие фильтр качества
+```
+
+**Лимиты:**
+
+| Параметр | Значение |
+|----------|---------|
+| Макс. размер Image.Bytes | 5 МБ |
+| Макс. лиц на фото | 100 |
+| Формат | JPEG, PNG |
+| Мин. размер лица | 80x80 px |
+
+**Ресайз перед отправкой:** если `file_size > 4.5 МБ` — ресайзить до max 2048px по длинной стороне. Библиотека: `npm:sharp` (или `npm:jimp` как fallback если sharp не работает в Deno).
+
+### B.3 SearchFacesByImage — поиск гостя на фото
+
+```typescript
+import { SearchFacesByImageCommand } from 'npm:@aws-sdk/client-rekognition@3';
+
+const response = await rekognition.send(new SearchFacesByImageCommand({
+  CollectionId: `retreat_${retreatId}`,
+  Image: {
+    Bytes: selfieBytes,  // Uint8Array фото гостя
+  },
+  FaceMatchThreshold: 80,  // мин. уверенность 80%
+  MaxFaces: 100,
+}));
+
+// response.FaceMatches — массив совпадений, отсортирован по Similarity (desc)
+for (const match of response.FaceMatches ?? []) {
+  const faceId = match.Face!.FaceId;           // UUID лица в коллекции
+  const photoId = match.Face!.ExternalImageId;  // наш photoId из IndexFaces
+  const similarity = match.Similarity;           // 80-100
+}
+
+// response.SearchedFaceBoundingBox — bbox найденного лица на входном фото
+// response.SearchedFaceConfidence  — уверенность что входное фото содержит лицо
+```
+
+**Время ответа:** 1-2 секунды (один вызов API)
+
+### B.4 DeleteFaces — удаление лиц из коллекции
+
+```typescript
+import { DeleteFacesCommand } from 'npm:@aws-sdk/client-rekognition@3';
+
+const response = await rekognition.send(new DeleteFacesCommand({
+  CollectionId: `retreat_${retreatId}`,
+  FaceIds: ['face-uuid-1', 'face-uuid-2'],  // из photo_faces.rekognition_face_id
+}));
+
+// response.DeletedFaces — успешно удалённые face_id
+// response.UnsuccessfulFaceDeletions — если какие-то не удалились
+```
+
+**Макс. FaceIds за один вызов:** 4096
+
+### B.5 Обработка ошибок Rekognition
+
+```typescript
+// Общий паттерн retry с backoff
+async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      const retryable = [
+        'ThrottlingException',
+        'ProvisionedThroughputExceededException',
+        'InternalServerError',
+      ];
+      if (!retryable.includes(err.name) || attempt === maxRetries) throw err;
+
+      const delay = err.name === 'ProvisionedThroughputExceededException'
+        ? 5000 * (2 ** attempt)   // 5с → 10с → 20с
+        : 1000 * (2 ** attempt);  // 1с → 2с → 4с
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+  throw new Error('unreachable');
+}
+```
+
+**Не ретраить:**
+
+| Ошибка | Действие |
+|--------|---------|
+| `InvalidImageFormatException` | Пометить фото `status = failed`, не ретраить |
+| `ResourceNotFoundException` | Коллекция не найдена — создать через CreateCollection, повторить |
+| `ImageTooLargeException` | Ресайзить и повторить |
+
+### B.6 Стоимость (AWS Free Tier)
+
+| API | Free Tier (12 мес) | После Free Tier |
+|-----|-------------------|-----------------|
+| IndexFaces | 5,000 / мес | $0.001 / изображение |
+| SearchFacesByImage | 5,000 / мес | $0.001 / изображение |
+| Face Storage | 1,000 лиц / мес бесплатно | $0.00001 / лицо / мес |
+
+**Пример:** ретрит 700 фото, 50 гостей → 700 IndexFaces + 50 SearchFaces = 750 вызовов/мес. В рамках Free Tier.
+
+---
+
+## Приложение C. Drag & Drop Upload — паттерн для vanilla JS + DaisyUI
+
+### C.1 HTML-разметка
+
+```html
+<!-- photos/upload.html -->
+<div id="upload-section">
+  <!-- Выбор ретрита -->
+  <div class="form-control mb-4">
+    <label class="label"><span class="label-text">Ретрит</span></label>
+    <select id="retreat-select" class="select select-bordered w-full">
+      <option value="">Выберите ретрит...</option>
+    </select>
+  </div>
+
+  <!-- Зона drag & drop -->
+  <div id="drop-zone"
+       class="border-2 border-dashed border-base-300 rounded-xl p-12
+              text-center cursor-pointer transition-colors
+              hover:border-primary hover:bg-base-200/50"
+       role="button" tabindex="0"
+       aria-label="Перетащите фото сюда или нажмите для выбора">
+
+    <svg class="mx-auto mb-4 w-12 h-12 text-base-content/40" xmlns="http://www.w3.org/2000/svg"
+         fill="none" viewBox="0 0 24 24" stroke-width="1.25" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round"
+            d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+    </svg>
+
+    <p class="text-lg font-medium">Перетащите фото сюда</p>
+    <p class="text-sm text-base-content/60 mt-1">или нажмите для выбора файлов</p>
+    <p class="text-xs text-base-content/40 mt-2">JPEG, PNG · до 25 МБ</p>
+
+    <input type="file" id="file-input" class="hidden"
+           accept="image/jpeg,image/png" multiple />
+  </div>
+
+  <!-- Список файлов (появляется после выбора) -->
+  <div id="file-list" class="mt-4 space-y-2 hidden"></div>
+
+  <!-- Прогресс загрузки -->
+  <div id="upload-progress" class="mt-4 hidden">
+    <div class="flex justify-between items-center mb-2">
+      <span id="upload-status" class="text-sm font-medium">Загружено 0/0</span>
+      <span id="upload-errors" class="text-sm text-error hidden">0 ошибок</span>
+    </div>
+    <progress id="upload-bar" class="progress progress-primary w-full" value="0" max="100"></progress>
+  </div>
+
+  <!-- Кнопка загрузки -->
+  <button id="upload-btn" class="btn btn-primary mt-4 hidden" disabled>
+    Загрузить фото
+  </button>
+</div>
+```
+
+### C.2 JavaScript — обработка drag & drop
+
+```javascript
+// js/pages/photo-upload.js
+
+const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 МБ
+const ALLOWED_TYPES = ['image/jpeg', 'image/png'];
+
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+const fileList = document.getElementById('file-list');
+const uploadBtn = document.getElementById('upload-btn');
+
+let selectedFiles = []; // { file, status: 'ready'|'error', errorMsg? }
+
+// --- Drag & Drop ---
+
+dropZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  dropZone.classList.add('border-primary', 'bg-base-200');
+});
+
+dropZone.addEventListener('dragleave', () => {
+  dropZone.classList.remove('border-primary', 'bg-base-200');
+});
+
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('border-primary', 'bg-base-200');
+  handleFiles(e.dataTransfer.files);
+});
+
+dropZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+
+// --- Валидация файлов ---
+
+function handleFiles(fileListObj) {
+  selectedFiles = [];
+
+  for (const file of fileListObj) {
+    const entry = { file, status: 'ready', errorMsg: null };
+
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      const ext = file.name.split('.').pop().toUpperCase();
+      entry.status = 'error';
+      entry.errorMsg = `Формат ${ext} не поддерживается. Конвертируйте в JPEG`;
+    } else if (file.size > MAX_FILE_SIZE) {
+      const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+      entry.status = 'error';
+      entry.errorMsg = `${file.name} слишком большой (${sizeMB} МБ). Сожмите до 25 МБ`;
+    }
+
+    selectedFiles.push(entry);
+  }
+
+  renderFileList();
+}
+
+// --- Отображение списка файлов (безопасные DOM-методы) ---
+
+function renderFileList() {
+  const ready = selectedFiles.filter(f => f.status === 'ready');
+  const errors = selectedFiles.filter(f => f.status === 'error');
+
+  fileList.classList.remove('hidden');
+  fileList.replaceChildren(); // очистка без innerHTML
+
+  // Ошибки — сверху, красным
+  for (const entry of errors) {
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-error py-2 text-sm';
+
+    const span = document.createElement('span');
+    span.textContent = entry.errorMsg; // textContent — безопасно от XSS
+    alert.appendChild(span);
+
+    fileList.appendChild(alert);
+  }
+
+  // Готовые файлы — кратко
+  if (ready.length > 0) {
+    const info = document.createElement('div');
+    info.className = 'text-sm text-base-content/60';
+    const totalMB = (ready.reduce((s, f) => s + f.file.size, 0) / 1024 / 1024).toFixed(1);
+    info.textContent = `${ready.length} файл(ов) готово к загрузке (${totalMB} МБ)`;
+    fileList.appendChild(info);
+  }
+
+  // Кнопка загрузки
+  uploadBtn.classList.toggle('hidden', ready.length === 0);
+  uploadBtn.disabled = ready.length === 0;
+  uploadBtn.textContent = `Загрузить ${ready.length} фото`;
+}
+```
+
+### C.3 JavaScript — последовательная загрузка с retry
+
+```javascript
+// Продолжение js/pages/photo-upload.js
+
+const uploadProgress = document.getElementById('upload-progress');
+const uploadStatus = document.getElementById('upload-status');
+const uploadBar = document.getElementById('upload-bar');
+
+uploadBtn.addEventListener('click', startUpload);
+
+async function startUpload() {
+  const retreatId = document.getElementById('retreat-select').value;
+  if (!retreatId) { Layout.showToast('Выберите ретрит', 'warning'); return; }
+
+  const readyFiles = selectedFiles.filter(f => f.status === 'ready');
+  if (readyFiles.length === 0) return;
+
+  uploadBtn.disabled = true;
+  uploadProgress.classList.remove('hidden');
+
+  let uploaded = 0;
+  let failed = 0;
+  const photoIds = [];
+
+  for (const entry of readyFiles) {
+    uploadStatus.textContent = `Загружено ${uploaded}/${readyFiles.length}`;
+    uploadBar.value = (uploaded / readyFiles.length) * 100;
+
+    try {
+      const photoId = await uploadOneFile(retreatId, entry.file);
+      photoIds.push(photoId);
+      uploaded++;
+    } catch (err) {
+      console.error(`Upload failed: ${entry.file.name}`, err);
+      failed++;
+    }
+  }
+
+  uploadBar.value = 100;
+  uploadStatus.textContent = `Загружено ${uploaded}/${readyFiles.length}` +
+    (failed > 0 ? ` (${failed} ошибок)` : '');
+
+  if (photoIds.length > 0) {
+    Layout.showToast(`${photoIds.length} фото загружено`, 'success');
+    // Запуск индексации лиц (Фаза 2)
+    // await startIndexing(retreatId, photoIds);
+  }
+}
+
+async function uploadOneFile(retreatId, file, retries = 3) {
+  const uuid = crypto.randomUUID();
+  const ext = file.type === 'image/png' ? 'png' : 'jpg';
+  const storagePath = `${retreatId}/${uuid}.${ext}`;
+
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      // 1. Upload в Storage
+      const { error: storageError } = await Layout.db.storage
+        .from('retreat-photos')
+        .upload(storagePath, file, {
+          contentType: file.type,
+          cacheControl: '31536000',
+          upsert: false,
+        });
+      if (storageError) throw storageError;
+
+      // 2. Метаданные (width, height) через Image API
+      const dimensions = await getImageDimensions(file);
+
+      // 3. INSERT в retreat_photos
+      const { data, error: dbError } = await Layout.db
+        .from('retreat_photos')
+        .insert({
+          retreat_id: retreatId,
+          storage_path: storagePath,
+          uploaded_by: window.currentUser.id,
+          width: dimensions.width,
+          height: dimensions.height,
+          file_size: file.size,
+          index_status: 'pending',
+        })
+        .select('id')
+        .single();
+      if (dbError) throw dbError;
+
+      return data.id;
+
+    } catch (err) {
+      if (attempt === retries - 1) throw err;
+      await new Promise(r => setTimeout(r, 1000 * (2 ** attempt))); // 1с → 2с → 4с
+    }
+  }
+}
+
+function getImageDimensions(file) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      URL.revokeObjectURL(img.src);
+    };
+    img.onerror = () => resolve({ width: 0, height: 0 });
+    img.src = URL.createObjectURL(file);
+  });
+}
+```
+
+### C.4 UX-состояния зоны загрузки
+
+| Состояние | Визуал | Действие |
+|-----------|--------|---------|
+| **Пустая** | Пунктирная рамка, иконка upload, текст «Перетащите фото сюда» | Клик или drag |
+| **Hover (drag over)** | Рамка `border-primary`, фон `bg-base-200` | — |
+| **Файлы выбраны** | Список файлов + ошибки + кнопка «Загрузить N фото» | Клик кнопки |
+| **Загрузка** | Progress bar, счётчик «Загружено 34/100», кнопка disabled | Ожидание |
+| **Ошибка файла** | `alert alert-error` с текстом (inline, не блокирует остальные) | — |
+| **Готово** | Toast «N фото загружено», переход к индексации | — |
+
+---
+
+## Приложение D. Инструкция для разработчика
+
+### D.1 Зависимости
+
+**Frontend (нет npm-зависимостей — всё через CDN):**
+
+Проект использует vanilla JS без сборки. Все библиотеки подключаются через `<script>` / `<link>` в HTML:
+
+| Библиотека | Версия | CDN | Назначение |
+|-----------|--------|-----|-----------|
+| Tailwind CSS | 3.x | CDN play | Стили |
+| DaisyUI | 4.x | CDN | UI-компоненты |
+| Supabase JS | 2.x | CDN (`@supabase/supabase-js`) | Клиент БД + Storage |
+
+Ничего устанавливать через npm на клиенте не нужно.
+
+**Edge Functions (Deno, устанавливаются через `npm:` спецификатор):**
+
+| Пакет | Версия | Назначение |
+|-------|--------|-----------|
+| `npm:@supabase/supabase-js@2` | 2.x | Supabase клиент (service_role) |
+| `npm:@aws-sdk/client-rekognition@3` | 3.x | AWS Rekognition SDK (IndexFaces, SearchFaces, DeleteFaces) |
+| `npm:sharp@0.33` (или `npm:jimp@1`) | 0.33.x | Ресайз изображений перед Rekognition (> 4.5 МБ → 2048px) |
+
+Пример import в Edge Function:
+
+```typescript
+import { createClient } from 'npm:@supabase/supabase-js@2';
+import { RekognitionClient, IndexFacesCommand } from 'npm:@aws-sdk/client-rekognition@3';
+import sharp from 'npm:sharp@0.33';
+```
+
+**Инструменты разработчика:**
+
+| Инструмент | Версия | Установка | Назначение |
+|-----------|--------|-----------|-----------|
+| Node.js | >= 18 | `brew install node` | Локальный сервер, тесты |
+| Supabase CLI | >= 2.75.0 | `brew install supabase/tap/supabase` | Миграции, деплой Edge Functions |
+| Playwright | (в devDependencies) | `npm install` | E2E тесты |
+
+### D.2 Что прочитать (обязательно, в этом порядке)
+
+| # | Документ | Зачем |
+|---|----------|-------|
+| 1 | **Этот файл** (`docs/photo-gallery-feature-spec.md`) | Полное ТЗ: user stories, flows, DB schema, оценки |
+| 2 | `docs/architecture.md` | Структура проекта, Layout.*, Utils.*, init() |
+| 3 | `docs/patterns.md` | Паттерны: формы, таблицы, модалки, RLS |
+| 4 | `docs/auth.md` | Авторизация, permissions, `upload_photos` |
+| 5 | `docs/modules/housing.md` | Guest Portal, retreat_registrations — нужно для RLS |
+| 6 | `CLAUDE.md` (корень проекта) | Все конвенции: даты, имена, XSS, иконки |
+| 7 | Приложения A-C этого файла | Storage config, Rekognition API, drag-and-drop паттерн |
+
+### D.3 Ключевые конвенции проекта
+
+- **Stack:** Vanilla JS + DaisyUI + Tailwind CSS + Supabase. **Без сборки** (нет webpack/vite)
+- **БД:** Supabase (PostgreSQL + RLS). Prod project: `llttmftapmwebidgevmg`
+- **Edge Functions:** TypeScript + Deno. Деплой: `supabase functions deploy <name> --project-ref llttmftapmwebidgevmg --no-verify-jwt`
+- **Иконки:** Inline SVG (Heroicons-стиль), stroke-width 1.25. **Не эмодзи!**
+- **Даты:** **Всегда локальное время**, никогда UTC. См. CLAUDE.md
+- **XSS:** `Layout.escapeHtml()` для пользовательских данных, `textContent` вместо `innerHTML`
+- **i18n:** `Layout.t('key')` для переводов
+
+### D.4 Как стартовать разработку
+
+**Порядок работы по фазам:**
+
+```
+Фаза 1 (Галерея)     → Фаза 2 (AI/Rekognition) → Фаза 3 (Telegram)
+~5.4 ч (H+Claude)      ~4.6 ч                      ~5.2 ч
+```
+
+**Шаг 1: Фаза 1 — начать с миграций и Storage**
+
+```bash
+# 1.1 Миграция: permission upload_photos
+supabase migration new 108_photo_gallery_permission
+
+# 1.2 Миграция: таблица retreat_photos
+supabase migration new 109_retreat_photos_table
+
+# 1.3 Создать bucket retreat-photos (Dashboard → Storage → New Bucket)
+# См. Приложение A.1
+
+# 1.4 RLS policies на Storage и retreat_photos
+supabase migration new 110_photo_gallery_rls
+
+# 1.5 Деплой миграций
+supabase db push --project-ref llttmftapmwebidgevmg
+```
+
+**Шаг 2: Frontend — upload.html и manage.html**
+
+```bash
+# Структура файлов:
+photos/
+  upload.html       # Загрузка фото (drag & drop)
+  manage.html       # Управление фото (удаление)
+js/pages/
+  photo-upload.js   # Логика загрузки (Приложение C)
+  photo-manage.js   # Логика управления
+```
+
+**Шаг 3: Guest Portal — галерея**
+
+```bash
+# Добавить раздел «Фото» в Guest Portal
+guest/
+  photos.html       # Галерея + «Найти себя» (Фаза 2)
+```
+
+### D.5 Чеклист перед PR
+
+- [ ] Все миграции применены на dev: `supabase db push --project-ref vzuiwpeovnzfokekdetq`
+- [ ] RLS работает: гость видит фото только своего ретрита
+- [ ] Permission: только `upload_photos` может загружать/удалять
+- [ ] Thumbnails через CDN Image Transforms работают
+- [ ] XSS: все пользовательские данные через `Layout.escapeHtml()` / `textContent`
+- [ ] Даты: локальное время (не UTC)
+- [ ] Иконки: SVG, не эмодзи
+- [ ] Cache busting: обновить `?v=N` в script-тегах
+
+### D.6 Полезные команды
+
+```bash
+# Локальный сервер
+npm run serve
+
+# Тесты
+npm test
+
+# Деплой Edge Function
+supabase functions deploy index-faces --project-ref llttmftapmwebidgevmg --no-verify-jwt
+
+# Логи Edge Function
+supabase functions logs index-faces --project-ref llttmftapmwebidgevmg
+
+# SQL на продакшене
+supabase db execute --project-ref llttmftapmwebidgevmg "SELECT count(*) FROM retreat_photos"
+```
+
+---
+
 ## Изменения относительно исходного ФТ (PDF)
 
 | # | Было (PDF) | Стало | Обоснование |
