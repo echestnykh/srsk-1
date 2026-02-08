@@ -389,7 +389,7 @@ function renderBoard() {
             const isWeekend = dow === 0 || dow === 6;
 
             let bgClass = '';
-            if (isWeekend) bgClass = 'day-weekend';
+            // без подсветки выходных
 
             const mealData = menuData[dateStr]?.[mt];
             const dishes = (mealData?.dishes || []).slice().sort((a, b) => {
