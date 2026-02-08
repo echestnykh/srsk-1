@@ -765,7 +765,7 @@ flowchart TD
 - Бот: @rupaseva_bot (или аналог), регистрация через @BotFather
 - Webhook: Edge Function `telegram-webhook`
 - Команды: `/start TOKEN`, `/stop`
-- **Референс:** паттерн webhook + sendMessage берётся из существующего Telegram-бота другого проекта
+- **Референс паттернов:** Claude Code skill `/telegram-bot` — send_with_retry, deep link token, broadcast с rate limiting, обработка ошибок 403/429, splitting длинных сообщений
 
 ### 3.2 Привязка Telegram к гостю (/start TOKEN)
 
