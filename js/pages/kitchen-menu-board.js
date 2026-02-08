@@ -389,8 +389,7 @@ function renderBoard() {
             const isWeekend = dow === 0 || dow === 6;
 
             let bgClass = '';
-            if (isToday) bgClass = 'day-today';
-            else if (isWeekend) bgClass = 'day-weekend';
+            if (isWeekend) bgClass = 'day-weekend';
 
             const mealData = menuData[dateStr]?.[mt];
             const dishes = (mealData?.dishes || []).slice().sort((a, b) => {
