@@ -416,6 +416,18 @@
         .row-bed td.clickable:hover {
             background: #e0f2fe !important;
         }
+
+        /* Fullscreen mode */
+        body.board-fullscreen > header,
+        body.board-fullscreen > footer {
+            display: none !important;
+        }
+        body.board-fullscreen main {
+            padding: 8px;
+        }
+        body.board-fullscreen .timeline-wrapper {
+            max-height: calc(100vh - 70px) !important;
+        }
     </style>
 </head>
 <body class="bg-base-200 min-h-screen">
@@ -443,11 +455,18 @@
                 </div>
             </div>
             <!-- Легенда -->
-            <div class="flex items-center gap-4" id="legend"></div>
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-4" id="legend"></div>
+                <button class="btn btn-ghost btn-sm btn-square" onclick="toggleFullscreen(this)" title="На весь экран">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+                    </svg>
+                </button>
+            </div>
         </div>
 
         <!-- Контейнер шахматки -->
-        <div class="bg-white rounded-lg shadow flex flex-col" style="max-height: calc(100vh - 180px);">
+        <div class="bg-white rounded-lg shadow flex flex-col timeline-wrapper" style="max-height: calc(100vh - 180px);">
             <!-- Полоса ретритов -->
             <div class="retreats-bar">
                 <div class="retreats-label"></div>
@@ -888,7 +907,14 @@
     <script src="../js/utils.js?v=2"></script>
     <script src="../js/translit.js"></script>
     <script src="../js/auto-translate.js"></script>
+    <script src="../js/date-utils.js"></script>
     <script src="../js/layout.js?v=5"></script>
+    <script>
+    function toggleFullscreen(btn) {
+        const isFS = document.body.classList.toggle('board-fullscreen');
+        if (btn) { btn.classList.toggle('btn-active', isFS); btn.title = isFS ? 'Обычный вид' : 'На весь экран'; }
+    }
+    </script>
     <script src="../js/pages/timeline.js?v=3"></script>
 
 </body>

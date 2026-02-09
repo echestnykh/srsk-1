@@ -163,6 +163,15 @@
             min-width: 150px;
             vertical-align: middle;
         }
+
+        /* Fullscreen mode */
+        body.board-fullscreen > header,
+        body.board-fullscreen > footer {
+            display: none !important;
+        }
+        body.board-fullscreen main {
+            padding: 8px;
+        }
     </style>
 </head>
 <body class="bg-base-200 min-h-screen flex flex-col">
@@ -200,6 +209,11 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                     </svg>
                     Добавить нового
+                </button>
+                <button class="btn btn-ghost btn-sm btn-square" onclick="toggleFullscreen(this)" title="На весь экран">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5" />
+                    </svg>
                 </button>
             </div>
         </div>
@@ -856,7 +870,14 @@
     <script src="../js/utils.js?v=2"></script>
     <script src="../js/translit.js"></script>
     <script src="../js/auto-translate.js"></script>
+    <script src="../js/date-utils.js"></script>
     <script src="../js/layout.js?v=5"></script>
+    <script>
+    function toggleFullscreen(btn) {
+        const isFS = document.body.classList.toggle('board-fullscreen');
+        if (btn) { btn.classList.toggle('btn-active', isFS); btn.title = isFS ? 'Обычный вид' : 'На весь экран'; }
+    }
+    </script>
     <script src="../js/pages/preliminary.js?v=10"></script>
 
 </body>
