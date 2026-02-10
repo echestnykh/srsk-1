@@ -159,7 +159,7 @@ async function loadRegistrations(personId) {
                 .select('retreat_id, room_id, rooms(number, buildings(name_ru, name_en, name_hi))')
                 .eq('vaishnava_id', personId)
                 .in('retreat_id', retreatIds)
-                .in('status', ['active', 'confirmed']);
+                .eq('status', 'confirmed');
 
             // Map residents to registrations
             if (residentsData) {
@@ -1217,6 +1217,7 @@ async function updateRoomsList() {
         // Заселённые гости (residents)
         Layout.db.from('residents')
             .select('room_id')
+            .eq('status', 'confirmed')
             .lte('check_in', checkOut)
             .gte('check_out', checkIn),
         // Бронирования гостей ретритов (guest_accommodations)

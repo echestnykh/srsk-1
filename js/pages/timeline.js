@@ -73,7 +73,7 @@ async function loadTimelineData() {
                 resident_categories(id, name_ru, name_en, name_hi, color),
                 vaishnavas(id, first_name, last_name, spiritual_name),
                 bookings(id, name, contact_name)`)
-            .in('status', ['active', 'confirmed', 'checked_out'])
+            .in('status', ['confirmed', 'checked_out'])
             .lte('check_in', endDateStr)
             .or(`check_out.is.null,check_out.gte.${startDateStr}`),
         Layout.db.from('retreats')
@@ -735,7 +735,7 @@ async function saveCheckin(e) {
         late_checkout: form.late_checkout.checked,
         meal_type: form.meal_type.value || 'prasad',
         notes: form.notes.value || null,
-        status: 'active'
+        status: 'confirmed'
     };
 
     // Проверка: должен быть либо вайшнав из БД, либо имя нового гостя
@@ -819,7 +819,7 @@ async function saveBooking(e) {
             check_out: form.check_out.value,
             early_checkin: earlyCheckin,
             late_checkout: lateCheckout,
-            status: 'active'
+            status: 'confirmed'
         });
     }
 
@@ -1321,7 +1321,7 @@ async function showMoveScreen() {
         Layout.db
             .from('residents')
             .select('room_id, check_in, check_out')
-            .in('status', ['active', 'confirmed'])
+            .eq('status', 'confirmed')
             .neq('id', currentResident.id) // исключаем текущего резидента
             .lte('check_in', checkOut)
             .or(`check_out.is.null,check_out.gte.${checkIn}`)

@@ -45,7 +45,7 @@ const EatingUtils = {
             Layout.db
                 .from('residents')
                 .select('id, vaishnava_id, check_in, check_out, early_checkin, late_checkout')
-                .eq('status', 'active')
+                .eq('status', 'confirmed')
                 .or('meal_type.eq.prasad,meal_type.is.null')
                 .lte('check_in', endDate)
                 .or(`check_out.gte.${startDate},check_out.is.null`)

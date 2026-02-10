@@ -145,7 +145,7 @@ async function loadRegistrations() {
             .select('*, rooms(id, number, building_id, buildings(id, name_ru, name_en, name_hi))')
             .eq('retreat_id', retreatId)
             .in('vaishnava_id', vaishnavIds)
-            .in('status', ['active', 'confirmed']);
+            .eq('status', 'confirmed');
 
         // Привязываем residents к регистрациям
         const residentsByVaishnava = (residentsData || []).reduce((acc, res) => {
@@ -174,7 +174,7 @@ async function loadRoomOccupancy() {
         .from('residents')
         .select('id, room_id, check_in, check_out')
         .not('room_id', 'is', null)
-        .in('status', ['active', 'confirmed'])
+        .eq('status', 'confirmed')
         .lte('check_in', retreat.end_date)
         .gte('check_out', retreat.start_date);
 
@@ -1644,7 +1644,7 @@ async function loadPlacementOccupancy(checkIn, checkOut) {
         .from('residents')
         .select('id, room_id, check_in, check_out')
         .not('room_id', 'is', null)
-        .in('status', ['active', 'confirmed'])
+        .eq('status', 'confirmed')
         .lte('check_in', checkOut)
         .gte('check_out', checkIn);
 
