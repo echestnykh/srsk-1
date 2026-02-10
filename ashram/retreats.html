@@ -326,6 +326,7 @@
     <script src="../js/utils.js?v=2"></script>
     <script src="../js/translit.js"></script>
     <script src="../js/auto-translate.js"></script>
+    <script src="../js/date-utils.js"></script>
     <script src="../js/layout.js?v=5"></script>
     <script>
         // ==================== STATE ====================
@@ -416,7 +417,7 @@
 
         // ==================== LIST VIEW ====================
         function filterRetreats() {
-            const today = new Date().toISOString().split('T')[0];
+            const today = DateUtils.toISO(new Date());
 
             return retreats.filter(r => {
                 if (currentFilter === 'upcoming') return r.end_date >= today;
@@ -430,8 +431,8 @@
             const opts = { day: 'numeric', month: 'short' };
             if (lang === 'en') opts.month = 'short';
 
-            const s = new Date(start);
-            const e = new Date(end);
+            const s = DateUtils.parseDate(start);
+            const e = DateUtils.parseDate(end);
             const sStr = s.toLocaleDateString(lang === 'hi' ? 'hi-IN' : lang === 'en' ? 'en-US' : 'ru-RU', opts);
             const eStr = e.toLocaleDateString(lang === 'hi' ? 'hi-IN' : lang === 'en' ? 'en-US' : 'ru-RU', { ...opts, year: 'numeric' });
 
@@ -439,8 +440,8 @@
         }
 
         function getDaysCount(start, end) {
-            const s = new Date(start);
-            const e = new Date(end);
+            const s = DateUtils.parseDate(start);
+            const e = DateUtils.parseDate(end);
             return Math.ceil((e - s) / (1000 * 60 * 60 * 24)) + 1;
         }
 
@@ -462,7 +463,7 @@
                 const name = Layout.getName(r);
                 const desc = r[`description_${lang}`] || r.description_ru || '';
                 const days = getDaysCount(r.start_date, r.end_date);
-                const today = new Date().toISOString().split('T')[0];
+                const today = DateUtils.toISO(new Date());
                 const isActive = r.start_date <= today && r.end_date >= today;
                 const isPast = r.end_date < today;
 
@@ -550,7 +551,7 @@
             let startOffset = firstDay.getDay() - 1;
             if (startOffset < 0) startOffset = 6;
 
-            const today = new Date().toISOString().split('T')[0];
+            const today = DateUtils.toISO(new Date());
             let html = '';
 
             // Previous month days
@@ -847,6 +848,7 @@
                     if (error) throw error;
                 }
 
+                Cache.invalidate('retreats'); Cache.invalidate('all_retreats');
                 closeModal();
                 retreats = await loadRetreats();
                 render();
@@ -867,6 +869,7 @@
                 const { error } = await Layout.db.from('retreats').delete().eq('id', editingId);
                 if (error) throw error;
 
+                Cache.invalidate('retreats'); Cache.invalidate('all_retreats');
                 closeModal();
                 retreats = await loadRetreats();
                 render();
@@ -897,7 +900,7 @@
 
         function renderFilters() {
             const container = document.getElementById('listFilters');
-            const today = new Date().toISOString().split('T')[0];
+            const today = DateUtils.toISO(new Date());
 
             const counts = {
                 upcoming: retreats.filter(r => r.end_date >= today).length,

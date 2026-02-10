@@ -56,6 +56,7 @@
 
         if (vaishnava.approval_status === 'rejected' || vaishnava.approval_status === 'blocked' || !vaishnava.is_active) {
             await db.auth.signOut();
+            // Используем alert т.к. Layout может быть не загружен, и мы уходим на /login.html
             alert('Ваш аккаунт заблокирован или отклонён. Свяжитесь с администратором.');
             window.location.href = '/login.html';
             return;
@@ -117,9 +118,9 @@
             }
         }
 
-        console.log('✅ User authenticated:', session.user.email);
-        console.log('📋 Permissions loaded:', permissions.length, 'permissions');
-        console.log('👤 User type:', vaishnava.user_type, '| Superuser:', vaishnava.is_superuser);
+        console.log('✅ User authenticated');
+        console.log('📋 Permissions loaded:', permissions.length);
+        console.log('👤 User type:', vaishnava.user_type);
 
         // Добавить класс роли на body для CSS-контроля
         document.body.classList.add(`user-type-${vaishnava.user_type}`);

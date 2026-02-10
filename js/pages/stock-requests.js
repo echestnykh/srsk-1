@@ -199,8 +199,8 @@ function selectPeriod(period) {
     const daysToAdd = { today: 0, '3days': 2, week: 6, '2weeks': 13 };
     toDate.setDate(toDate.getDate() + (daysToAdd[period] || 0));
 
-    Layout.$('#periodFrom').value = fromDate.toISOString().split('T')[0];
-    Layout.$('#periodTo').value = toDate.toISOString().split('T')[0];
+    Layout.$('#periodFrom').value = DateUtils.toISO(fromDate);
+    Layout.$('#periodTo').value = DateUtils.toISO(toDate);
 }
 
 function clearPeriodButtons() {
@@ -434,7 +434,7 @@ function renderResults() {
                             value="${formatQty(item.to_purchase, item.unit)}"
                             min="0"
                             step="1"
-                            onchange="updateItemQuantity(${index}, this.value)"
+                            data-action="update-item-quantity" data-index="${index}"
                         />
                         <span class="btn btn-sm join-item no-animation pointer-events-none bg-base-200">${unit}</span>
                     </div>
@@ -442,7 +442,7 @@ function renderResults() {
                 </td>
                 <td class="text-right opacity-70">${estSum}</td>
                 <td>
-                    <button class="btn btn-ghost btn-sm btn-square text-error/60 hover:text-error hover:bg-error/10" onclick="removeItem(${index})" title="${t('remove') || 'Удалить'}">
+                    <button class="btn btn-ghost btn-sm btn-square text-error/60 hover:text-error hover:bg-error/10" data-action="remove-item" data-index="${index}" title="${t('remove') || 'Удалить'}">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -455,6 +455,7 @@ function renderResults() {
 
 // ==================== ACTIONS ====================
 async function saveRequest() {
+    if (!window.hasPermission?.('manage_stock_requests')) return;
     if (requestItems.length === 0) {
         showAlert(tr('add_at_least_one', 'Нет продуктов для сохранения'));
         return;
@@ -568,8 +569,8 @@ function renderRequestCard(req, isArchived = false) {
 
     // Period (only for requests generated from menu)
     const hasPeriod = req.period_from && req.period_to;
-    const periodFrom = hasPeriod ? new Date(req.period_from).toLocaleDateString(locale) : '';
-    const periodTo = hasPeriod ? new Date(req.period_to).toLocaleDateString(locale) : '';
+    const periodFrom = hasPeriod ? DateUtils.parseDate(req.period_from).toLocaleDateString(locale) : '';
+    const periodTo = hasPeriod ? DateUtils.parseDate(req.period_to).toLocaleDateString(locale) : '';
 
     // Created at with time
     const createdDate = new Date(req.created_at);
@@ -615,7 +616,7 @@ function renderRequestCard(req, isArchived = false) {
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                     ${tr('request_in_progress', 'Заявка в работе')}
                 </span>
-                <select class="select select-bordered select-sm" onchange="updateRequestBuyer('${req.id}', this.value)">
+                <select class="select select-bordered select-sm" data-action="update-request-buyer" data-id="${req.id}">
                     <option value="">${tr('select_buyer', 'Выбрать закупщика')}</option>
                     ${buyers.map(b => `<option value="${b.id}" ${req.buyer_id === b.id ? 'selected' : ''}>${Layout.getName(b)}</option>`).join('')}
                 </select>
@@ -636,36 +637,36 @@ function renderRequestCard(req, isArchived = false) {
                 ${itemsList ? `<div class="hidden md:block flex-1 text-sm opacity-60 line-clamp-3 px-4 self-start">${itemsList}</div>` : ''}
 
                 <div class="flex items-center gap-1 flex-shrink-0">
-                    <button class="btn btn-ghost btn-sm" onclick="viewSavedRequest('${req.id}')" title="${tr('view', 'Просмотр')}">
+                    <button class="btn btn-ghost btn-sm" data-action="view-saved-request" data-id="${req.id}" title="${tr('view', 'Просмотр')}">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                         </svg>
                     </button>
-                    <button class="btn btn-ghost btn-sm" onclick="printSavedRequest('${req.id}')" title="${tr('print', 'Печать')}">
+                    <button class="btn btn-ghost btn-sm" data-action="print-saved-request" data-id="${req.id}" title="${tr('print', 'Печать')}">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                         </svg>
                     </button>
                     ${!isArchived ? `
-                        <button class="btn btn-ghost btn-sm ${isInProgress ? 'text-blue-600' : 'text-blue-400'}" onclick="toggleInProgress('${req.id}')" title="${tr('in_progress', 'В работе')}">
+                        <button class="btn btn-ghost btn-sm ${isInProgress ? 'text-blue-600' : 'text-blue-400'}" data-action="toggle-in-progress" data-id="${req.id}" title="${tr('in_progress', 'В работе')}">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="${isInProgress ? '2.5' : '2'}">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                             </svg>
                         </button>
-                        <button class="btn btn-ghost btn-sm text-warning" onclick="archiveRequest('${req.id}')" title="${tr('to_archive', 'В архив')}">
+                        <button class="btn btn-ghost btn-sm text-warning" data-action="archive-request" data-id="${req.id}" title="${tr('to_archive', 'В архив')}">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                             </svg>
                         </button>
                     ` : `
-                        <button class="btn btn-ghost btn-sm text-success" onclick="restoreRequest('${req.id}')" title="${tr('restore', 'Восстановить')}">
+                        <button class="btn btn-ghost btn-sm text-success" data-action="restore-request" data-id="${req.id}" title="${tr('restore', 'Восстановить')}">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                             </svg>
                         </button>
                     `}
-                    <button class="btn btn-ghost btn-sm text-error" onclick="deleteRequest('${req.id}')" title="${tr('delete', 'Удалить')}">
+                    <button class="btn btn-ghost btn-sm text-error" data-action="delete-request" data-id="${req.id}" title="${tr('delete', 'Удалить')}">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
@@ -764,6 +765,7 @@ async function toggleInProgress(id) {
 }
 
 async function archiveRequest(id) {
+    if (!window.hasPermission?.('manage_stock_requests')) return;
     if (!await showConfirm(tr('archive_confirm', 'Переместить в архив?'))) return;
 
     const { error } = await Layout.db
@@ -781,6 +783,7 @@ async function archiveRequest(id) {
 }
 
 async function restoreRequest(id) {
+    if (!window.hasPermission?.('manage_stock_requests')) return;
     const { error } = await Layout.db
         .from('purchase_requests')
         .update({ status: 'pending' })
@@ -796,6 +799,7 @@ async function restoreRequest(id) {
 }
 
 async function deleteRequest(id) {
+    if (!window.hasPermission?.('manage_stock_requests')) return;
     if (!await showConfirm(tr('permanent_delete_confirm', 'Удалить заявку навсегда? Это действие нельзя отменить!'))) return;
 
     // Удаляем items
@@ -841,8 +845,8 @@ function viewSavedRequest(id) {
     });
 
     // Update modal header
-    const periodFrom = new Date(req.period_from).toLocaleDateString('ru-RU');
-    const periodTo = new Date(req.period_to).toLocaleDateString('ru-RU');
+    const periodFrom = DateUtils.parseDate(req.period_from).toLocaleDateString('ru-RU');
+    const periodTo = DateUtils.parseDate(req.period_to).toLocaleDateString('ru-RU');
 
     Layout.$('#viewRequestTitle').textContent = `${tr('request', 'Заявка')} #${formatNumberWithYear(req.number)}`;
     Layout.$('#viewRequestPeriod').textContent = `${tr('period', 'Период')}: ${periodFrom} — ${periodTo}`;
@@ -928,7 +932,7 @@ function renderViewedRequest() {
                                 value="${formatQty(item.quantity, item.unit)}"
                                 min="0"
                                 step="1"
-                                onchange="updateViewedItemQty(${index}, this.value)"
+                                data-action="update-viewed-item-qty" data-index="${index}"
                             />
                             <span class="btn btn-sm join-item no-animation pointer-events-none bg-base-200">${unit}</span>
                         </div>
@@ -936,7 +940,7 @@ function renderViewedRequest() {
                     </td>
                     <td class="text-right opacity-70 no-print">${estSum}</td>
                     <td class="no-print">
-                        <button class="btn btn-ghost btn-sm btn-square text-error/60 hover:text-error hover:bg-error/10" onclick="removeViewedItem(${index})">
+                        <button class="btn btn-ghost btn-sm btn-square text-error/60 hover:text-error hover:bg-error/10" data-action="remove-viewed-item" data-index="${index}">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
@@ -1082,9 +1086,9 @@ function openProductModal(forViewing = false) {
 function buildProductCategoryButtons() {
     const container = Layout.$('#productCategoryButtons');
     container.innerHTML = `
-        <button type="button" class="btn btn-sm filter-btn ${currentProductCategory === 'all' ? 'active' : ''}" data-cat="all" onclick="filterProductsByCategory('all')">${t('all') || 'Все'}</button>
+        <button type="button" class="btn btn-sm filter-btn ${currentProductCategory === 'all' ? 'active' : ''}" data-cat="all" data-action="filter-products-by-category" data-category="all">${t('all') || 'Все'}</button>
         ${productCategories.map(cat => `
-            <button type="button" class="btn btn-sm filter-btn ${currentProductCategory === cat.slug ? 'active' : ''}" data-cat="${cat.slug}" onclick="filterProductsByCategory('${cat.slug}')">${cat.emoji || ''} ${Layout.getName(cat)}</button>
+            <button type="button" class="btn btn-sm filter-btn ${currentProductCategory === cat.slug ? 'active' : ''}" data-cat="${cat.slug}" data-action="filter-products-by-category" data-category="${cat.slug}">${cat.emoji || ''} ${Layout.getName(cat)}</button>
         `).join('')}
     `;
 }
@@ -1125,7 +1129,7 @@ function filterProducts(query) {
         dropdown.innerHTML = filtered.map(p => {
             const cat = p.product_categories;
             return `
-                <div class="p-3 hover:bg-base-200 cursor-pointer border-b border-base-200 last:border-0" onclick="selectProduct('${p.id}')">
+                <div class="p-3 hover:bg-base-200 cursor-pointer border-b border-base-200 last:border-0" data-action="select-product" data-id="${p.id}">
                     <div class="font-medium">${Layout.getName(p)}</div>
                     <div class="text-xs opacity-50">${p.name_en || ''} · ${Layout.getName(cat) || ''}</div>
                 </div>
@@ -1163,7 +1167,7 @@ function filterProductsByCategory(category) {
         list.innerHTML = filtered.map(p => {
             const cat = p.product_categories;
             return `
-                <div class="p-3 hover:bg-base-200 cursor-pointer border-b border-base-200 last:border-0" onclick="selectProduct('${p.id}')">
+                <div class="p-3 hover:bg-base-200 cursor-pointer border-b border-base-200 last:border-0" data-action="select-product" data-id="${p.id}">
                     <div class="font-medium">${Layout.getName(p)}</div>
                     <div class="text-xs opacity-50">${p.name_en || ''} · ${Layout.getName(cat) || ''}</div>
                 </div>
@@ -1346,6 +1350,29 @@ function removeItem(index) {
     renderResults();
 }
 
+// ==================== ДЕЛЕГИРОВАНИЕ КЛИКОВ ====================
+function setupRequestDelegation(el, actions) {
+    if (!el || el._delegated) return;
+    el._delegated = true;
+    el.addEventListener('click', ev => {
+        const btn = ev.target.closest('[data-action]');
+        if (!btn) return;
+        const action = btn.dataset.action;
+        if (actions[action]) actions[action](btn);
+    });
+}
+
+function setupChangeDelegation(el, actions) {
+    if (!el || el._changeDelegated) return;
+    el._changeDelegated = true;
+    el.addEventListener('change', ev => {
+        const target = ev.target.closest('[data-action]');
+        if (!target) return;
+        const action = target.dataset.action;
+        if (actions[action]) actions[action](target);
+    });
+}
+
 // ==================== INIT ====================
 async function init() {
     await Layout.init({ module: 'kitchen', menuId: 'stock', itemId: 'requests' });
@@ -1353,6 +1380,62 @@ async function init() {
     await Promise.all([loadProducts(), loadProductCategories(), loadStock(), loadRecipes(), loadBuyers()]);
     selectPeriod('today');
     Layout.updateAllTranslations();
+
+    // Делегирование для таблицы позиций заявки
+    const itemsTable = Layout.$('#requestItemsTable');
+    setupRequestDelegation(itemsTable, {
+        'remove-item': btn => removeItem(Number(btn.dataset.index))
+    });
+    setupChangeDelegation(itemsTable, {
+        'update-item-quantity': el => updateItemQuantity(Number(el.dataset.index), el.value)
+    });
+
+    // Делегирование для сохранённых заявок
+    const savedList = Layout.$('#savedRequestsList');
+    setupRequestDelegation(savedList, {
+        'view-saved-request': btn => viewSavedRequest(btn.dataset.id),
+        'print-saved-request': btn => printSavedRequest(btn.dataset.id),
+        'toggle-in-progress': btn => toggleInProgress(btn.dataset.id),
+        'archive-request': btn => archiveRequest(btn.dataset.id),
+        'delete-request': btn => deleteRequest(btn.dataset.id)
+    });
+    setupChangeDelegation(savedList, {
+        'update-request-buyer': el => updateRequestBuyer(el.dataset.id, el.value)
+    });
+
+    // Делегирование для архивных заявок
+    const archivedList = Layout.$('#archivedRequestsList');
+    setupRequestDelegation(archivedList, {
+        'view-saved-request': btn => viewSavedRequest(btn.dataset.id),
+        'print-saved-request': btn => printSavedRequest(btn.dataset.id),
+        'restore-request': btn => restoreRequest(btn.dataset.id),
+        'delete-request': btn => deleteRequest(btn.dataset.id)
+    });
+
+    // Делегирование для таблицы просмотра заявки (модалка)
+    const viewItems = Layout.$('#viewRequestItems');
+    setupRequestDelegation(viewItems, {
+        'remove-viewed-item': btn => removeViewedItem(Number(btn.dataset.index))
+    });
+    setupChangeDelegation(viewItems, {
+        'update-viewed-item-qty': el => updateViewedItemQty(Number(el.dataset.index), el.value)
+    });
+
+    // Делегирование для модалки продуктов
+    const productDropdown = Layout.$('#productDropdown');
+    setupRequestDelegation(productDropdown, {
+        'select-product': btn => selectProduct(btn.dataset.id)
+    });
+
+    const productCatList = Layout.$('#productCategoryList');
+    setupRequestDelegation(productCatList, {
+        'select-product': btn => selectProduct(btn.dataset.id)
+    });
+
+    const productCatBtns = Layout.$('#productCategoryButtons');
+    setupRequestDelegation(productCatBtns, {
+        'filter-products-by-category': btn => filterProductsByCategory(btn.dataset.category)
+    });
 
     // Realtime: автообновление при изменениях
     subscribeToRealtime();

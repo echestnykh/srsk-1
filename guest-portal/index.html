@@ -547,6 +547,70 @@
             </div>
         </div>
 
+        <!-- Мои дети -->
+        <div id="children-section" class="card mb-4 hidden">
+            <div class="flex items-center justify-between mb-4">
+                <div class="card-label mb-0" data-i18n="my_children">Мои дети</div>
+                <button onclick="openAddChildPortal()" class="flex items-center gap-1 text-sm font-medium text-srsk-green hover:underline">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span data-i18n="add_child">Добавить ребёнка</span>
+                </button>
+            </div>
+            <div id="children-list" class="space-y-3"></div>
+        </div>
+
+        <!-- Модалка добавления/редактирования ребёнка -->
+        <div id="childModal" class="fixed inset-0 z-50 hidden" style="background: rgba(0,0,0,0.5);">
+            <div class="flex items-center justify-center min-h-full p-4">
+                <div class="bg-white rounded-2xl p-6 w-full max-w-md">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 id="childModalPortalTitle" class="font-semibold text-lg" data-i18n="add_child">Добавить ребёнка</h3>
+                        <button onclick="closeChildPortal()" class="text-gray-400 hover:text-gray-600">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <form id="childPortalForm" onsubmit="saveChildPortal(event)">
+                        <input type="hidden" id="portalChildId" value="">
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="first_name">Имя</label>
+                                    <input type="text" id="portalChildFirstName" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-srsk-green focus:border-transparent" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="last_name">Фамилия</label>
+                                    <input type="text" id="portalChildLastName" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-srsk-green focus:border-transparent">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="gender">Пол</label>
+                                    <select id="portalChildGender" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-srsk-green focus:border-transparent">
+                                        <option value="" data-i18n="not_specified">Не указан</option>
+                                        <option value="male" data-i18n="male">Мужской</option>
+                                        <option value="female" data-i18n="female">Женский</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="birth_date">Дата рождения</label>
+                                    <input type="date" id="portalChildBirthDate" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-srsk-green focus:border-transparent">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex gap-3 mt-6">
+                            <button type="button" onclick="closeChildPortal()" class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200" data-i18n="cancel">Отмена</button>
+                            <button type="button" id="deleteChildBtn" onclick="deleteChildPortal()" class="px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 hidden" data-i18n="delete">Удалить</button>
+                            <button type="submit" class="flex-1 px-4 py-2 text-sm font-medium text-white bg-srsk-green rounded-lg hover:opacity-90" data-i18n="save">Сохранить</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <!-- Ближайшие ретриты -->
         <div id="upcoming-retreats-section" class="card mb-4" style="background: #E8E0F0;">
             <div class="flex items-center justify-between mb-4">
@@ -839,6 +903,7 @@
     <script src="js/portal-config.js"></script>
     <script src="js/portal-auth.js"></script>
     <script src="js/portal-layout.js?v=5"></script>
+    <script src="../js/date-utils.js"></script>
     <script src="js/portal-data.js"></script>
     <script src="js/portal-index.js"></script>
 </body>

@@ -523,6 +523,40 @@
                     </div>
                 </div>
 
+                <!-- Children Section -->
+                <div class="section-card" id="childrenSection">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-semibold" data-i18n="children">Дети</h3>
+                        <div class="flex items-center gap-2">
+                            <button class="btn btn-sm btn-outline gap-1" data-action="open-add-child-modal">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                <span data-i18n="add">Добавить</span>
+                            </button>
+                            <span class="badge badge-lg" id="childrenCount">0</span>
+                        </div>
+                    </div>
+                    <div id="childrenList" class="space-y-3"></div>
+                    <div id="emptyChildren" class="hidden text-center py-6 opacity-60">
+                        <p data-i18n="no_children">Нет привязанных детей</p>
+                    </div>
+                </div>
+
+                <!-- Parent Link (shown when person has parent_id) -->
+                <div class="section-card hidden" id="parentSection">
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm opacity-60" data-i18n="parent">Родитель:</span>
+                        <a id="parentLink" href="#" class="link link-primary font-medium"></a>
+                    </div>
+                    <button class="btn btn-sm btn-warning mt-3 gap-1" id="makeIndependentBtn" data-action="make-independent">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                        <span data-i18n="make_independent">Сделать самостоятельным</span>
+                    </button>
+                </div>
+
                 <!-- Team Stays (only for team members) -->
                 <div class="section-card" id="staysSection">
                     <div class="flex items-center justify-between mb-4">
@@ -896,6 +930,46 @@
         <form method="dialog" class="modal-backdrop"><button>close</button></form>
     </dialog>
 
+    <!-- Add Child Modal -->
+    <dialog id="addChildModal" class="modal">
+        <div class="modal-box">
+            <button type="button" class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" onclick="addChildModal.close()">✕</button>
+            <h3 class="font-bold text-lg mb-4" id="childModalTitle" data-i18n="add_child">Добавить ребёнка</h3>
+            <form id="addChildForm" onsubmit="saveChild(event)">
+                <input type="hidden" id="editChildId" value="">
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium" data-i18n="first_name">Имя</span></label>
+                        <input type="text" id="childFirstName" class="input input-bordered" required>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium" data-i18n="last_name">Фамилия</span></label>
+                        <input type="text" id="childLastName" class="input input-bordered">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium" data-i18n="gender">Пол</span></label>
+                        <select id="childGender" class="select select-bordered">
+                            <option value="" data-i18n="not_specified">Не указан</option>
+                            <option value="male" data-i18n="male">Мужской</option>
+                            <option value="female" data-i18n="female">Женский</option>
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium" data-i18n="birth_date">Дата рождения</span></label>
+                        <input type="date" id="childBirthDate" class="input input-bordered">
+                    </div>
+                </div>
+                <div class="modal-action">
+                    <button type="button" class="btn btn-ghost" onclick="addChildModal.close()" data-i18n="cancel">Отмена</button>
+                    <button type="submit" class="btn btn-primary" data-i18n="save">Сохранить</button>
+                </div>
+            </form>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+
     <div id="footer-placeholder"></div>
 
     <script src="../js/config.js"></script>
@@ -905,6 +979,7 @@
     <script src="../js/translit.js"></script>
     <script src="../js/auto-translate.js"></script>
     <script src="../js/modal-utils.js"></script>
+    <script src="../js/date-utils.js"></script>
     <script src="../js/layout.js?v=5"></script>
     <script src="../js/pages/person.js?v=5"></script>
 </body>

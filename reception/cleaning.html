@@ -475,6 +475,7 @@
     <script src="../js/utils.js?v=2"></script>
     <script src="../js/translit.js"></script>
     <script src="../js/auto-translate.js"></script>
+    <script src="../js/date-utils.js"></script>
     <script src="../js/layout.js?v=5"></script>
     <script>
         // ==================== STATE ====================
@@ -491,14 +492,14 @@
 
         const t = key => Layout.t(key);
         const e = str => Layout.escapeHtml(str);
-        const today = new Date().toISOString().split('T')[0];
-        const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+        const today = DateUtils.toISO(new Date());
+        const tomorrow = DateUtils.toISO(new Date(Date.now() + 86400000));
 
         // ==================== DATA ====================
         async function loadCleaningSchedule() {
             // Загружаем выезды: просроченные (30 дней назад) + будущие (60 дней вперёд)
-            const overdueStart = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
-            const endDate = new Date(Date.now() + 60 * 86400000).toISOString().split('T')[0];
+            const overdueStart = DateUtils.toISO(new Date(Date.now() - 30 * 86400000));
+            const endDate = DateUtils.toISO(new Date(Date.now() + 60 * 86400000));
 
             const { data, error } = await Layout.db
                 .from('residents')
@@ -545,8 +546,8 @@
         }
 
         async function loadManualCleanings() {
-            const overdueStart = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
-            const endDate = new Date(Date.now() + 60 * 86400000).toISOString().split('T')[0];
+            const overdueStart = DateUtils.toISO(new Date(Date.now() - 30 * 86400000));
+            const endDate = DateUtils.toISO(new Date(Date.now() + 60 * 86400000));
 
             const { data, error } = await Layout.db
                 .from('room_cleanings')
@@ -611,7 +612,7 @@
 
         async function loadCompletedCleanings() {
             // Загружаем законченные уборки за последние 30 дней
-            const startDate = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+            const startDate = DateUtils.toISO(new Date(Date.now() - 30 * 86400000));
 
             // 1. Авто-уборки (после выезда) с cleaning_done=true
             const { data: autoData, error: autoError } = await Layout.db
@@ -731,7 +732,7 @@
             const tomorrowData = cleaningData.find(d => d.date === tomorrow);
 
             // Week: next 7 days
-            const weekEnd = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
+            const weekEnd = DateUtils.toISO(new Date(Date.now() + 7 * 86400000));
             const weekData = cleaningData.filter(d => d.date >= today && d.date < weekEnd);
             const weekCount = weekData.reduce((sum, d) => sum + d.rooms.length, 0);
 
@@ -917,7 +918,7 @@
                 : `<div class="text-center py-4 opacity-50">${t('cleaning_no_rooms') || 'Нет комнат для уборки'}</div>`;
 
             // Upcoming (next 14 days)
-            const upcomingLimit = new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0];
+            const upcomingLimit = DateUtils.toISO(new Date(Date.now() + 14 * 86400000));
             const limitedUpcoming = upcomingData.filter(d => d.date <= upcomingLimit);
             const upcomingCount = limitedUpcoming.reduce((sum, d) => sum + d.rooms.length, 0);
 
@@ -975,7 +976,7 @@
             }
 
             grid.innerHTML = days.map(day => {
-                const dateStr = day.toISOString().split('T')[0];
+                const dateStr = DateUtils.toISO(day);
                 const isOtherMonth = day.getMonth() !== month;
                 const isToday = dateStr === today;
                 const dayData = cleaningData.find(d => d.date === dateStr);
@@ -1097,7 +1098,7 @@
             }
 
             grid.innerHTML = days.map(day => {
-                const dateStr = day.toISOString().split('T')[0];
+                const dateStr = DateUtils.toISO(day);
                 const isOtherMonth = day.getMonth() !== month;
                 const isToday = dateStr === today;
                 const dayData = completedData.find(d => d.date === dateStr);
@@ -1134,7 +1135,7 @@
         }
 
         function formatDate(dateStr) {
-            const date = new Date(dateStr);
+            const date = DateUtils.parseDate(dateStr);
             if (dateStr === today) return t('cleaning_today') || 'Сегодня';
             if (dateStr === tomorrow) return t('cleaning_tomorrow') || 'Завтра';
             return date.toLocaleDateString(Layout.currentLang === 'en' ? 'en-US' : 'ru-RU', {

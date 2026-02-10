@@ -59,6 +59,7 @@
     <script src="js/portal-config.js"></script>
     <script src="js/portal-auth.js"></script>
     <script src="js/portal-layout.js?v=5"></script>
+    <script src="../js/date-utils.js"></script>
     <script src="js/portal-data.js"></script>
 
     <script>
@@ -158,7 +159,7 @@
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-4">
                                         <div class="w-12 h-12 bg-srsk-orange/20 rounded-lg flex flex-col items-center justify-center">
-                                            <span class="text-lg font-bold text-srsk-orange">${new Date(reg.retreat.start_date).getDate()}</span>
+                                            <span class="text-lg font-bold text-srsk-orange">${DateUtils.parseDate(reg.retreat.start_date).getDate()}</span>
                                             <span class="text-xs text-srsk-orange">${getMonthShort(reg.retreat.start_date)}</span>
                                         </div>
                                         <div>
@@ -196,7 +197,7 @@
                                 <div class="card p-4 hover:shadow-md transition-shadow">
                                     <div class="flex items-start gap-4">
                                         <div class="w-14 h-14 bg-srsk-green/10 rounded-lg flex flex-col items-center justify-center flex-shrink-0">
-                                            <span class="text-xl font-bold text-srsk-green">${new Date(retreat.start_date).getDate()}</span>
+                                            <span class="text-xl font-bold text-srsk-green">${DateUtils.parseDate(retreat.start_date).getDate()}</span>
                                             <span class="text-xs text-srsk-green">${getMonthShort(retreat.start_date)}</span>
                                         </div>
                                         <div class="flex-1 min-w-0">
@@ -334,7 +335,7 @@
         }
 
         function getMonthShort(dateStr) {
-            const date = new Date(dateStr);
+            const date = DateUtils.parseDate(dateStr);
             const lang = PortalLayout.getLang();
             const locale = lang === 'ru' ? 'ru-RU' : lang === 'hi' ? 'hi-IN' : 'en-US';
             return date.toLocaleDateString(locale, { month: 'short' }).replace('.', '');

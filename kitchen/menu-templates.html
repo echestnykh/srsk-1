@@ -291,6 +291,7 @@
     <script src="../js/utils.js?v=2"></script>
     <script src="../js/translit.js"></script>
     <script src="../js/auto-translate.js"></script>
+    <script src="../js/date-utils.js"></script>
     <script src="../js/layout.js?v=5"></script>
     <script>
         // ==================== STATE ====================
@@ -465,7 +466,7 @@
         }
 
         function formatDate(date) {
-            return date.toISOString().split('T')[0];
+            return DateUtils.toISO(date);
         }
 
         // Parse date string as local date (not UTC)
@@ -547,7 +548,7 @@
             // Build template data structure
             templateData = {};
             (mealsData || []).forEach(meal => {
-                const mealDate = new Date(meal.date);
+                const mealDate = DateUtils.parseDate(meal.date);
                 const dayNumber = Math.ceil((mealDate - from) / (1000 * 60 * 60 * 24)) + 1;
 
                 if (!templateData[dayNumber]) {
@@ -1089,7 +1090,7 @@
             if (!template) return;
 
             const today = new Date();
-            Layout.$('#applyStartDate').value = today.toISOString().split('T')[0];
+            Layout.$('#applyStartDate').value = DateUtils.toISO(today);
 
             updateApplyPreview();
             applyTemplateModal.showModal();
@@ -1126,7 +1127,7 @@
             const locationId = getCurrentLocation()?.id;
             if (!locationId) return;
 
-            const startDate = new Date(startDateStr);
+            const startDate = DateUtils.parseDate(startDateStr);
             const endDate = new Date(startDate);
             endDate.setDate(endDate.getDate() + dayCount - 1);
 
@@ -1135,7 +1136,7 @@
                 .select('id')
                 .eq('location_id', locationId)
                 .gte('date', startDateStr)
-                .lte('date', endDate.toISOString().split('T')[0])
+                .lte('date', DateUtils.toISO(endDate))
                 .limit(1);
 
             Layout.$('#overwriteWarning').classList.toggle('hidden', !existingMeals?.length);
@@ -1166,7 +1167,7 @@
                 for (let dayOffset = 0; dayOffset < template.day_count; dayOffset++) {
                     const targetDate = new Date(startDate);
                     targetDate.setDate(targetDate.getDate() + dayOffset);
-                    const targetDateStr = targetDate.toISOString().split('T')[0];
+                    const targetDateStr = DateUtils.toISO(targetDate);
                     const dayNumber = dayOffset + 1;
 
                     // Get meals for this day from template

@@ -427,10 +427,10 @@
                 }
             } catch (e) {
                 console.error('Translation error:', e);
+            } finally {
+                btn.classList.remove('loading');
+                btn.textContent = '🌐 Auto';
             }
-
-            btn.classList.remove('loading');
-            btn.textContent = '🌐 Auto';
         }
 
         async function autoTranslateStep(index, toLang, btn) {
@@ -453,10 +453,10 @@
                 instructions[index][toLang] = translated;
             } catch (e) {
                 console.error('Translation error:', e);
+            } finally {
+                btn.classList.remove('loading');
+                btn.textContent = '🌐 Auto';
             }
-
-            btn.classList.remove('loading');
-            btn.textContent = '🌐 Auto';
         }
 
         // ==================== TRANSLITERATION ====================

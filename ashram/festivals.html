@@ -173,6 +173,7 @@
     <script src="../js/utils.js?v=2"></script>
     <script src="../js/translit.js"></script>
     <script src="../js/auto-translate.js"></script>
+    <script src="../js/date-utils.js"></script>
     <script src="../js/layout.js?v=5"></script>
     <script>
         // ==================== STATE ====================
@@ -245,7 +246,7 @@
         // ==================== RENDERING ====================
         function buildYearFilter() {
             const select = Layout.$('#yearFilter');
-            const years = [...new Set(holidays.map(h => new Date(h.date).getFullYear()))].sort((a, b) => b - a);
+            const years = [...new Set(holidays.map(h => DateUtils.parseDate(h.date).getFullYear()))].sort((a, b) => b - a);
 
             // Добавляем текущий год если его нет
             if (!years.includes(currentYear)) {
@@ -264,7 +265,7 @@
 
             // Считаем праздники по типам для текущего года
             holidays.forEach(h => {
-                const year = new Date(h.date).getFullYear();
+                const year = DateUtils.parseDate(h.date).getFullYear();
                 if (year === currentYear) {
                     counts.all++;
                     counts[h.type] = (counts[h.type] || 0) + 1;
@@ -295,7 +296,7 @@
             const lang = Layout.currentLang;
 
             let filtered = holidays.filter(h => {
-                const year = new Date(h.date).getFullYear();
+                const year = DateUtils.parseDate(h.date).getFullYear();
                 if (year !== currentYear) return false;
                 if (currentType !== 'all' && h.type !== currentType) return false;
                 if (searchQuery) {
@@ -319,7 +320,7 @@
             tbody.innerHTML = filtered.map(h => {
                 const typeInfo = HOLIDAY_TYPES[h.type] || HOLIDAY_TYPES.major;
                 const typeLabel = typeInfo[lang] || typeInfo.ru;
-                const date = new Date(h.date);
+                const date = DateUtils.parseDate(h.date);
                 const dateStr = date.toLocaleDateString(lang === 'ru' ? 'ru-RU' : lang === 'hi' ? 'hi-IN' : 'en-US', {
                     day: 'numeric',
                     month: 'short',
@@ -362,7 +363,7 @@
             Layout.$('#deleteSection').classList.add('hidden');
 
             // Устанавливаем дату по умолчанию - сегодня
-            form.date.value = new Date().toISOString().split('T')[0];
+            form.date.value = DateUtils.toISO(new Date());
 
             Layout.setupAutoTranslate('#holidayForm', ['name']);
             holidayModal.showModal();

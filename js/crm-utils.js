@@ -145,7 +145,7 @@ const CrmUtils = {
      */
     formatDate(dateStr) {
         if (!dateStr) return '';
-        const date = new Date(dateStr);
+        const date = DateUtils.parseDate(dateStr);
         const d = String(date.getDate()).padStart(2, '0');
         const m = String(date.getMonth() + 1).padStart(2, '0');
         const y = date.getFullYear();
@@ -209,7 +209,7 @@ const CrmUtils = {
         if (!task.due_date) return false;
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const dueDate = new Date(task.due_date);
+        const dueDate = DateUtils.parseDate(task.due_date);
         return dueDate < today;
     },
 

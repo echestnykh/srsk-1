@@ -193,6 +193,7 @@
     <script src="../js/utils.js?v=2"></script>
     <script src="../js/translit.js"></script>
     <script src="../js/auto-translate.js"></script>
+    <script src="../js/date-utils.js"></script>
     <script src="../js/layout.js?v=5"></script>
     <script>
         // ==================== STATE ====================
@@ -480,7 +481,7 @@
             const discrepancies = items.filter(i =>
                 i.actual_quantity !== null && i.actual_quantity !== i.expected_quantity
             ).length;
-            const date = new Date(inv.inventory_date).toLocaleDateString('ru-RU');
+            const date = DateUtils.parseDate(inv.inventory_date).toLocaleDateString('ru-RU');
 
             const borderColor = status === 'cancelled' ? 'border-gray-300' :
                                status === 'completed' ? 'border-green-500' : 'border-yellow-500';
@@ -547,7 +548,7 @@
             Layout.$('#nonZeroFilter').checked = false;
 
             Layout.$('#countingTitle').textContent = `${tr('inventory_title', 'Инвентаризация')} #${formatNumberWithYear(inv.number)}`;
-            Layout.$('#countingInfo').textContent = new Date(inv.inventory_date).toLocaleDateString('ru-RU');
+            Layout.$('#countingInfo').textContent = DateUtils.parseDate(inv.inventory_date).toLocaleDateString('ru-RU');
 
             // Disable apply button if completed/cancelled
             Layout.$('#applyBtn').disabled = inv.status !== 'in_progress';
@@ -818,7 +819,7 @@
         async function init() {
             await Layout.init({ module: 'kitchen', menuId: 'stock', itemId: 'inventory' });
 
-            Layout.$('#inventoryDate').value = new Date().toISOString().split('T')[0];
+            Layout.$('#inventoryDate').value = DateUtils.toISO(new Date());
 
             const activeBtn = document.querySelector('#mainTabs .tab[data-tab="new"]');
             activeBtn.style.backgroundColor = 'var(--current-color)';

@@ -66,7 +66,7 @@ async function loadAllRetreats() {
         await selectRetreat(urlId);
     } else if (allRetreats.length > 0) {
         // Auto-select nearest retreat
-        const today = new Date().toISOString().split('T')[0];
+        const today = DateUtils.toISO(new Date());
 
         // Find future or current retreats (end_date >= today)
         const futureRetreats = allRetreats
@@ -122,7 +122,7 @@ async function loadRegistrations() {
         .from('retreat_registrations')
         .select(`
             *,
-            vaishnavas (id, first_name, last_name, spiritual_name, phone, email, telegram, has_whatsapp, photo_url, gender, birth_date, india_experience),
+            vaishnavas (id, first_name, last_name, spiritual_name, phone, email, telegram, has_whatsapp, photo_url, gender, birth_date, india_experience, parent_id),
             guest_transfers (*)
         `)
         .eq('retreat_id', retreatId)
@@ -248,21 +248,14 @@ function formatDateRange(start, end) {
     const lang = Layout.currentLang;
     const opts = { day: 'numeric', month: 'short', year: 'numeric' };
     const locale = lang === 'hi' ? 'hi-IN' : lang === 'en' ? 'en-US' : 'ru-RU';
-    const s = new Date(start).toLocaleDateString(locale, opts);
-    const e = new Date(end).toLocaleDateString(locale, opts);
+    const s = DateUtils.parseDate(start).toLocaleDateString(locale, opts);
+    const e = DateUtils.parseDate(end).toLocaleDateString(locale, opts);
     return `${s} — ${e}`;
 }
 
 function calculateAge(birthDate) {
     if (!birthDate) return '';
-    const today = new Date();
-    const birth = new Date(birthDate);
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-        age--;
-    }
-    return age;
+    return DateUtils.calculateAge(birthDate);
 }
 
 function formatFlightDateTime(datetime, fallbackNotes) {
@@ -463,8 +456,31 @@ function renderTable() {
     const mealTypeSelf = t('meal_type_self');
     const mealTypeChild = t('meal_type_child');
 
-    tbody.innerHTML = filtered.map(reg => {
+    // Группировка: родители сверху, дети под ними
+    const parentRegs = filtered.filter(r => !r.vaishnavas?.parent_id);
+    const childRegs = filtered.filter(r => r.vaishnavas?.parent_id);
+    const childrenByParent = {};
+    childRegs.forEach(r => {
+        const pid = r.vaishnavas.parent_id;
+        if (!childrenByParent[pid]) childrenByParent[pid] = [];
+        childrenByParent[pid].push(r);
+    });
+    const parentVaishnavIds = new Set(parentRegs.map(r => r.vaishnavas?.id).filter(Boolean));
+
+    const orderedFiltered = [];
+    parentRegs.forEach(r => {
+        orderedFiltered.push(r);
+        const kids = childrenByParent[r.vaishnavas?.id];
+        if (kids) kids.forEach(k => orderedFiltered.push(k));
+    });
+    // Дети без зарегистрированного родителя на этом ретрите
+    childRegs.forEach(r => {
+        if (!orderedFiltered.includes(r)) orderedFiltered.push(r);
+    });
+
+    tbody.innerHTML = orderedFiltered.map(reg => {
         const v = reg.vaishnavas;
+        const isChild = !!v?.parent_id;
         const name = v ? `${v.first_name || ''} ${v.last_name || ''}`.trim() : '—';
         const spiritualName = v?.spiritual_name || '';
         const transfers = reg.guest_transfers || [];
@@ -547,17 +563,19 @@ function renderTable() {
             : name.split(' ').map(w => w[0]).join('').substring(0, 2);
         const initialsUpper = e(initials.toUpperCase());
 
+        const childBadge = isChild ? ' <span class="badge badge-xs badge-warning">ребёнок</span>' : '';
+
         return `
-            <tr class="hover align-top">
-                <td class="cursor-pointer ${buildingId === 'self' ? 'bg-error/20' : (buildingId && roomId) ? 'bg-success/20' : ''}" onclick="window.location.href='person.html?id=${v?.id}'">
-                    <div class="flex gap-3 items-center">
+            <tr class="hover align-top${isChild ? ' opacity-80' : ''}">
+                <td class="cursor-pointer ${buildingId === 'self' ? 'bg-error/20' : (buildingId && roomId) ? 'bg-success/20' : ''}" data-action="navigate-person" data-id="${v?.id}">
+                    <div class="flex gap-3 items-center${isChild ? ' pl-4' : ''}">
                         ${photoUrl
                             ? `<img src="${e(photoUrl)}" class="guest-photo avatar-photo" alt="" data-initials="${initialsUpper}" data-photo-url="${e(photoUrl)}" onerror="replaceWithPlaceholder(this)">`
                             : `<div class="guest-photo-placeholder">${initialsUpper}</div>`
                         }
                         <div>
-                            ${spiritualName ? `<div class="font-medium">${e(spiritualName)}</div>` : ''}
-                            <div class="${spiritualName ? 'text-xs opacity-60' : 'font-medium'}">${e(name)}</div>
+                            ${spiritualName ? `<div class="font-medium">${isChild ? '└ ' : ''}${e(spiritualName)}${childBadge}</div>` : ''}
+                            <div class="${spiritualName ? 'text-xs opacity-60' : 'font-medium'}">${!spiritualName && isChild ? '└ ' : ''}${e(name)}${!spiritualName ? childBadge : ''}</div>
                         </div>
                     </div>
                 </td>
@@ -565,21 +583,20 @@ function renderTable() {
                 <td class="text-sm">${e(v?.india_experience || '—')}</td>
                 <td class="text-sm">${e(reg.companions || '—')}</td>
                 <td class="text-sm">${e(reg.accommodation_wishes || '—')}</td>
-                <td class="text-center text-sm whitespace-nowrap ${arrivalProblem ? 'bg-warning/30' : ''}" onclick="event.stopPropagation()">
+                <td class="text-center text-sm whitespace-nowrap ${arrivalProblem ? 'bg-warning/30' : ''}" data-stop-propagation>
                     ${arrivalLines.map(l => `<div>${l}</div>`).join('')}
-                    ${canEdit ? `<a class="text-xs link opacity-60 hover:opacity-100 cursor-pointer" onclick="openTransferModal('${reg.id}')">ред.</a>` : ''}
+                    ${canEdit ? `<a class="text-xs link opacity-60 hover:opacity-100 cursor-pointer" data-action="open-transfer-modal" data-id="${reg.id}">ред.</a>` : ''}
                 </td>
-                <td class="text-center text-sm whitespace-nowrap ${departureProblem ? 'bg-warning/30' : ''}" onclick="event.stopPropagation()">
+                <td class="text-center text-sm whitespace-nowrap ${departureProblem ? 'bg-warning/30' : ''}" data-stop-propagation>
                     ${departureLines.map(l => `<div>${l}</div>`).join('')}
-                    ${canEdit ? `<a class="text-xs link opacity-60 hover:opacity-100 cursor-pointer" onclick="openTransferModal('${reg.id}')">ред.</a>` : ''}
+                    ${canEdit ? `<a class="text-xs link opacity-60 hover:opacity-100 cursor-pointer" data-action="open-transfer-modal" data-id="${reg.id}">ред.</a>` : ''}
                 </td>
                 <td class="text-sm">${e(reg.extended_stay || '—')}</td>
                 <td class="text-sm">${e(reg.guest_questions || '—')}</td>
                 <td class="text-sm">${e(reg.org_notes || '—')}</td>
                 <td class="text-sm">
                     <select class="select select-xs select-bordered w-full ${reg.meal_type === 'prasad' ? 'meal-prasad' : reg.meal_type === 'self' ? 'meal-self' : reg.meal_type === 'child' ? 'meal-child' : ''}"
-                        onchange="onMealTypeChange('${reg.id}', this.value, this)"
-                        onclick="event.stopPropagation()"
+                        data-action="meal-type-change" data-id="${reg.id}"
                         ${disabledAttr}>
                         <option value="" ${!reg.meal_type ? 'selected' : ''}>${mealTypeNotSpecified}</option>
                         <option value="prasad" ${reg.meal_type === 'prasad' ? 'selected' : ''}>${mealTypePrasad}</option>
@@ -593,14 +610,12 @@ function renderTable() {
                         rows="1"
                         placeholder="${t('preliminary_notes_placeholder')}"
                         oninput="autoResizeTextarea(this)"
-                        onchange="saveLocalNotes('${reg.id}', this.value)"
-                        onclick="event.stopPropagation()"
+                        data-action="save-local-notes" data-id="${reg.id}"
                         ${disabledAttr}>${e(localNotes || '')}</textarea>
                 </td>
                 <td class="text-sm ${buildingId === 'self' ? 'bg-error/20' : buildingId ? 'bg-success/20' : ''}">
                     <select class="select select-xs select-bordered w-full"
-                        onchange="onBuildingChange('${reg.id}', this.value)"
-                        onclick="event.stopPropagation()"
+                        data-action="building-change" data-id="${reg.id}"
                         ${disabledAttr}>
                         <option value="">—</option>
                         ${buildings.map(b => `<option value="${b.id}" ${buildingId === b.id ? 'selected' : ''}>${Layout.getName(b)}</option>`).join('')}
@@ -610,8 +625,7 @@ function renderTable() {
                 <td class="text-sm ${buildingId === 'self' ? 'bg-error/20' : roomId ? 'bg-success/20' : ''}">
                     <select class="select select-xs select-bordered w-full ${buildingId === 'self' ? 'hidden' : ''}"
                         id="room_select_${reg.id}"
-                        onchange="onRoomChange('${reg.id}', this.value)"
-                        onclick="event.stopPropagation()"
+                        data-action="room-change" data-id="${reg.id}"
                         ${disabledAttr}>
                         ${buildingId && buildingId !== 'self' ? renderRoomOptions(buildingId, roomId, reg.id) : '<option value="">—</option>'}
                     </select>
@@ -629,10 +643,38 @@ function renderTable() {
     }, 0);
 }
 
+// Делегирование кликов в таблице гостей
+const guestsTableEl = document.getElementById('guestsTable');
+if (guestsTableEl && !guestsTableEl._delegated) {
+    guestsTableEl._delegated = true;
+    guestsTableEl.addEventListener('click', ev => {
+        // Предотвращение всплытия для ячеек с формами
+        if (ev.target.closest('[data-stop-propagation]')) return;
+        const btn = ev.target.closest('[data-action]');
+        if (!btn) return;
+        const id = btn.dataset.id;
+        switch (btn.dataset.action) {
+            case 'open-transfer-modal': openTransferModal(id); break;
+            case 'navigate-person': window.location.href = `person.html?id=${id}`; break;
+        }
+    });
+    guestsTableEl.addEventListener('change', ev => {
+        const target = ev.target.closest('[data-action]');
+        if (!target) return;
+        const id = target.dataset.id;
+        switch (target.dataset.action) {
+            case 'meal-type-change': onMealTypeChange(id, target.value, target); break;
+            case 'save-local-notes': saveLocalNotes(id, target.value); break;
+            case 'building-change': onBuildingChange(id, target.value); break;
+            case 'room-change': onRoomChange(id, target.value); break;
+        }
+    });
+}
+
 // ==================== NOTES (LOCAL STORAGE) ====================
 function getLocalNotes(registrationId) {
     const key = `preliminary_notes_${registrationId}`;
-    return localStorage.getItem(key);
+    try { return localStorage.getItem(key); } catch { return null; }
 }
 
 function saveLocalNotes(registrationId, value) {
@@ -1330,7 +1372,7 @@ function searchVaishnavas(query) {
         const spiritual = v.spiritual_name ? ` (${v.spiritual_name})` : '';
         const badge = v.is_team_member ? '<span class="badge badge-xs badge-primary ml-2">Команда</span>' : '';
         return `
-            <div class="px-3 py-2 hover:bg-base-200 cursor-pointer flex items-center" data-id="${v.id}" data-name="${e(name)}" data-spiritual="${e(v.spiritual_name || '')}" onclick="selectVaishnav(this.dataset.id, this.dataset.name, this.dataset.spiritual)">
+            <div class="px-3 py-2 hover:bg-base-200 cursor-pointer flex items-center" data-action="select-vaishnav" data-id="${v.id}" data-name="${e(name)}" data-spiritual="${e(v.spiritual_name || '')}">
                 <span>${e(name)}${e(spiritual)}</span>${badge}
             </div>
         `;
@@ -1347,6 +1389,12 @@ function selectVaishnav(id, name, spiritual) {
     document.getElementById('selectedVaishnav').textContent = label;
     document.getElementById('selectedVaishnav').classList.remove('hidden');
 }
+
+// Делегирование кликов в подсказках вайшнавов
+document.getElementById('vaishnavSuggestions').addEventListener('click', ev => {
+    const el = ev.target.closest('[data-action="select-vaishnav"]');
+    if (el) selectVaishnav(el.dataset.id, el.dataset.name, el.dataset.spiritual);
+});
 
 document.getElementById('guestForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1457,19 +1505,22 @@ let placementState = {
 };
 
 async function loadBuildingsAndRooms() {
-    const [buildingsRes, floorPlansRes] = await Promise.all([
-        Layout.db.from('buildings')
-            .select('*, rooms(*)')
-            .eq('is_active', true)
-            .order('sort_order'),
+    const [allBuildingsData, floorPlansRes] = await Promise.all([
+        Cache.getOrLoad('buildings_with_rooms', async () => {
+            const { data, error } = await Layout.db.from('buildings')
+                .select('*, rooms(*)')
+                .eq('is_active', true)
+                .order('sort_order');
+            if (error) { console.error('Error loading buildings:', error); return null; }
+            return data;
+        }, 3600000),
         Layout.db.from('floor_plans')
             .select('*')
     ]);
 
-    if (buildingsRes.error) console.error('Error loading buildings:', buildingsRes.error);
     if (floorPlansRes.error) console.error('Error loading floor plans:', floorPlansRes.error);
 
-    let allBuildings = buildingsRes.data || [];
+    let allBuildings = allBuildingsData || [];
 
     // Фильтруем временные здания по датам ретрита
     if (retreat?.start_date && retreat?.end_date) {
@@ -1649,7 +1700,7 @@ function renderPlacementListView() {
             }
 
             html += `<button type="button" class="btn btn-sm ${btnClass}"
-                ${disabled ? 'disabled' : `onclick="selectPlacementRoom('${room.id}', '${building.id}')"`}>
+                ${disabled ? 'disabled' : `data-action="select-placement-room" data-id="${room.id}" data-building-id="${building.id}"`}>
                 ${label}
             </button>`;
         });
@@ -1658,6 +1709,18 @@ function renderPlacementListView() {
     });
 
     roomsList.innerHTML = html || '<div class="text-center py-4 opacity-50">Нет комнат</div>';
+
+    // Делегирование кликов в списке комнат
+    if (!roomsList._delegated) {
+        roomsList._delegated = true;
+        roomsList.addEventListener('click', ev => {
+            const btn = ev.target.closest('[data-action]');
+            if (!btn) return;
+            if (btn.dataset.action === 'select-placement-room') {
+                selectPlacementRoom(btn.dataset.id, btn.dataset.buildingId);
+            }
+        });
+    }
 }
 
 function renderPlacementPlanView() {
@@ -1666,11 +1729,19 @@ function renderPlacementPlanView() {
         const hasPlans = floorPlans.some(fp => fp.building_id === b.id);
         const isActive = b.id === placementState.currentBuildingId;
         return `<button type="button" class="tab ${isActive ? 'tab-active' : ''} ${!hasPlans ? 'opacity-50' : ''}"
-            onclick="selectPlanBuilding('${b.id}')" ${!hasPlans ? 'title="Нет плана"' : ''}>
+            data-action="select-plan-building" data-id="${b.id}" ${!hasPlans ? 'title="Нет плана"' : ''}>
             ${Layout.getName(b)}
         </button>`;
     }).join('');
-    document.getElementById('planBuildingTabs').innerHTML = buildingTabsHtml;
+    const planBuildingTabsEl = document.getElementById('planBuildingTabs');
+    planBuildingTabsEl.innerHTML = buildingTabsHtml;
+    if (!planBuildingTabsEl._delegated) {
+        planBuildingTabsEl._delegated = true;
+        planBuildingTabsEl.addEventListener('click', ev => {
+            const btn = ev.target.closest('[data-action="select-plan-building"]');
+            if (btn) selectPlanBuilding(btn.dataset.id);
+        });
+    }
 
     // Получить этажи для текущего здания
     const building = buildings.find(b => b.id === placementState.currentBuildingId);
@@ -1696,11 +1767,19 @@ function renderPlacementPlanView() {
     const floorTabsHtml = floors.map(floor => {
         const isActive = floor === placementState.currentFloor;
         return `<button type="button" class="btn btn-sm ${isActive ? 'btn-primary' : 'btn-ghost'}"
-            onclick="selectPlanFloor(${floor})">
+            data-action="select-plan-floor" data-floor="${floor}">
             ${floor} этаж
         </button>`;
     }).join('');
-    document.getElementById('planFloorTabs').innerHTML = floorTabsHtml;
+    const planFloorTabsEl = document.getElementById('planFloorTabs');
+    planFloorTabsEl.innerHTML = floorTabsHtml;
+    if (!planFloorTabsEl._delegated) {
+        planFloorTabsEl._delegated = true;
+        planFloorTabsEl.addEventListener('click', ev => {
+            const btn = ev.target.closest('[data-action="select-plan-floor"]');
+            if (btn) selectPlanFloor(Number(btn.dataset.floor));
+        });
+    }
 
     // Получить план этажа
     const floorPlan = buildingFloorPlans.find(fp => fp.floor === placementState.currentFloor);
@@ -1752,11 +1831,11 @@ function renderPlacementPlanView() {
         const w = parseFloat(room.plan_width || 8);
         const h = parseFloat(room.plan_height || 8);
 
-        const clickHandler = isFull ? '' : `onclick="selectPlacementRoom('${room.id}', '${building.id}')"`;
+        const clickAttrs = isFull ? '' : `data-action="select-placement-room" data-id="${room.id}" data-building-id="${building.id}"`;
         const disabledClass = isFull ? 'disabled' : '';
 
         svgContent += `
-            <g class="room-marker ${disabledClass}" ${clickHandler}>
+            <g class="room-marker ${disabledClass}" ${clickAttrs}>
                 <rect x="${x}" y="${y}" width="${w}" height="${h}"
                     fill="${fillColor}" rx="0.5" opacity="0.85" />
                 <text x="${x + w/2}" y="${y + h/2}" class="room-label">
@@ -1766,6 +1845,15 @@ function renderPlacementPlanView() {
     });
 
     svg.innerHTML = svgContent;
+
+    // Делегирование кликов по комнатам на плане
+    if (!svg._delegated) {
+        svg._delegated = true;
+        svg.addEventListener('click', ev => {
+            const g = ev.target.closest('[data-action="select-placement-room"]');
+            if (g) selectPlacementRoom(g.dataset.id, g.dataset.buildingId);
+        });
+    }
 }
 
 function selectPlanBuilding(buildingId) {
@@ -2712,7 +2800,7 @@ async function createTransfers(registrationId, parsed) {
         .eq('registration_id', registrationId);
 
     const transfers = [];
-    const retreatYear = retreat?.start_date ? new Date(retreat.start_date).getFullYear() : null;
+    const retreatYear = retreat?.start_date ? DateUtils.parseDate(retreat.start_date).getFullYear() : null;
 
     // Arrival
     if (parsed.arrivalTime || parsed.arrivalFlight) {

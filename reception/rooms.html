@@ -222,6 +222,7 @@
     <script src="../js/utils.js?v=2"></script>
     <script src="../js/translit.js"></script>
     <script src="../js/auto-translate.js"></script>
+    <script src="../js/date-utils.js"></script>
     <script src="../js/layout.js?v=5"></script>
     <script>
         // ==================== STATE ====================
@@ -247,7 +248,7 @@
         // Проверить, доступно ли временное здание сейчас
         function isTemporaryBuildingAvailable(building) {
             if (!building.is_temporary) return true;
-            const today = new Date().toISOString().split('T')[0];
+            const today = DateUtils.toISO(new Date());
             return building.available_from <= today && building.available_until >= today;
         }
 
@@ -452,6 +453,7 @@
                     if (error) throw error;
                 }
 
+                Cache.invalidate('rooms'); Cache.invalidate('buildings_with_rooms');
                 closeRoomModal();
                 rooms = await loadRooms();
                 populateFilters();
@@ -470,6 +472,7 @@
                 const { error } = await Layout.db.from('rooms').delete().eq('id', editingRoomId);
                 if (error) throw error;
 
+                Cache.invalidate('rooms'); Cache.invalidate('buildings_with_rooms');
                 closeRoomModal();
                 rooms = await loadRooms();
                 populateFilters();
@@ -620,6 +623,7 @@
 
                 Layout.showNotification(`${t('added') || 'Добавлено'}: ${roomsToAdd.length} ${Layout.pluralize(roomsToAdd.length, {ru: ['комната', 'комнаты', 'комнат'], en: ['room', 'rooms'], hi: 'कमरे'})}`, 'success');
 
+                Cache.invalidate('rooms'); Cache.invalidate('buildings_with_rooms');
                 closeBulkRoomModal();
                 rooms = await loadRooms();
                 populateFilters();

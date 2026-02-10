@@ -73,8 +73,8 @@ async function selectRetreat(id) {
     if (!retreat) return;
 
     // Update dates display
-    const startDate = new Date(retreat.start_date);
-    const endDate = new Date(retreat.end_date);
+    const startDate = DateUtils.parseDate(retreat.start_date);
+    const endDate = DateUtils.parseDate(retreat.end_date);
     const formatDate = (d) => {
         const months = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
         return `${d.getDate()} ${months[d.getMonth()]}`;
@@ -116,7 +116,9 @@ async function loadRegistrations() {
                 gender,
                 country,
                 city,
-                telegram
+                telegram,
+                parent_id,
+                birth_date
             ),
             placement:room_residents!inner (
                 id,
@@ -161,6 +163,7 @@ async function loadRegistrations() {
             org_notes,
             extended_stay,
             guest_questions,
+            meal_type,
             vaishnava:vaishnavas (
                 id,
                 first_name,
@@ -171,7 +174,9 @@ async function loadRegistrations() {
                 gender,
                 country,
                 city,
-                telegram
+                telegram,
+                parent_id,
+                birth_date
             ),
             transfers:guest_transfers (
                 direction,
@@ -213,8 +218,8 @@ async function loadVaishnavas() {
 // ==================== RENDERING ====================
 function formatDateRange(startDate, endDate) {
     const months = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
-    const s = new Date(startDate);
-    const e = new Date(endDate);
+    const s = DateUtils.parseDate(startDate);
+    const e = DateUtils.parseDate(endDate);
     return `${s.getDate()} ${months[s.getMonth()]} — ${e.getDate()} ${months[e.getMonth()]}`;
 }
 
@@ -232,30 +237,51 @@ function renderTable() {
 
     noGuests.classList.add('hidden');
 
-    tbody.innerHTML = filtered.map(reg => {
+    // Группировка: родители сверху, дети под ними с отступом
+    const parents = filtered.filter(r => !r.vaishnava?.parent_id);
+    const childRegs = filtered.filter(r => r.vaishnava?.parent_id);
+    const childrenByParent = {};
+    childRegs.forEach(r => {
+        const pid = r.vaishnava.parent_id;
+        if (!childrenByParent[pid]) childrenByParent[pid] = [];
+        childrenByParent[pid].push(r);
+    });
+    // Дети без зарегистрированного родителя на этом ретрите
+    const parentVaishnavIds = new Set(parents.map(r => r.vaishnava?.id).filter(Boolean));
+    const orphanChildren = childRegs.filter(r => !parentVaishnavIds.has(r.vaishnava.parent_id));
+
+    const orderedRegs = [];
+    parents.forEach(r => {
+        orderedRegs.push(r);
+        const kids = childrenByParent[r.vaishnava?.id];
+        if (kids) kids.forEach(k => orderedRegs.push(k));
+    });
+    orphanChildren.forEach(r => {
+        if (!orderedRegs.includes(r)) orderedRegs.push(r);
+    });
+
+    const formatTransfer = (transfer) => {
+        if (!transfer) return '<span class="opacity-30">—</span>';
+        const dt = transfer.flight_datetime ? new Date(transfer.flight_datetime) : null;
+        const dateStr = dt ? `${dt.getDate()}.${(dt.getMonth()+1).toString().padStart(2,'0')}` : '';
+        const timeStr = dt ? `${dt.getHours().toString().padStart(2,'0')}:${dt.getMinutes().toString().padStart(2,'0')}` : '';
+        const flight = transfer.flight_number || '';
+        const needsIcon = transfer.needs_transfer === 'yes' ? '🚕' : '';
+        return `<div class="text-xs">${needsIcon} ${dateStr} ${timeStr}</div><div class="text-xs opacity-60">${flight}</div>`;
+    };
+
+    tbody.innerHTML = orderedRegs.map(reg => {
         const v = reg.vaishnava;
+        const isChild = !!v.parent_id;
         const name = v.spiritual_name
             ? `${v.spiritual_name}`
             : `${v.first_name || ''} ${v.last_name || ''}`.trim();
-        const fullName = v.spiritual_name
-            ? `${v.spiritual_name} (${v.first_name || ''} ${v.last_name || ''})`.trim()
-            : name;
 
         const statusClass = `status-${reg.status}`;
 
         // Transfers
         const arrival = reg.transfers?.find(t => t.direction === 'arrival');
         const departure = reg.transfers?.find(t => t.direction === 'departure');
-
-        const formatTransfer = (transfer) => {
-            if (!transfer) return '<span class="opacity-30">—</span>';
-            const dt = transfer.flight_datetime ? new Date(transfer.flight_datetime) : null;
-            const dateStr = dt ? `${dt.getDate()}.${(dt.getMonth()+1).toString().padStart(2,'0')}` : '';
-            const timeStr = dt ? `${dt.getHours().toString().padStart(2,'0')}:${dt.getMinutes().toString().padStart(2,'0')}` : '';
-            const flight = transfer.flight_number || '';
-            const needsIcon = transfer.needs_transfer === 'yes' ? '🚕' : '';
-            return `<div class="text-xs">${needsIcon} ${dateStr} ${timeStr}</div><div class="text-xs opacity-60">${flight}</div>`;
-        };
 
         // Placement badge
         let placementBadge = '';
@@ -266,16 +292,19 @@ function renderTable() {
             placementBadge = `<span class="badge badge-sm badge-ghost ml-1" title="${buildingName}">${roomNum}</span>`;
         }
 
+        // Child badge
+        const childBadge = isChild ? '<span class="badge badge-sm badge-warning ml-1">ребёнок</span>' : '';
+        const childIndent = isChild ? 'pl-6' : '';
+
         return `
-            <tr class="hover:bg-base-200 cursor-pointer" onclick="openInfoModal('${reg.id}')">
-                <td>
-                    <div class="font-medium">${e(name)}${placementBadge}</div>
+            <tr class="hover:bg-base-200 cursor-pointer${isChild ? ' opacity-80' : ''}" data-action="open-info-modal" data-id="${reg.id}">
+                <td class="${childIndent}">
+                    <div class="font-medium">${isChild ? '└ ' : ''}${e(name)}${placementBadge}${childBadge}</div>
                     ${v.spiritual_name ? `<div class="text-xs opacity-60">${e(v.first_name || '')} ${e(v.last_name || '')}</div>` : ''}
                 </td>
                 <td>
                     <select class="select select-bordered select-xs ${statusClass}"
-                            onchange="updateStatus('${reg.id}', this.value); event.stopPropagation();"
-                            onclick="event.stopPropagation();">
+                            data-action="update-status" data-id="${reg.id}">
                         <option value="guest" ${reg.status === 'guest' ? 'selected' : ''} data-i18n="status_guest">${t('status_guest')}</option>
                         <option value="team" ${reg.status === 'team' ? 'selected' : ''} data-i18n="status_team">${t('status_team')}</option>
                         <option value="cancelled" ${reg.status === 'cancelled' ? 'selected' : ''} data-i18n="status_cancelled">${t('status_cancelled')}</option>
@@ -286,10 +315,10 @@ function renderTable() {
                 <td class="max-w-xs truncate text-sm opacity-70" title="${e(reg.accommodation_wishes || '')}">${e(reg.accommodation_wishes || '—')}</td>
                 <td>
                     <div class="flex gap-1">
-                        <button class="btn btn-ghost btn-xs" onclick="openPlacementModal('${reg.id}'); event.stopPropagation();" title="Размещение">
+                        <button class="btn btn-ghost btn-xs" data-action="open-placement-modal" data-id="${reg.id}" title="Размещение">
                             🏠
                         </button>
-                        <a href="person.html?id=${v.id}" class="btn btn-ghost btn-xs" onclick="event.stopPropagation();" title="Профиль">
+                        <a href="person.html?id=${v.id}" class="btn btn-ghost btn-xs" data-action="navigate-person" title="Профиль">
                             👤
                         </a>
                     </div>
@@ -297,6 +326,26 @@ function renderTable() {
             </tr>
         `;
     }).join('');
+
+    // Делегирование кликов в таблице гостей
+    if (!tbody._delegated) {
+        tbody._delegated = true;
+        tbody.addEventListener('click', ev => {
+            // Остановка для select и ссылок (чтобы не открывалась модалка)
+            if (ev.target.closest('select, a')) { ev.stopPropagation(); return; }
+            const btn = ev.target.closest('[data-action]');
+            if (!btn) return;
+            const id = btn.dataset.id;
+            switch (btn.dataset.action) {
+                case 'open-info-modal': openInfoModal(id); break;
+                case 'open-placement-modal': ev.stopPropagation(); openPlacementModal(id); break;
+            }
+        });
+        tbody.addEventListener('change', ev => {
+            const target = ev.target.closest('[data-action="update-status"]');
+            if (target) updateStatus(target.dataset.id, target.value);
+        });
+    }
 }
 
 function filterRegistrations() {
@@ -479,12 +528,21 @@ function searchVaishnavas(query) {
             ? `${v.spiritual_name} (${v.first_name || ''} ${v.last_name || ''})`
             : `${v.first_name || ''} ${v.last_name || ''}`;
         return `
-            <div class="p-2 hover:bg-base-200 cursor-pointer" onclick="selectVaishnav('${v.id}')">
+            <div class="p-2 hover:bg-base-200 cursor-pointer" data-action="select-vaishnav" data-id="${v.id}">
                 <div class="font-medium">${e(name.trim())}</div>
                 <div class="text-xs opacity-60">${e(v.email || '')} ${e(v.phone || '')}</div>
             </div>
         `;
     }).join('');
+
+    // Делегирование кликов в подсказках вайшнавов
+    if (!suggestions._delegated) {
+        suggestions._delegated = true;
+        suggestions.addEventListener('click', ev => {
+            const el = ev.target.closest('[data-action="select-vaishnav"]');
+            if (el) selectVaishnav(el.dataset.id);
+        });
+    }
 
     suggestions.classList.remove('hidden');
 }
@@ -880,7 +938,7 @@ async function renderPlacementListView() {
 
             html += `
                 <div class="border rounded-lg p-3 cursor-pointer hover:shadow-md transition-shadow ${statusClass} ${isFull && !isCurrentPlacement ? 'pointer-events-none' : ''}"
-                     onclick="selectRoom('${room.id}')">
+                     data-action="select-room" data-id="${room.id}">
                     <div class="flex justify-between items-center">
                         <div>
                             <span class="font-medium">Комната ${e(room.number)}</span>
@@ -894,6 +952,15 @@ async function renderPlacementListView() {
     });
 
     container.innerHTML = html || '<div class="text-center py-4 opacity-50">Нет доступных комнат</div>';
+
+    // Делегирование кликов в списке комнат
+    if (!container._delegated) {
+        container._delegated = true;
+        container.addEventListener('click', ev => {
+            const el = ev.target.closest('[data-action="select-room"]');
+            if (el) selectRoom(el.dataset.id);
+        });
+    }
 }
 
 async function renderPlacementPlanView() {
@@ -936,8 +1003,15 @@ async function renderPlacementPlanView() {
     buildingTabs.innerHTML = buildingsWithPlans.map(b => {
         const name = b[`name_${Layout.currentLang}`] || b.name_ru;
         const isActive = b.id === currentPlanBuilding;
-        return `<button class="tab ${isActive ? 'tab-active' : ''}" onclick="selectPlanBuilding('${b.id}')">${e(name)}</button>`;
+        return `<button class="tab ${isActive ? 'tab-active' : ''}" data-action="select-plan-building" data-id="${b.id}">${e(name)}</button>`;
     }).join('');
+    if (!buildingTabs._delegated) {
+        buildingTabs._delegated = true;
+        buildingTabs.addEventListener('click', ev => {
+            const btn = ev.target.closest('[data-action="select-plan-building"]');
+            if (btn) selectPlanBuilding(btn.dataset.id);
+        });
+    }
 
     // Get current building
     const building = buildingsWithPlans.find(b => b.id === currentPlanBuilding);
@@ -961,8 +1035,15 @@ async function renderPlacementPlanView() {
     const floorTabs = document.getElementById('planFloorTabs');
     floorTabs.innerHTML = floors.map(f => {
         const isActive = f === currentPlanFloor;
-        return `<button class="btn btn-xs ${isActive ? 'btn-primary' : 'btn-ghost'}" onclick="selectPlanFloor(${f})">${f} этаж</button>`;
+        return `<button class="btn btn-xs ${isActive ? 'btn-primary' : 'btn-ghost'}" data-action="select-plan-floor" data-floor="${f}">${f} этаж</button>`;
     }).join('');
+    if (!floorTabs._delegated) {
+        floorTabs._delegated = true;
+        floorTabs.addEventListener('click', ev => {
+            const btn = ev.target.closest('[data-action="select-plan-floor"]');
+            if (btn) selectPlanFloor(Number(btn.dataset.floor));
+        });
+    }
 
     // Show floor plan
     const planUrl = floorPlans[currentPlanFloor];
@@ -1043,12 +1124,21 @@ function renderPlanRoomMarkers(occupancyMap) {
             <rect class="room-marker ${isFull && !isCurrentPlacement ? 'disabled' : ''}"
                   x="${x}" y="${y}" width="${w}" height="${h}"
                   fill="${color}" fill-opacity="0.7" rx="0.5"
-                  onclick="${isFull && !isCurrentPlacement ? '' : `selectRoom('${room.id}')`}" />
+                  ${isFull && !isCurrentPlacement ? '' : `data-action="select-room" data-id="${room.id}"`} />
             <text class="room-label" x="${x + w/2}" y="${y + h/2}">${room.number}</text>
         `;
     });
 
     svg.innerHTML = markers;
+
+    // Делегирование кликов на SVG-плане (комнаты)
+    if (!svg._delegated) {
+        svg._delegated = true;
+        svg.addEventListener('click', ev => {
+            const el = ev.target.closest('[data-action="select-room"]');
+            if (el) selectRoom(el.dataset.id);
+        });
+    }
 }
 
 function selectPlanBuilding(buildingId) {
@@ -1596,8 +1686,8 @@ function findMatchingVaishnava(parsed) {
 
         // Проверяем конфликт дат рождения (разные люди в одной семье с общим email/телефоном)
         if (parsed.birthDate && v.birth_date && parsed.birthDate !== v.birth_date) {
-            const d1 = new Date(parsed.birthDate);
-            const d2 = new Date(v.birth_date);
+            const d1 = DateUtils.parseDate(parsed.birthDate);
+            const d2 = DateUtils.parseDate(v.birth_date);
             const yearsDiff = Math.abs(d1.getFullYear() - d2.getFullYear());
             // Если разница более 3 лет — это разные люди
             if (yearsDiff > 3) {
@@ -1891,7 +1981,7 @@ async function createTransfers(registrationId, parsed) {
         .eq('registration_id', registrationId);
 
     const transfers = [];
-    const retreatYear = retreat?.start_date ? new Date(retreat.start_date).getFullYear() : null;
+    const retreatYear = retreat?.start_date ? DateUtils.parseDate(retreat.start_date).getFullYear() : null;
 
     // Arrival
     if (parsed.arrivalTime || parsed.arrivalFlight) {

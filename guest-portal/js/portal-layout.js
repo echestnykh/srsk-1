@@ -383,7 +383,7 @@ function hideLoader() {
 function formatDate(dateStr, options = {}) {
     if (!dateStr) return '';
 
-    const date = new Date(dateStr);
+    const date = DateUtils.parseDate(dateStr);
     const locale = currentLang === 'ru' ? 'ru-RU' : currentLang === 'hi' ? 'hi-IN' : 'en-US';
 
     const defaultOptions = {
@@ -401,8 +401,8 @@ function formatDate(dateStr, options = {}) {
 function formatDateRange(startDate, endDate) {
     if (!startDate || !endDate) return '';
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    const start = DateUtils.parseDate(startDate);
+    const end = DateUtils.parseDate(endDate);
     const locale = currentLang === 'ru' ? 'ru-RU' : currentLang === 'hi' ? 'hi-IN' : 'en-US';
 
     // Если один месяц

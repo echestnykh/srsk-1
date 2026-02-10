@@ -231,7 +231,8 @@
             portal_send_reset_link: { ru: 'Отправить ссылку', en: 'Send link', hi: 'लिंक भेजें' },
             portal_back_to_login: { ru: 'Вернуться к входу', en: 'Back to login', hi: 'लॉगिन पर वापस' },
             portal_reset_link_sent: { ru: 'Ссылка отправлена!', en: 'Link sent!', hi: 'लिंक भेज दिया गया!' },
-            portal_check_email_reset: { ru: 'Проверьте почту и перейдите по ссылке для сброса пароля', en: 'Check your email and click the link to reset password', hi: 'अपना ईमेल जांचें और पासवर्ड रीसेट करने के लिए लिंक पर क्लिक करें' }
+            portal_check_email_reset: { ru: 'Проверьте почту и перейдите по ссылке для сброса пароля', en: 'Check your email and click the link to reset password', hi: 'अपना ईमेल जांचें और पासवर्ड रीसेट करने के लिए लिंक पर क्लिक करें' },
+            error_cooldown: { ru: 'Подождите минуту перед повторной отправкой', en: 'Please wait a minute before sending again', hi: 'कृपया दोबारा भेजने से पहले एक मिनट प्रतीक्षा करें' }
         };
 
         // Загрузка переводов
@@ -385,9 +386,20 @@
         }
 
         // Обработка magic link формы
+        let magicLinkLastSent = 0;
+        const MAGIC_LINK_COOLDOWN = 60000; // 60 секунд
+
         async function handleMagicLink(e) {
             e.preventDefault();
             hideError();
+
+            // Клиентский cooldown
+            const elapsed = Date.now() - magicLinkLastSent;
+            if (elapsed < MAGIC_LINK_COOLDOWN) {
+                const remaining = Math.ceil((MAGIC_LINK_COOLDOWN - elapsed) / 1000);
+                showError('error_cooldown');
+                return;
+            }
 
             const email = document.getElementById('magic-email').value.trim();
             const submitBtn = document.getElementById('magic-btn');
@@ -412,7 +424,8 @@
                     return;
                 }
 
-                // Успех — показываем сообщение
+                // Успех — записываем время отправки и показываем сообщение
+                magicLinkLastSent = Date.now();
                 document.getElementById('magic-form').classList.add('hidden');
                 document.getElementById('magic-success').classList.remove('hidden');
 

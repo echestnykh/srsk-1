@@ -27,7 +27,7 @@ const statusColors = {
 
 const t = key => Layout.t(key);
 const e = str => Layout.escapeHtml(str);
-const today = new Date().toISOString().split('T')[0];
+const today = DateUtils.toISO(new Date());
 
 // ==================== DATA ====================
 async function loadInitialData() {
@@ -35,19 +35,22 @@ async function loadInitialData() {
     buildings = await Cache.getOrLoad('buildings', async () => {
         const { data, error } = await Layout.db
             .from('buildings')
-            .select('*')
+            .select('id, name_ru, name_en, name_hi')
             .eq('is_active', true)
             .order('sort_order');
         if (error) { console.error('Error loading buildings:', error); return null; }
         return data;
     }) || [];
 
-    // Load rooms
-    const { data: roomsData } = await Layout.db
-        .from('rooms')
-        .select('*')
-        .eq('is_active', true);
-    rooms = roomsData || [];
+    // Load rooms (кэш 1 час)
+    rooms = await Cache.getOrLoad('rooms', async () => {
+        const { data, error } = await Layout.db
+            .from('rooms')
+            .select('id, number, floor, building_id, capacity, plan_x, plan_y, plan_width, plan_height')
+            .eq('is_active', true);
+        if (error) { console.error('Error loading rooms:', error); return null; }
+        return data;
+    }, 3600000) || [];
 
     // Load floor plans
     const { data: plansData } = await Layout.db
@@ -56,12 +59,15 @@ async function loadInitialData() {
         .order('floor');
     floorPlans = plansData || [];
 
-    // Load retreats
-    const { data: retreatsData } = await Layout.db
-        .from('retreats')
-        .select('*')
-        .order('start_date', { ascending: false });
-    retreats = retreatsData || [];
+    // Load retreats (кэш 30 мин)
+    retreats = await Cache.getOrLoad('retreats', async () => {
+        const { data, error } = await Layout.db
+            .from('retreats')
+            .select('*')
+            .order('start_date', { ascending: false });
+        if (error) { console.error('Error loading retreats:', error); return null; }
+        return data;
+    }, 1800000) || [];
 }
 
 async function loadBookings() {
@@ -184,8 +190,8 @@ function renderBookings() {
     emptyState.classList.add('hidden');
 
     list.innerHTML = bookings.map(booking => {
-        const checkIn = new Date(booking.check_in);
-        const checkOut = new Date(booking.check_out);
+        const checkIn = DateUtils.parseDate(booking.check_in);
+        const checkOut = DateUtils.parseDate(booking.check_out);
         const isActive = booking.status === 'active' && booking.check_in <= today && booking.check_out >= today;
         const isUpcoming = booking.status === 'active' && booking.check_in > today;
         const isCancelled = booking.status === 'cancelled';
@@ -209,7 +215,7 @@ function renderBookings() {
         }
 
         return `
-            <div class="bg-base-100 rounded-lg shadow-sm overflow-hidden ${isCancelled ? 'opacity-50' : ''}" onclick="openBookingModal('${booking.id}')">
+            <div class="bg-base-100 rounded-lg shadow-sm overflow-hidden ${isCancelled ? 'opacity-50' : ''}" data-action="open-booking-modal" data-id="${booking.id}">
                 <div class="p-4 cursor-pointer hover:bg-base-200/50 transition-colors">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div class="flex-1">
@@ -242,6 +248,15 @@ function renderBookings() {
             </div>
         `;
     }).join('');
+
+    // Делегирование кликов в списке бронирований
+    if (!list._delegated) {
+        list._delegated = true;
+        list.addEventListener('click', ev => {
+            const el = ev.target.closest('[data-action="open-booking-modal"]');
+            if (el) openBookingModal(el.dataset.id);
+        });
+    }
 }
 
 function renderCalendarView() {
@@ -267,7 +282,7 @@ function renderCalendarView() {
     }
 
     grid.innerHTML = days.map(day => {
-        const dateStr = day.toISOString().split('T')[0];
+        const dateStr = DateUtils.toISO(day);
         const isOtherMonth = day.getMonth() !== calendarMonth;
         const isToday = dateStr === today;
 
@@ -278,7 +293,7 @@ function renderCalendarView() {
 
         return `
             <div class="calendar-day border border-base-200 rounded p-2 ${isOtherMonth ? 'other-month' : ''} ${isToday ? 'today' : ''} ${bookingCount > 0 ? 'cursor-pointer hover:bg-base-200' : ''}"
-                 ${bookingCount > 0 ? `onclick="openDayModal('${dateStr}')"` : ''}>
+                 ${bookingCount > 0 ? `data-action="open-day-modal" data-date="${dateStr}"` : ''}>
                 <div class="text-sm font-medium ${isToday ? 'text-primary' : ''}">${day.getDate()}</div>
                 ${bookingCount > 0 ? `
                     <div class="booking-count text-warning">${bookingCount}</div>
@@ -286,6 +301,15 @@ function renderCalendarView() {
             </div>
         `;
     }).join('');
+
+    // Делегирование кликов в календаре
+    if (!grid._delegated) {
+        grid._delegated = true;
+        grid.addEventListener('click', ev => {
+            const el = ev.target.closest('[data-action="open-day-modal"]');
+            if (el) openDayModal(el.dataset.date);
+        });
+    }
 }
 
 // ==================== CALENDAR NAVIGATION ====================
@@ -315,16 +339,17 @@ function openDayModal(dateStr) {
 
     if (dayBookings.length === 0) return;
 
-    const date = new Date(dateStr);
+    const date = DateUtils.parseDate(dateStr);
     Layout.$('#dayModalTitle').textContent = `${t('bookings_title') || 'Бронирования'} — ${date.toLocaleDateString()}`;
 
-    Layout.$('#dayModalContent').innerHTML = dayBookings.map(b => `
+    const dayModalContentEl = Layout.$('#dayModalContent');
+    dayModalContentEl.innerHTML = dayBookings.map(b => `
         <div class="flex items-center justify-between p-3 bg-warning/10 border border-warning/30 rounded-lg cursor-pointer hover:bg-warning/20 transition-colors"
-             onclick="closeDayModal(); openBookingModal('${b.id}')">
+             data-action="open-booking-from-day" data-id="${b.id}">
             <div>
                 <div class="font-medium">${e(b.name || b.contact_name)}</div>
                 <div class="text-sm opacity-60">
-                    ${new Date(b.check_in).toLocaleDateString()} — ${new Date(b.check_out).toLocaleDateString()}
+                    ${DateUtils.parseDate(b.check_in).toLocaleDateString()} — ${DateUtils.parseDate(b.check_out).toLocaleDateString()}
                 </div>
             </div>
             <div class="text-right">
@@ -333,6 +358,15 @@ function openDayModal(dateStr) {
             </div>
         </div>
     `).join('');
+
+    // Делегирование кликов в модалке дня
+    if (!dayModalContentEl._delegated) {
+        dayModalContentEl._delegated = true;
+        dayModalContentEl.addEventListener('click', ev => {
+            const el = ev.target.closest('[data-action="open-booking-from-day"]');
+            if (el) { closeDayModal(); openBookingModal(el.dataset.id); }
+        });
+    }
 
     Layout.$('#dayModal').showModal();
 }
@@ -486,7 +520,7 @@ function showAvailabilityError(problemDates, buildingName, bedsNeeded) {
 
     const datesContainer = Layout.$('#availabilityErrorDates');
     datesContainer.innerHTML = problemDates.map(d => {
-        const date = new Date(d.problem_date);
+        const date = DateUtils.parseDate(d.problem_date);
         const percent = Math.round((d.available_beds / d.total_capacity) * 100);
         const colorClass = percent < 30 ? 'bg-error' : percent < 70 ? 'bg-warning' : 'bg-success';
 
@@ -770,7 +804,7 @@ async function saveNewBooking() {
     const bedsCount = parseInt(form.beds_count.value) || 1;
 
     if (bookingSelectedBeds.size !== bedsCount) {
-        alert(t('select_beds_on_plan').replace('{count}', bedsCount));
+        Layout.showNotification(t('select_beds_on_plan').replace('{count}', bedsCount), 'error');
         return;
     }
 
@@ -822,7 +856,7 @@ async function saveNewBooking() {
 
     } catch (err) {
         console.error('Error saving booking:', err);
-        alert(t('error_saving') + ': ' + err.message);
+        Layout.showNotification(t('error_saving') + ': ' + err.message, 'error');
     }
 }
 
@@ -867,11 +901,11 @@ async function openBookingModal(bookingId) {
         <div class="grid grid-cols-2 gap-4">
             <div class="bg-base-200 rounded-lg p-4">
                 <div class="text-sm opacity-60 mb-1">${t('check_in')}</div>
-                <div class="font-medium">${new Date(details.check_in).toLocaleDateString()}</div>
+                <div class="font-medium">${DateUtils.parseDate(details.check_in).toLocaleDateString()}</div>
             </div>
             <div class="bg-base-200 rounded-lg p-4">
                 <div class="text-sm opacity-60 mb-1">${t('check_out')}</div>
-                <div class="font-medium">${new Date(details.check_out).toLocaleDateString()}</div>
+                <div class="font-medium">${DateUtils.parseDate(details.check_out).toLocaleDateString()}</div>
             </div>
         </div>
 
@@ -958,7 +992,7 @@ async function cancelBooking() {
 
     } catch (err) {
         console.error('Error cancelling booking:', err);
-        alert(t('cancel_error') + ': ' + err.message);
+        Layout.showNotification(t('cancel_error') + ': ' + err.message, 'error');
     }
 }
 

@@ -278,6 +278,7 @@
     <script src="../js/utils.js?v=2"></script>
     <script src="../js/translit.js"></script>
     <script src="../js/auto-translate.js"></script>
+    <script src="../js/date-utils.js"></script>
     <script src="../js/layout.js?v=5"></script>
     <script>
         // ==================== STATE ====================
@@ -292,7 +293,7 @@
         let selectedRoomId = null;
 
         const t = key => Layout.t(key);
-        const today = new Date().toISOString().split('T')[0];
+        const today = DateUtils.toISO(new Date());
 
         // ==================== DATA ====================
         async function loadBuildings() {
@@ -628,8 +629,8 @@
                             ${r.category_name_ru ? `<div class="text-xs opacity-60">${Layout.currentLang === 'ru' ? r.category_name_ru : r.category_name_en || r.category_name_ru}</div>` : ''}
                         </div>
                         <div class="text-xs opacity-60">
-                            ${r.check_in ? new Date(r.check_in).toLocaleDateString() : ''}
-                            ${r.check_out ? ` — ${new Date(r.check_out).toLocaleDateString()}` : ''}
+                            ${r.check_in ? DateUtils.parseDate(r.check_in).toLocaleDateString() : ''}
+                            ${r.check_out ? ` — ${DateUtils.parseDate(r.check_out).toLocaleDateString()}` : ''}
                         </div>
                     </div>
                 `).join('');

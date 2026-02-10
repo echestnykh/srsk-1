@@ -77,6 +77,7 @@
 <script src="../js/auth-check.js"></script>
 <script src="../js/cache.js"></script>
 <script src="../js/utils.js?v=2"></script>
+<script src="../js/date-utils.js"></script>
 <script src="../js/layout.js"></script>
 <script src="../js/crm-utils.js"></script>
 
@@ -120,7 +121,7 @@ async function loadData() {
     const [retreatsRes, managersRes, rmRes, queueRes] = await Promise.all([
         Layout.db.from('retreats')
             .select('id, name_ru, name_en, start_date, end_date, color')
-            .gte('end_date', new Date().toISOString().split('T')[0])
+            .gte('end_date', DateUtils.toISO(new Date()))
             .order('start_date'),
 
         // Получаем менеджеров по их user_id

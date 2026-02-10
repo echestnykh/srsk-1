@@ -158,18 +158,15 @@ async function loadRegistrations() {
 }
 
 async function loadBuildings() {
-    const { data, error } = await Layout.db
-        .from('buildings')
-        .select('id, name_ru, name_en, name_hi')
-        .eq('is_active', true)
-        .order('sort_order');
-
-    if (error) {
-        console.error('Error loading buildings:', error);
-        return;
-    }
-
-    buildings = data || [];
+    buildings = await Cache.getOrLoad('buildings_names', async () => {
+        const { data, error } = await Layout.db
+            .from('buildings')
+            .select('id, name_ru, name_en, name_hi')
+            .eq('is_active', true)
+            .order('sort_order');
+        if (error) { console.error('Error loading buildings:', error); return null; }
+        return data;
+    }, 3600000) || [];
     renderBuildingFilter();
 }
 
@@ -190,12 +187,9 @@ function onBuildingChange(buildingId) {
     renderTable();
 }
 
-// Helper to format date as YYYY-MM-DD in local timezone
+// Алиас для DateUtils.toISO (обратная совместимость)
 function toLocalDateStr(date) {
-    const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return DateUtils.toISO(date);
 }
 
 function updateStats() {
@@ -260,7 +254,8 @@ function toggleStatsBlock() {
 function initStatsState() {
     const statsBlock = document.getElementById('statsBlock');
     const icon = document.getElementById('statsToggleIcon');
-    const savedState = localStorage.getItem(STATS_COLLAPSED_KEY);
+    let savedState;
+    try { savedState = localStorage.getItem(STATS_COLLAPSED_KEY); } catch { savedState = null; }
 
     // По умолчанию свернут (если нет сохраненного состояния или сохранено '1')
     const isExpanded = savedState === '0';
@@ -327,14 +322,7 @@ function changeChartDate(delta) {
 // ==================== HELPERS ====================
 function calculateAge(birthDate) {
     if (!birthDate) return '';
-    const today = new Date();
-    const birth = new Date(birthDate);
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-        age--;
-    }
-    return age;
+    return DateUtils.calculateAge(birthDate);
 }
 
 function formatDateTime(datetime) {
@@ -480,7 +468,7 @@ function renderRow(reg) {
     }
 
     return `
-        <tr class="hover cursor-pointer" onclick="window.location.href='../vaishnavas/person.html?id=${v?.id}'">
+        <tr class="hover cursor-pointer" data-action="navigate-person" data-id="${v?.id}">
             <td>
                 <div class="flex items-center gap-3">
                     ${avatarHtml}
@@ -493,7 +481,7 @@ function renderRow(reg) {
             <td class="text-sm">${genderAge || '—'}</td>
             <td class="text-sm text-center">
                 <div class="font-semibold">${estimatedCheckout ? formatTime(estimatedCheckout) : '—'}</div>
-                ${needsTransfer ? (taxiOrdered ? `<div class="badge badge-success badge-xs gap-1 mt-1 cursor-pointer" onclick="event.stopPropagation(); showTaxiDetails('${departure.id}')"><svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 103.07 59.75" fill="currentColor"><path d="M5.75,53.47c-1.68-1.71-2.63-4.23-2.68-6.64,2.97-10.49,6.26-20.89,9.36-31.35,1.71-5.78,1.81-10.95,9.24-12.11h58.86c3.74.23,7.15,2.76,8.35,6.35.33,1,.31,1.98.58,2.89,3.38,11.42,6.9,22.8,10.18,34.25-.11,4.72-3.5,8.64-8.16,9.3H11.55c-2.09-.16-4.35-1.22-5.8-2.7ZM21.72,9.78c-2.2.69-1.86,2.64-2.36,4.28-3.3,10.95-6.61,21.9-9.85,32.87-.47,2.23,1.92,3.11,3.77,3.19h76.19c1.99-.17,3.63-.69,3.83-2.97-3.25-10.64-6.4-21.3-9.61-31.95-.48-1.59-.56-4.58-2.24-5.26l-59.73-.16Z"/><polygon points="60.75 20.68 63.64 26.16 67.25 20.68 72.58 20.68 66.57 29.82 72.29 38.86 66.96 38.86 63.64 33.67 61.04 38.86 55.27 38.86 60.98 29.81 55.27 20.68 60.75 20.68"/><path d="M37.96,38.86l6.09-18.15,4.45-.05,6.48,18.2h-4.76l-1.27-3.29-4.91-.14-.89,3.43h-5.19ZM48.06,31.93c-.5-1.5-.78-3.12-1.3-4.61-.1-.28-.03-.66-.42-.58l-1.45,5.19h3.17Z"/><polygon points="39.12 20.68 39.12 25.01 33.92 25.01 33.92 38.86 28.73 38.86 28.73 25.01 23.54 25.01 23.54 20.68 39.12 20.68"/><rect x="74.03" y="20.68" width="5.19" height="18.18"/></svg>${t('ordered')}</div>` : `<div class="badge badge-warning badge-xs gap-1 mt-1 cursor-pointer" onclick="event.stopPropagation(); openTaxiModal('${departure.id}')"><svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 103.07 59.75" fill="currentColor"><path d="M5.75,53.47c-1.68-1.71-2.63-4.23-2.68-6.64,2.97-10.49,6.26-20.89,9.36-31.35,1.71-5.78,1.81-10.95,9.24-12.11h58.86c3.74.23,7.15,2.76,8.35,6.35.33,1,.31,1.98.58,2.89,3.38,11.42,6.9,22.8,10.18,34.25-.11,4.72-3.5,8.64-8.16,9.3H11.55c-2.09-.16-4.35-1.22-5.8-2.7ZM21.72,9.78c-2.2.69-1.86,2.64-2.36,4.28-3.3,10.95-6.61,21.9-9.85,32.87-.47,2.23,1.92,3.11,3.77,3.19h76.19c1.99-.17,3.63-.69,3.83-2.97-3.25-10.64-6.4-21.3-9.61-31.95-.48-1.59-.56-4.58-2.24-5.26l-59.73-.16Z"/><polygon points="60.75 20.68 63.64 26.16 67.25 20.68 72.58 20.68 66.57 29.82 72.29 38.86 66.96 38.86 63.64 33.67 61.04 38.86 55.27 38.86 60.98 29.81 55.27 20.68 60.75 20.68"/><path d="M37.96,38.86l6.09-18.15,4.45-.05,6.48,18.2h-4.76l-1.27-3.29-4.91-.14-.89,3.43h-5.19ZM48.06,31.93c-.5-1.5-.78-3.12-1.3-4.61-.1-.28-.03-.66-.42-.58l-1.45,5.19h3.17Z"/><polygon points="39.12 20.68 39.12 25.01 33.92 25.01 33.92 38.86 28.73 38.86 28.73 25.01 23.54 25.01 23.54 20.68 39.12 20.68"/><rect x="74.03" y="20.68" width="5.19" height="18.18"/></svg>${t('needs_transfer')}</div>`) : ''}
+                ${needsTransfer ? (taxiOrdered ? `<div class="badge badge-success badge-xs gap-1 mt-1 cursor-pointer" data-action="show-taxi-details" data-id="${departure.id}"><svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 103.07 59.75" fill="currentColor"><path d="M5.75,53.47c-1.68-1.71-2.63-4.23-2.68-6.64,2.97-10.49,6.26-20.89,9.36-31.35,1.71-5.78,1.81-10.95,9.24-12.11h58.86c3.74.23,7.15,2.76,8.35,6.35.33,1,.31,1.98.58,2.89,3.38,11.42,6.9,22.8,10.18,34.25-.11,4.72-3.5,8.64-8.16,9.3H11.55c-2.09-.16-4.35-1.22-5.8-2.7ZM21.72,9.78c-2.2.69-1.86,2.64-2.36,4.28-3.3,10.95-6.61,21.9-9.85,32.87-.47,2.23,1.92,3.11,3.77,3.19h76.19c1.99-.17,3.63-.69,3.83-2.97-3.25-10.64-6.4-21.3-9.61-31.95-.48-1.59-.56-4.58-2.24-5.26l-59.73-.16Z"/><polygon points="60.75 20.68 63.64 26.16 67.25 20.68 72.58 20.68 66.57 29.82 72.29 38.86 66.96 38.86 63.64 33.67 61.04 38.86 55.27 38.86 60.98 29.81 55.27 20.68 60.75 20.68"/><path d="M37.96,38.86l6.09-18.15,4.45-.05,6.48,18.2h-4.76l-1.27-3.29-4.91-.14-.89,3.43h-5.19ZM48.06,31.93c-.5-1.5-.78-3.12-1.3-4.61-.1-.28-.03-.66-.42-.58l-1.45,5.19h3.17Z"/><polygon points="39.12 20.68 39.12 25.01 33.92 25.01 33.92 38.86 28.73 38.86 28.73 25.01 23.54 25.01 23.54 20.68 39.12 20.68"/><rect x="74.03" y="20.68" width="5.19" height="18.18"/></svg>${t('ordered')}</div>` : `<div class="badge badge-warning badge-xs gap-1 mt-1 cursor-pointer" data-action="open-taxi-modal" data-id="${departure.id}"><svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 103.07 59.75" fill="currentColor"><path d="M5.75,53.47c-1.68-1.71-2.63-4.23-2.68-6.64,2.97-10.49,6.26-20.89,9.36-31.35,1.71-5.78,1.81-10.95,9.24-12.11h58.86c3.74.23,7.15,2.76,8.35,6.35.33,1,.31,1.98.58,2.89,3.38,11.42,6.9,22.8,10.18,34.25-.11,4.72-3.5,8.64-8.16,9.3H11.55c-2.09-.16-4.35-1.22-5.8-2.7ZM21.72,9.78c-2.2.69-1.86,2.64-2.36,4.28-3.3,10.95-6.61,21.9-9.85,32.87-.47,2.23,1.92,3.11,3.77,3.19h76.19c1.99-.17,3.63-.69,3.83-2.97-3.25-10.64-6.4-21.3-9.61-31.95-.48-1.59-.56-4.58-2.24-5.26l-59.73-.16Z"/><polygon points="60.75 20.68 63.64 26.16 67.25 20.68 72.58 20.68 66.57 29.82 72.29 38.86 66.96 38.86 63.64 33.67 61.04 38.86 55.27 38.86 60.98 29.81 55.27 20.68 60.75 20.68"/><path d="M37.96,38.86l6.09-18.15,4.45-.05,6.48,18.2h-4.76l-1.27-3.29-4.91-.14-.89,3.43h-5.19ZM48.06,31.93c-.5-1.5-.78-3.12-1.3-4.61-.1-.28-.03-.66-.42-.58l-1.45,5.19h3.17Z"/><polygon points="39.12 20.68 39.12 25.01 33.92 25.01 33.92 38.86 28.73 38.86 28.73 25.01 23.54 25.01 23.54 20.68 39.12 20.68"/><rect x="74.03" y="20.68" width="5.19" height="18.18"/></svg>${t('needs_transfer')}</div>`) : ''}
             </td>
             <td class="text-sm text-center">
                 <div>${flightTime ? formatDateTime(flightTime) : '—'}</div>
@@ -547,9 +535,9 @@ function renderCard(reg) {
     }
     if (departure?.needs_transfer === 'yes') {
         if (departure.taxi_status === 'ordered') {
-            infoParts.push(`<span class="badge badge-success badge-sm gap-1 cursor-pointer" onclick="event.preventDefault(); showTaxiDetails('${departure.id}')">🚕 ${t('ordered')}</span>`);
+            infoParts.push(`<span class="badge badge-success badge-sm gap-1 cursor-pointer" data-action="show-taxi-details" data-id="${departure.id}">🚕 ${t('ordered')}</span>`);
         } else {
-            infoParts.push(`<span class="badge badge-warning badge-sm gap-1 cursor-pointer" onclick="event.preventDefault(); openTaxiModal('${departure.id}')">🚕 ${t('needs_transfer')}</span>`);
+            infoParts.push(`<span class="badge badge-warning badge-sm gap-1 cursor-pointer" data-action="open-taxi-modal" data-id="${departure.id}">🚕 ${t('needs_transfer')}</span>`);
         }
     }
     if (accommodation) {
@@ -705,13 +693,30 @@ function renderTable() {
     }
 
     container.innerHTML = html;
+
+    // Делегирование кликов в таблице выездов
+    if (!container._delegated) {
+        container._delegated = true;
+        container.addEventListener('click', ev => {
+            const btn = ev.target.closest('[data-action]');
+            if (!btn) return;
+            const id = btn.dataset.id;
+            switch (btn.dataset.action) {
+                case 'navigate-person': window.location.href = `../vaishnavas/person.html?id=${id}`; break;
+                case 'show-taxi-details': ev.stopPropagation(); showTaxiDetails(id); break;
+                case 'open-taxi-modal': ev.stopPropagation(); openTaxiModal(id); break;
+            }
+        });
+    }
 }
 
 // ==================== ТАКСИ ====================
 function openTaxiModal(transferId) {
     document.getElementById('taxiTransferId').value = transferId;
     document.getElementById('taxiDriverInfo').value = '';
-    document.getElementById('taxiOrderedBy').value = localStorage.getItem('srsk_taxi_name') || '';
+    let taxiName = '';
+    try { taxiName = localStorage.getItem('srsk_taxi_name') || ''; } catch {}
+    document.getElementById('taxiOrderedBy').value = taxiName;
     document.getElementById('taxiModal').showModal();
 }
 

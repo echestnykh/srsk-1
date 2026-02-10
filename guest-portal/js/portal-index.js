@@ -157,7 +157,7 @@ document.addEventListener('keydown', (e) => {
 // Форматирование даты рождения
 function formatBirthDate(dateStr) {
     if (!dateStr) return '';
-    const date = new Date(dateStr);
+    const date = DateUtils.parseDate(dateStr);
     const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
                    'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
     return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
@@ -557,8 +557,8 @@ async function handleProfileSave(e) {
 
 // Форматирование даты ретрита
 function formatRetreatDates(startDate, endDate) {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    const start = DateUtils.parseDate(startDate);
+    const end = DateUtils.parseDate(endDate);
     const months = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
 
     if (start.getMonth() === end.getMonth()) {
@@ -729,6 +729,9 @@ async function loadActiveRetreat(guestId) {
             document.getElementById('departure-edit-btn')?.classList.add('hidden');
         }
 
+        // Дети
+        renderPortalChildren(data.children || []);
+
     } catch (e) {
         console.error('Ошибка загрузки ретрита:', e);
         // Скрываем скелетон даже при ошибке
@@ -737,10 +740,163 @@ async function loadActiveRetreat(guestId) {
     }
 }
 
+// ==================== CHILDREN ====================
+
+let portalChildren = [];
+
+function renderPortalChildren(childrenData) {
+    portalChildren = childrenData;
+    const section = document.getElementById('children-section');
+    const list = document.getElementById('children-list');
+
+    if (!section || !list) return;
+
+    // Показываем секцию всегда (даже без детей — чтобы можно было добавить)
+    // Но в публичном режиме — только если есть дети
+    if (isPublicView && childrenData.length === 0) {
+        section.classList.add('hidden');
+        return;
+    }
+
+    section.classList.remove('hidden');
+
+    if (childrenData.length === 0) {
+        list.innerHTML = `
+            <div class="text-center py-4 text-gray-400 text-sm">
+                Нет привязанных детей
+            </div>
+        `;
+        return;
+    }
+
+    list.innerHTML = childrenData.map(child => {
+        const name = child.spiritual_name || `${child.first_name || ''} ${child.last_name || ''}`.trim() || '—';
+        const age = child.birth_date ? DateUtils.calculateAge(child.birth_date) : null;
+        const genderIcon = child.gender === 'male' ? '👦' : child.gender === 'female' ? '👧' : '👶';
+        const ageStr = age !== null ? `, ${age} лет` : '';
+        const initials = (child.first_name?.[0] || '') + (child.last_name?.[0] || '');
+
+        return `
+            <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                ${child.photo_url
+                    ? `<img src="${escapeHtml(child.photo_url)}" class="w-10 h-10 rounded-full object-cover" alt="">`
+                    : `<div class="w-10 h-10 rounded-full bg-srsk-green/10 flex items-center justify-center text-sm font-medium text-srsk-green">${initials.toUpperCase() || '?'}</div>`
+                }
+                <div class="flex-1 min-w-0">
+                    <div class="font-medium text-sm truncate">${escapeHtml(name)}</div>
+                    <div class="text-xs text-gray-400">${genderIcon}${ageStr}</div>
+                </div>
+                ${!isPublicView ? `
+                    <button onclick="editChildPortal('${child.id}')" class="text-gray-400 hover:text-srsk-green transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
+                        </svg>
+                    </button>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+function openAddChildPortal() {
+    document.getElementById('childPortalForm').reset();
+    document.getElementById('portalChildId').value = '';
+    document.getElementById('childModalPortalTitle').textContent = 'Добавить ребёнка';
+    document.getElementById('deleteChildBtn').classList.add('hidden');
+    document.getElementById('childModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function editChildPortal(childId) {
+    const child = portalChildren.find(c => c.id === childId);
+    if (!child) return;
+
+    document.getElementById('portalChildId').value = child.id;
+    document.getElementById('portalChildFirstName').value = child.first_name || '';
+    document.getElementById('portalChildLastName').value = child.last_name || '';
+    document.getElementById('portalChildGender').value = child.gender || '';
+    document.getElementById('portalChildBirthDate').value = child.birth_date || '';
+    document.getElementById('childModalPortalTitle').textContent = 'Редактировать ребёнка';
+    document.getElementById('deleteChildBtn').classList.remove('hidden');
+    document.getElementById('childModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeChildPortal() {
+    document.getElementById('childModal').classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+async function saveChildPortal(event) {
+    event.preventDefault();
+
+    const childId = document.getElementById('portalChildId').value;
+    const childData = {
+        firstName: document.getElementById('portalChildFirstName').value,
+        lastName: document.getElementById('portalChildLastName').value,
+        gender: document.getElementById('portalChildGender').value || null,
+        birthDate: document.getElementById('portalChildBirthDate').value || null
+    };
+
+    if (!childData.firstName) {
+        alert('Укажите имя ребёнка');
+        return;
+    }
+
+    const guest = window.currentGuest;
+    if (!guest?.id) return;
+
+    let result;
+    if (childId) {
+        result = await PortalData.updateChild(childId, childData);
+    } else {
+        result = await PortalData.createChild(guest.id, childData);
+    }
+
+    if (!result.success) {
+        alert('Ошибка сохранения: ' + (result.error || ''));
+        return;
+    }
+
+    closeChildPortal();
+
+    // Перезагружаем детей
+    const freshChildren = await PortalData.getChildren(guest.id);
+    renderPortalChildren(freshChildren);
+}
+
+async function deleteChildPortal() {
+    const childId = document.getElementById('portalChildId').value;
+    if (!childId) return;
+
+    if (!confirm('Удалить ребёнка из вашего профиля?')) return;
+
+    const result = await PortalData.deleteChild(childId);
+    if (!result.success) {
+        alert('Ошибка удаления: ' + (result.error || ''));
+        return;
+    }
+
+    closeChildPortal();
+
+    const guest = window.currentGuest;
+    if (guest?.id) {
+        const freshChildren = await PortalData.getChildren(guest.id);
+        renderPortalChildren(freshChildren);
+    }
+}
+
+// Закрытие по Escape (children modal)
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeChildPortal();
+    }
+});
+
 // Загрузить ближайшие ретриты
 async function loadUpcomingRetreats(guestId = null) {
     try {
-        const today = new Date().toISOString().split('T')[0];
+        const today = DateUtils.toISO(new Date());
 
         // Получаем ID ретритов, на которые гость уже зарегистрирован
         let registeredRetreatIds = [];

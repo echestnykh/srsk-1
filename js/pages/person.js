@@ -6,13 +6,14 @@ const e = str => Layout.escapeHtml(str);
 let person = null;
 let stays = [];
 let registrations = [];
+let children = [];
 let departments = [];
 let teamMembers = [];
 let spiritualTeachers = [];
 let buildings = [];
 let isEditMode = false;
 
-const today = new Date().toISOString().split('T')[0];
+const today = DateUtils.toISO(new Date());
 
 // Страны
 const COUNTRIES = [
@@ -48,10 +49,11 @@ async function init() {
     populateCountriesList();
     // Потом загружаем человека (renderPerson установит значения в select'ы)
     await loadPerson(personId);
-    // Параллельно загружаем историю
+    // Параллельно загружаем историю и детей
     await Promise.all([
         loadStays(personId),
-        loadRegistrations(personId)
+        loadRegistrations(personId),
+        loadChildren(personId)
     ]);
     Layout.hideLoader();
 }
@@ -59,7 +61,7 @@ async function init() {
 async function loadPerson(personId) {
     const { data, error } = await Layout.db
         .from('vaishnavas')
-        .select('*, departments(id, name_ru, name_en, name_hi, color), senior:vaishnavas!senior_id(id, spiritual_name, first_name, last_name)')
+        .select('*, departments(id, name_ru, name_en, name_hi, color), senior:vaishnavas!senior_id(id, spiritual_name, first_name, last_name), parent:vaishnavas!parent_id(id, spiritual_name, first_name, last_name)')
         .eq('id', personId)
         .single();
 
@@ -300,6 +302,20 @@ function renderPerson() {
     // Notes
     document.getElementById('viewNotes').textContent = person.notes || '—';
     document.getElementById('editNotes').value = person.notes || '';
+
+    // Parent section
+    const parentSection = document.getElementById('parentSection');
+    if (person.parent_id && person.parent) {
+        parentSection.classList.remove('hidden');
+        const parentLink = document.getElementById('parentLink');
+        parentLink.textContent = getVaishnavName(person.parent);
+        parentLink.href = `person.html?id=${person.parent.id}`;
+    } else {
+        parentSection.classList.add('hidden');
+    }
+
+    // Hide children section if this person IS a child
+    document.getElementById('childrenSection').style.display = person.parent_id ? 'none' : 'block';
 }
 
 function toggleTeamSections() {
@@ -409,7 +425,7 @@ function searchSpiritualTeachers(query) {
         return;
     }
     suggestionsEl.innerHTML = matches.map(t =>
-        `<div class="px-3 py-2 hover:bg-base-200 cursor-pointer" onclick="selectSpiritualTeacher('${t.replace(/'/g, "\\'")}')">${t}</div>`
+        `<div class="px-3 py-2 hover:bg-base-200 cursor-pointer" data-action="select-teacher" data-teacher-name="${e(t)}">${e(t)}</div>`
     ).join('');
     suggestionsEl.classList.remove('hidden');
 }
@@ -426,6 +442,12 @@ function selectSpiritualTeacher(name) {
     document.getElementById('spiritualTeacherSuggestions').classList.add('hidden');
 }
 
+// Делегирование кликов на подсказках духовного учителя
+document.getElementById('spiritualTeacherSuggestions').addEventListener('click', ev => {
+    const el = ev.target.closest('[data-action="select-teacher"]');
+    if (el) selectSpiritualTeacher(el.dataset.teacherName);
+});
+
 // Закрытие подсказок при клике вне
 document.addEventListener('click', (e) => {
     const suggestions = document.getElementById('spiritualTeacherSuggestions');
@@ -437,7 +459,7 @@ document.addEventListener('click', (e) => {
 
 function formatDate(dateStr) {
     if (!dateStr) return '—';
-    const date = new Date(dateStr);
+    const date = DateUtils.parseDate(dateStr);
     return date.toLocaleDateString(Layout.currentLang === 'hi' ? 'hi-IN' : Layout.currentLang === 'en' ? 'en-US' : 'ru-RU', {
         day: 'numeric', month: 'short', year: 'numeric'
     });
@@ -526,7 +548,7 @@ async function savePerson() {
         .from('vaishnavas')
         .update(updateData)
         .eq('id', person.id)
-        .select('*, departments(id, name_ru, name_en, name_hi, color), senior:vaishnavas!senior_id(id, spiritual_name, first_name, last_name)')
+        .select('*, departments(id, name_ru, name_en, name_hi, color), senior:vaishnavas!senior_id(id, spiritual_name, first_name, last_name), parent:vaishnavas!parent_id(id, spiritual_name, first_name, last_name)')
         .single();
 
     if (saveBtn) saveBtn.classList.remove('loading');
@@ -581,6 +603,15 @@ function renderStays() {
     }
 
     emptyState.classList.add('hidden');
+    // Делегирование кликов в списке периодов проживания
+    if (!container._delegated) {
+        container._delegated = true;
+        container.addEventListener('click', ev => {
+            const el = ev.target.closest('[data-action="open-stay-modal"]');
+            if (el) openStayModal(el.dataset.id);
+        });
+    }
+
     container.innerHTML = stays.map(stay => {
         const isCurrent = stay.start_date <= today && stay.end_date >= today;
         const isFuture = stay.start_date > today;
@@ -596,7 +627,7 @@ function renderStays() {
             : `${formatDate(stay.start_date)} — ${formatDate(stay.end_date)}`;
 
         return `
-            <div class="${stayClass} border rounded-lg p-3 cursor-pointer hover:shadow-md transition-shadow" onclick="openStayModal('${stay.id}')">
+            <div class="${stayClass} border rounded-lg p-3 cursor-pointer hover:shadow-md transition-shadow" data-action="open-stay-modal" data-id="${stay.id}">
                 <div class="flex items-center justify-between">
                     <div>
                         <div class="font-medium">${dateDisplay}</div>
@@ -723,7 +754,7 @@ async function deleteStay() {
 let availableRetreats = [];
 
 async function loadAvailableRetreats() {
-    const today = new Date().toISOString().split('T')[0];
+    const today = DateUtils.toISO(new Date());
 
     // Загружаем ретриты: либо с открытой регистрацией, либо будущие/текущие
     const { data, error } = await Layout.db
@@ -809,14 +840,15 @@ async function saveRetreatRegistration(event) {
 // ==================== BUILDINGS & ROOMS ====================
 
 async function loadBuildingsAndRooms() {
-    const { data, error } = await Layout.db
-        .from('buildings')
-        .select('*, rooms(*)')
-        .eq('is_active', true)
-        .order('sort_order');
-
-    if (error) console.error('Error loading buildings:', error);
-    buildings = data || [];
+    buildings = await Cache.getOrLoad('buildings_with_rooms', async () => {
+        const { data, error } = await Layout.db
+            .from('buildings')
+            .select('*, rooms(*)')
+            .eq('is_active', true)
+            .order('sort_order');
+        if (error) { console.error('Error loading buildings:', error); return null; }
+        return data;
+    }, 3600000) || [];
 }
 
 // ==================== REGISTRATION STATUS ====================
@@ -1216,7 +1248,7 @@ async function updateRoomsList() {
     // Опция "Самостоятельное размещение"
     let html = `
         <div class="mb-3">
-            <button type="button" class="btn btn-outline btn-error w-full gap-2" onclick="selectSelfAccommodation()">
+            <button type="button" class="btn btn-outline btn-error w-full gap-2" data-action="select-self-accommodation">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                 </svg>
@@ -1267,7 +1299,7 @@ async function updateRoomsList() {
             }
 
             html += `<button type="button" class="btn btn-sm ${btnClass}"
-                ${disabled ? 'disabled' : `onclick="selectRoom('${room.id}', '${building.id}')"`}>
+                ${disabled ? 'disabled' : `data-action="select-room" data-id="${room.id}" data-building-id="${building.id}"`}>
                 ${label}
             </button>`;
         });
@@ -1276,6 +1308,19 @@ async function updateRoomsList() {
     });
 
     roomsList.innerHTML = html || '<div class="text-center py-4 opacity-50">Нет комнат</div>';
+
+    // Делегирование кликов в списке комнат
+    if (!roomsList._delegated) {
+        roomsList._delegated = true;
+        roomsList.addEventListener('click', ev => {
+            const btn = ev.target.closest('[data-action]');
+            if (!btn) return;
+            switch (btn.dataset.action) {
+                case 'select-room': selectRoom(btn.dataset.id, btn.dataset.buildingId); break;
+                case 'select-self-accommodation': selectSelfAccommodation(); break;
+            }
+        });
+    }
 }
 
 async function selectRoom(roomId, buildingId) {
@@ -1392,6 +1437,32 @@ function renderRegistrations() {
     }
 
     emptyState.classList.add('hidden');
+
+    // Делегирование кликов и change-событий в списке ретритных регистраций
+    if (!container._delegated) {
+        container._delegated = true;
+        container.addEventListener('click', ev => {
+            const btn = ev.target.closest('[data-action]');
+            if (!btn) return;
+            ev.stopPropagation();
+            const id = btn.dataset.id;
+            switch (btn.dataset.action) {
+                case 'toggle-expanded': btn.classList.toggle('expanded'); break;
+                case 'open-placement-modal': openPlacementModal(id); break;
+                case 'open-edit-reg-modal': openEditRegModal(id); break;
+                case 'delete-registration': deleteRegistration(id); break;
+            }
+        });
+        container.addEventListener('change', ev => {
+            const target = ev.target.closest('[data-action]');
+            if (!target) return;
+            ev.stopPropagation();
+            if (target.dataset.action === 'update-registration-status') {
+                updateRegistrationStatus(target.dataset.id, target.value, target);
+            }
+        });
+    }
+
     container.innerHTML = registrations.map(reg => {
         const retreat = reg.retreats;
         const statusClass = `status-${reg.status}`;
@@ -1573,24 +1644,24 @@ function renderRegistrations() {
         // Actions section
         const actionsHtml = `
             <div class="detail-section border-t pt-3 mt-3 flex items-center gap-3 flex-wrap">
-                <select class="select select-xs status-${reg.status}" style="min-width: 0; padding-right: 1.5rem;" onchange="updateRegistrationStatus('${reg.id}', this.value, this)" onclick="event.stopPropagation()">
+                <select class="select select-xs status-${reg.status}" style="min-width: 0; padding-right: 1.5rem;" data-action="update-registration-status" data-id="${reg.id}">
                     <option value="guest" ${reg.status === 'guest' ? 'selected' : ''}>Гость</option>
                     <option value="team" ${reg.status === 'team' ? 'selected' : ''}>Команда</option>
                     <option value="cancelled" ${reg.status === 'cancelled' ? 'selected' : ''}>Отказ</option>
                 </select>
-                <button class="btn btn-xs btn-outline gap-1" onclick="event.stopPropagation(); openPlacementModal('${reg.id}')">
+                <button class="btn btn-xs btn-outline gap-1" data-action="open-placement-modal" data-id="${reg.id}">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                     </svg>
                     Заселить
                 </button>
-                <button class="btn btn-xs btn-ghost gap-1" onclick="event.stopPropagation(); openEditRegModal('${reg.id}')">
+                <button class="btn btn-xs btn-ghost gap-1" data-action="open-edit-reg-modal" data-id="${reg.id}">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                     Изменить
                 </button>
-                <button class="btn btn-xs btn-ghost text-error gap-1 ml-auto" onclick="event.stopPropagation(); deleteRegistration('${reg.id}')">
+                <button class="btn btn-xs btn-ghost text-error gap-1 ml-auto" data-action="delete-registration" data-id="${reg.id}">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
@@ -1600,7 +1671,7 @@ function renderRegistrations() {
         `;
 
         return `
-            <div class="retreat-card border rounded-lg p-3 expanded" onclick="this.classList.toggle('expanded')">
+            <div class="retreat-card border rounded-lg p-3 expanded" data-action="toggle-expanded">
                 <div class="flex items-center justify-between">
                     <div class="flex-1 min-w-0">
                         <div class="font-medium">${retreat ? Layout.getName(retreat) : '—'}${regDateStr}</div>
@@ -1615,6 +1686,154 @@ function renderRegistrations() {
             </div>
         `;
     }).join('');
+}
+
+// ==================== CHILDREN ====================
+
+async function loadChildren(personId) {
+    const { data } = await Layout.db
+        .from('vaishnavas')
+        .select('id, first_name, last_name, spiritual_name, gender, birth_date, photo_url')
+        .eq('parent_id', personId)
+        .eq('is_deleted', false)
+        .order('birth_date', { ascending: true });
+    children = data || [];
+    renderChildren();
+}
+
+function renderChildren() {
+    const container = document.getElementById('childrenList');
+    const emptyState = document.getElementById('emptyChildren');
+    const countBadge = document.getElementById('childrenCount');
+
+    countBadge.textContent = children.length;
+
+    if (children.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+    }
+
+    emptyState.classList.add('hidden');
+
+    if (!container._delegated) {
+        container._delegated = true;
+        container.addEventListener('click', ev => {
+            const el = ev.target.closest('[data-action]');
+            if (!el) return;
+            switch (el.dataset.action) {
+                case 'open-child': window.location.href = `person.html?id=${el.dataset.id}`; break;
+                case 'edit-child': openAddChildModal(el.dataset.id); break;
+            }
+        });
+    }
+
+    container.innerHTML = children.map(child => {
+        const name = getVaishnavName(child);
+        const age = child.birth_date ? DateUtils.calculateAge(child.birth_date) : null;
+        const genderIcon = child.gender === 'male' ? '👦' : child.gender === 'female' ? '👧' : '👶';
+        const ageStr = age !== null ? `${age} ${t('years_short') || 'лет'}` : '';
+        const initials = (child.first_name?.[0] || '') + (child.last_name?.[0] || '');
+
+        return `
+            <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-base-200 cursor-pointer" data-action="open-child" data-id="${child.id}">
+                ${child.photo_url
+                    ? `<img src="${e(child.photo_url)}" class="w-10 h-10 rounded-full object-cover" alt="">`
+                    : `<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">${initials.toUpperCase() || '?'}</div>`
+                }
+                <div class="flex-1 min-w-0">
+                    <div class="font-medium truncate">${e(name)}</div>
+                    <div class="text-xs opacity-60">${genderIcon} ${ageStr}</div>
+                </div>
+                <button class="btn btn-ghost btn-xs btn-circle" data-action="edit-child" data-id="${child.id}" title="${t('edit') || 'Редактировать'}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                </button>
+            </div>
+        `;
+    }).join('');
+}
+
+function openAddChildModal(childId = null) {
+    const form = document.getElementById('addChildForm');
+    form.reset();
+    document.getElementById('editChildId').value = '';
+
+    if (childId) {
+        const child = children.find(c => c.id === childId);
+        if (child) {
+            document.getElementById('editChildId').value = child.id;
+            document.getElementById('childFirstName').value = child.first_name || '';
+            document.getElementById('childLastName').value = child.last_name || '';
+            document.getElementById('childGender').value = child.gender || '';
+            document.getElementById('childBirthDate').value = child.birth_date || '';
+        }
+        document.getElementById('childModalTitle').textContent = t('edit_child') || 'Редактировать ребёнка';
+    } else {
+        document.getElementById('childModalTitle').textContent = t('add_child') || 'Добавить ребёнка';
+    }
+
+    document.getElementById('addChildModal').showModal();
+}
+
+async function saveChild(event) {
+    event.preventDefault();
+
+    const childId = document.getElementById('editChildId').value;
+    const childData = {
+        first_name: document.getElementById('childFirstName').value || null,
+        last_name: document.getElementById('childLastName').value || null,
+        gender: document.getElementById('childGender').value || null,
+        birth_date: document.getElementById('childBirthDate').value || null,
+        parent_id: person.id
+    };
+
+    if (!childData.first_name) {
+        Layout.showNotification(t('name_required') || 'Укажите имя', 'warning');
+        return;
+    }
+
+    let result;
+    if (childId) {
+        result = await Layout.db.from('vaishnavas').update(childData).eq('id', childId);
+    } else {
+        childData.is_guest = true;
+        result = await Layout.db.from('vaishnavas').insert(childData);
+    }
+
+    if (result.error) {
+        console.error('Error saving child:', result.error);
+        Layout.showNotification(t('error_saving') || 'Ошибка сохранения', 'error');
+        return;
+    }
+
+    document.getElementById('addChildModal').close();
+    await loadChildren(person.id);
+    Layout.showNotification(childId ? (t('child_updated') || 'Ребёнок обновлён') : (t('child_added') || 'Ребёнок добавлен'), 'success');
+}
+
+async function makeIndependent() {
+    if (!person?.parent_id) return;
+
+    const confirmed = confirm(t('confirm_make_independent') || 'Сделать этого человека самостоятельным? Он будет отвязан от родителя.');
+    if (!confirmed) return;
+
+    const { error } = await Layout.db
+        .from('vaishnavas')
+        .update({ parent_id: null })
+        .eq('id', person.id);
+
+    if (error) {
+        console.error('Error making independent:', error);
+        Layout.showNotification(t('error_saving') || 'Ошибка', 'error');
+        return;
+    }
+
+    person.parent_id = null;
+    person.parent = null;
+    renderPerson();
+    Layout.showNotification(t('now_independent') || 'Теперь это самостоятельный аккаунт', 'success');
 }
 
 // ==================== PHOTO ====================
@@ -1756,7 +1975,18 @@ window.onLanguageChange = function(lang) {
     renderPerson();
     renderStays();
     renderRegistrations();
+    renderChildren();
     Layout.updateAllTranslations();
 };
+
+// Делегирование кликов для секций детей и родителя
+document.addEventListener('click', ev => {
+    const el = ev.target.closest('[data-action]');
+    if (!el) return;
+    switch (el.dataset.action) {
+        case 'open-add-child-modal': openAddChildModal(); break;
+        case 'make-independent': makeIndependent(); break;
+    }
+});
 
 init();

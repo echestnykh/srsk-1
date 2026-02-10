@@ -159,10 +159,24 @@
             <div class="step" data-step="3">
                 <h2 class="text-xl font-bold mb-6 flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg> Дополнительно</h2>
 
+                <!-- Дети -->
+                <div class="mb-6">
+                    <div class="flex items-center justify-between mb-3">
+                        <label class="label-text font-medium">👶 Дети (до 14 лет)</label>
+                        <button type="button" class="btn btn-sm btn-outline gap-1" onclick="addChildRow()">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            Добавить ребёнка
+                        </button>
+                    </div>
+                    <div id="childrenRows" class="space-y-3"></div>
+                </div>
+
                 <div class="form-control mb-4">
                     <label class="label"><span class="label-text">Сопровождающие (имена)</span></label>
                     <textarea name="companions" class="textarea textarea-bordered" rows="2"
-                              placeholder="Имена людей, которые приедут с вами"></textarea>
+                              placeholder="Имена взрослых, которые приедут с вами"></textarea>
                     <label class="label">
                         <span class="label-text-alt">Укажите, если подаёте заявку на группу</span>
                     </label>
@@ -233,6 +247,7 @@
     </div>
 </div>
 
+<script src="../js/date-utils.js"></script>
 <script src="../js/config.js"></script>
 
 <script>
@@ -266,7 +281,7 @@ async function loadRetreats() {
     const { data, error } = await db
         .from('retreats')
         .select('id, name_ru, name_en, slug, start_date, end_date, location, color')
-        .gte('end_date', new Date().toISOString().split('T')[0])
+        .gte('end_date', DateUtils.toISO(new Date()))
         .order('start_date', { ascending: true });
 
     if (error) {
@@ -531,7 +546,45 @@ async function submitForm(e) {
             await db.from('crm_deal_services').insert(dealServices);
         }
 
-        // 6. Показываем успех
+        // 6. Создаём детей (если указаны)
+        const formChildren = getChildrenFromForm();
+        if (formChildren.length > 0) {
+            for (const child of formChildren) {
+                // Создаём ребёнка как vaishnava с parent_id
+                const { data: childRecord, error: childError } = await db
+                    .from('vaishnavas')
+                    .insert({
+                        first_name: child.first_name,
+                        birth_date: child.birth_date,
+                        gender: child.gender,
+                        parent_id: vaishnavaId,
+                        is_guest: true,
+                        is_deleted: false
+                    })
+                    .select('id')
+                    .single();
+
+                if (childError) {
+                    console.error('Ошибка создания ребёнка:', childError);
+                    continue;
+                }
+
+                // Регистрируем ребёнка на ретрит с meal_type='child'
+                await db.from('retreat_registrations').insert({
+                    retreat_id: retreatId,
+                    vaishnava_id: childRecord.id,
+                    status: 'guest',
+                    meal_type: 'child'
+                });
+            }
+
+            // Обновляем group_size с учётом детей
+            await db.from('crm_deals')
+                .update({ group_size: dealData.group_size + formChildren.length })
+                .eq('id', deal.id);
+        }
+
+        // 7. Показываем успех
         document.getElementById('applicationForm').classList.add('hidden');
         document.getElementById('successMessage').classList.remove('hidden');
 
@@ -612,11 +665,58 @@ async function getNextManager(retreatId) {
     return manager.manager_id;
 }
 
+// ==================== CHILDREN ====================
+
+let childRowCounter = 0;
+
+function addChildRow() {
+    childRowCounter++;
+    const container = document.getElementById('childrenRows');
+    const row = document.createElement('div');
+    row.className = 'flex items-end gap-2 p-3 bg-base-200 rounded-lg';
+    row.dataset.childRow = childRowCounter;
+    row.innerHTML = `
+        <div class="form-control flex-1">
+            <label class="label py-0"><span class="label-text text-xs">Имя *</span></label>
+            <input type="text" class="input input-bordered input-sm child-name" required>
+        </div>
+        <div class="form-control w-36">
+            <label class="label py-0"><span class="label-text text-xs">Дата рождения</span></label>
+            <input type="date" class="input input-bordered input-sm child-birth-date">
+        </div>
+        <div class="form-control w-28">
+            <label class="label py-0"><span class="label-text text-xs">Пол</span></label>
+            <select class="select select-bordered select-sm child-gender">
+                <option value="">—</option>
+                <option value="male">М</option>
+                <option value="female">Ж</option>
+            </select>
+        </div>
+        <button type="button" class="btn btn-sm btn-ghost btn-circle text-error" onclick="this.closest('[data-child-row]').remove()">✕</button>
+    `;
+    container.appendChild(row);
+}
+
+function getChildrenFromForm() {
+    const rows = document.querySelectorAll('[data-child-row]');
+    const result = [];
+    rows.forEach(row => {
+        const name = row.querySelector('.child-name')?.value?.trim();
+        if (!name) return;
+        result.push({
+            first_name: name,
+            birth_date: row.querySelector('.child-birth-date')?.value || null,
+            gender: row.querySelector('.child-gender')?.value || null
+        });
+    });
+    return result;
+}
+
 // ==================== HELPERS ====================
 function formatDateRange(start, end) {
     if (!start) return '';
-    const s = new Date(start);
-    const e = end ? new Date(end) : null;
+    const s = DateUtils.parseDate(start);
+    const e = end ? DateUtils.parseDate(end) : null;
 
     const months = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
 

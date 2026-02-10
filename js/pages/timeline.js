@@ -39,7 +39,7 @@ const TODAY_INDEX = 2;
 
 // Преобразовать дату в dayIndex относительно baseDate
 function dateToDayIndex(dateStr) {
-    const date = new Date(dateStr);
+    const date = DateUtils.parseDate(dateStr);
     date.setHours(0, 0, 0, 0);
     const diff = date - baseDate;
     return Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -196,7 +196,7 @@ async function loadTimelineData() {
 
                 // Распределяем резидентов по местам
                 // Сортируем по дате заселения
-                roomResidents.sort((a, b) => new Date(a.check_in) - new Date(b.check_in));
+                roomResidents.sort((a, b) => DateUtils.parseDate(a.check_in) - DateUtils.parseDate(b.check_in));
 
                 roomResidents.forEach(res => {
                     const startDay = Math.max(0, dateToDayIndex(res.check_in));
@@ -540,7 +540,7 @@ async function loadDictionaries() {
             if (error) { console.error('Error loading resident_categories:', error); return null; }
             return data;
         }),
-        Layout.db.from('vaishnavas').select('*').eq('is_deleted', false).order('spiritual_name')
+        Layout.db.from('vaishnavas').select('id, spiritual_name, first_name, last_name, gender, phone, birth_date').eq('is_deleted', false).order('spiritual_name')
     ]);
     categories = catData || [];
     vaishnavas = vaishnavasRes.data || [];
@@ -667,8 +667,8 @@ function searchVaishnavas(query) {
         suggestionsEl.innerHTML = matches.map(v => {
             const name = getVaishnavName(v);
             const badge = v.is_team_member ? '<span class="badge badge-sm badge-primary ml-2">Команда</span>' : '';
-            return `<div class="p-2 hover:bg-base-200 cursor-pointer flex items-center" onclick="selectVaishnava('${v.id}', '${name.replace(/'/g, "\\'")}')">
-                <span>${name}</span>${badge}
+            return `<div class="p-2 hover:bg-base-200 cursor-pointer flex items-center" data-action="select-vaishnava" data-id="${v.id}">
+                <span>${e(name)}</span>${badge}
             </div>`;
         }).join('');
     }
@@ -682,7 +682,9 @@ function showVaishnavaSuggestions() {
     }
 }
 
-function selectVaishnava(id, name) {
+function selectVaishnava(id) {
+    const v = vaishnavas.find(v => v.id === id);
+    const name = v ? getVaishnavName(v) : '';
     document.getElementById('checkinVaishnavId').value = id;
     document.getElementById('checkinVaishnavSearch').value = name;
     document.getElementById('vaishnavaSuggestions').classList.add('hidden');
@@ -707,6 +709,12 @@ document.addEventListener('click', (e) => {
     if (suggestions && !suggestions.contains(e.target) && e.target !== searchInput) {
         suggestions.classList.add('hidden');
     }
+});
+
+// Делегирование кликов на подсказках вайшнавов
+document.getElementById('vaishnavaSuggestions').addEventListener('click', ev => {
+    const el = ev.target.closest('[data-action="select-vaishnava"]');
+    if (el) selectVaishnava(el.dataset.id);
 });
 
 // Сохранение заселения
@@ -1010,19 +1018,19 @@ function openResidentModal(guestData, buildingName, roomName) {
     if (canEdit) {
         if (isBooking) {
             // Действия для бронирования
-            actionsHtml += `<button class="btn btn-primary" onclick="convertToCheckin()">
+            actionsHtml += `<button class="btn btn-primary" data-action="convert-to-checkin">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                 </svg>
                 Заселить
             </button>`;
-            actionsHtml += `<button class="btn btn-info btn-outline" onclick="showMoveScreen()">
+            actionsHtml += `<button class="btn btn-info btn-outline" data-action="show-move-screen">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                 </svg>
                 Перенос
             </button>`;
-            actionsHtml += `<button class="btn btn-error btn-outline" onclick="cancelBooking()">
+            actionsHtml += `<button class="btn btn-error btn-outline" data-action="cancel-booking">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -1030,19 +1038,19 @@ function openResidentModal(guestData, buildingName, roomName) {
             </button>`;
         } else if (!isCheckedOut) {
             // Действия для заселённого гостя (не выселенного)
-            actionsHtml += `<button class="btn btn-warning" onclick="checkoutResident()">
+            actionsHtml += `<button class="btn btn-warning" data-action="checkout-resident">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
                 Выселить
             </button>`;
-            actionsHtml += `<button class="btn btn-outline" onclick="showEditDatesScreen()">
+            actionsHtml += `<button class="btn btn-outline" data-action="show-edit-dates-screen">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
                 Даты
             </button>`;
-            actionsHtml += `<button class="btn btn-info btn-outline" onclick="showMoveScreen()">
+            actionsHtml += `<button class="btn btn-info btn-outline" data-action="show-move-screen">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                 </svg>
@@ -1052,7 +1060,7 @@ function openResidentModal(guestData, buildingName, roomName) {
         // Для выселенных (isCheckedOut) — только кнопка удаления
 
         // Кнопка удаления для всех
-        actionsHtml += `<button class="btn btn-error btn-outline" onclick="deleteResident()">
+        actionsHtml += `<button class="btn btn-error btn-outline" data-action="delete-resident">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
@@ -1117,7 +1125,7 @@ function formatTimestampShort(datetimeStr) {
 
 // Форматирование даты для отображения
 function formatDisplayDate(dateStr) {
-    const date = new Date(dateStr);
+    const date = DateUtils.parseDate(dateStr);
     return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
@@ -1301,12 +1309,15 @@ async function showMoveScreen() {
     const checkOut = res.check_out || '2099-12-31'; // если нет даты выезда
 
     // Получаем здания, номера и текущих резидентов
-    const [buildingsRes, residentsRes] = await Promise.all([
-        Layout.db
-            .from('buildings')
-            .select('*, rooms(*)')
-            .eq('is_active', true)
-            .order('sort_order'),
+    const [buildingsData, residentsRes] = await Promise.all([
+        Cache.getOrLoad('buildings_with_rooms', async () => {
+            const { data, error } = await Layout.db.from('buildings')
+                .select('*, rooms(*)')
+                .eq('is_active', true)
+                .order('sort_order');
+            if (error) { console.error('Error loading buildings:', error); return null; }
+            return data;
+        }, 3600000),
         Layout.db
             .from('residents')
             .select('room_id, check_in, check_out')
@@ -1316,7 +1327,7 @@ async function showMoveScreen() {
             .or(`check_out.is.null,check_out.gte.${checkIn}`)
     ]);
 
-    const buildings = buildingsRes.data || [];
+    const buildings = buildingsData || [];
     const residents = residentsRes.data || [];
 
     if (buildings.length === 0) {
@@ -1377,7 +1388,7 @@ async function showMoveScreen() {
             }
 
             html += `<button class="btn btn-sm ${btnClass}"
-                ${disabled ? 'disabled' : `onclick="moveToRoom('${room.id}')"`}>
+                ${disabled ? 'disabled' : `data-action="move-to-room" data-id="${room.id}"`}>
                 ${label}
             </button>`;
         });
@@ -1663,13 +1674,13 @@ function renderTable() {
     // Строка с числами
     html += `<tr class="row-dates"><th class="sticky-col">
         <div class="flex gap-1">
-            <button class="btn btn-xs btn-ghost opacity-60 hover:opacity-100" onclick="event.stopPropagation(); collapseAllBuildings()" title="Свернуть всё">
+            <button class="btn btn-xs btn-ghost opacity-60 hover:opacity-100" data-action="collapse-all-buildings" title="Свернуть всё">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 9H4m16 6H4" /></svg>
             </button>
-            <button class="btn btn-xs btn-ghost opacity-60 hover:opacity-100" onclick="event.stopPropagation(); collapseAllRooms()" title="Свернуть номера">
+            <button class="btn btn-xs btn-ghost opacity-60 hover:opacity-100" data-action="collapse-all-rooms" title="Свернуть номера">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" /></svg>
             </button>
-            <button class="btn btn-xs btn-ghost opacity-60 hover:opacity-100" onclick="event.stopPropagation(); expandAll()" title="Развернуть всё">
+            <button class="btn btn-xs btn-ghost opacity-60 hover:opacity-100" data-action="expand-all" title="Развернуть всё">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
             </button>
         </div>
@@ -1709,7 +1720,7 @@ function renderTable() {
         const tempBadge = building.isTemporary ? ' <span style="font-size: 10px; color: #d97706;">⏱</span>' : '';
         const tempClass = building.isTemporary ? ' temporary' : '';
         html += `<tr class="row-building${tempClass}">`;
-        html += `<td class="sticky-col" onclick="toggleBuilding('${building.id}')">`;
+        html += `<td class="sticky-col" data-action="toggle-building" data-id="${building.id}">`;
         html += `<span class="toggle-arrow ${arrowClass}">▼</span> ${building.name}${tempBadge}</td>`;
         for (let col = 0; col < DAYS_TO_SHOW * 2; col++) {
             const dayIndex = Math.floor(col / 2);
@@ -1736,7 +1747,7 @@ function renderTable() {
 
             // Заголовок номера — показываем сводку по занятости
             html += `<tr class="row-room ${hiddenClass}">`;
-            html += `<td class="sticky-col" onclick="toggleRoom('${room.id}')">`;
+            html += `<td class="sticky-col" data-action="toggle-room" data-id="${room.id}">`;
             html += `<span class="toggle-arrow ${roomArrowClass}">▼</span> Номер ${room.name}</td>`;
 
             // Вычисляем сегменты занятости только для свёрнутых номеров
@@ -1845,7 +1856,7 @@ function renderTable() {
                     const width = spanCells * CELL_WIDTH - 2;
                     const completedClass = cleaning.isCompleted ? ' completed' : '';
                     const typeClass = cleaning.type === 'bedding' ? ' bedding' : '';
-                    html += `<div class="cleaning-bar clickable${completedClass}${typeClass}" style="width: ${width}px;" onclick="event.stopPropagation(); openCleaningModal('${cleaning.cleaningId}')">${cleaning.name}</div>`;
+                    html += `<div class="cleaning-bar clickable${completedClass}${typeClass}" style="width: ${width}px;" data-action="open-cleaning-modal" data-id="${cleaning.cleaningId}">${cleaning.name}</div>`;
                 }
 
                 html += '</td>';
@@ -1887,7 +1898,7 @@ function renderTable() {
                     const rName = room.name.replace(/'/g, "\\'");
                     const bedName = bed.name.replace(/'/g, "\\'");
 
-                    html += `<td class="half-day clickable ${dayStart} ${weekend} ${today}" onclick="openActionModal(${dayIndex}, '${room.id}', '${bName}', '${rName}', '${bedName}', ${halfIndex})">`;
+                    html += `<td class="half-day clickable ${dayStart} ${weekend} ${today}" data-action="open-action-modal" data-day-index="${dayIndex}" data-room-id="${room.id}" data-building-name="${bName}" data-room-name="${rName}" data-bed-name="${bedName}" data-half-index="${halfIndex}">`;
 
                     // Если здесь начинается гость — добавляем плашку
                     // (уборки теперь рендерятся на строке номера, не на строке места)
@@ -1901,12 +1912,12 @@ function renderTable() {
                         if (guest.isBooking) {
                             // Бронирование — штриховка
                             const bgColor = guest.color || '#3b82f6';
-                            html += `<div class="guest-bar booking${checkedOutClass}" style="width: ${width}px; --bar-color: ${bgColor}; border-color: ${bgColor};" onclick="event.stopPropagation(); openResidentFromMap('${guest.id}', event)">${guest.name}</div>`;
+                            html += `<div class="guest-bar booking${checkedOutClass}" style="width: ${width}px; --bar-color: ${bgColor}; border-color: ${bgColor};" data-action="open-resident-from-map" data-id="${guest.id}">${guest.name}</div>`;
                         } else {
                             // Обычное заселение
                             const bgColor = guest.color || '#3b82f6';
                             const borderColor = guest.border || '#facc15';
-                            html += `<div class="guest-bar${checkedOutClass}" style="width: ${width}px; background: ${bgColor}; border-color: ${borderColor};" onclick="event.stopPropagation(); openResidentFromMap('${guest.id}', event)">${guest.name}</div>`;
+                            html += `<div class="guest-bar${checkedOutClass}" style="width: ${width}px; background: ${bgColor}; border-color: ${borderColor};" data-action="open-resident-from-map" data-id="${guest.id}">${guest.name}</div>`;
                         }
                     }
 
@@ -1959,6 +1970,68 @@ async function resetToToday() {
 }
 
 // Инициализация
+// ==================== ДЕЛЕГИРОВАНИЕ КЛИКОВ ====================
+function setupTimelineDelegation() {
+    // Делегирование для таблицы таймлайна
+    const table = document.getElementById('timelineTable');
+    if (table && !table._delegated) {
+        table._delegated = true;
+        table.addEventListener('click', ev => {
+            const el = ev.target.closest('[data-action]');
+            if (!el) return;
+            ev.stopPropagation();
+            const { action, id } = el.dataset;
+            switch (action) {
+                case 'toggle-building': toggleBuilding(id); break;
+                case 'toggle-room': toggleRoom(id); break;
+                case 'collapse-all-buildings': collapseAllBuildings(); break;
+                case 'collapse-all-rooms': collapseAllRooms(); break;
+                case 'expand-all': expandAll(); break;
+                case 'open-action-modal':
+                    openActionModal(
+                        Number(el.dataset.dayIndex),
+                        el.dataset.roomId,
+                        el.dataset.buildingName,
+                        el.dataset.roomName,
+                        el.dataset.bedName,
+                        Number(el.dataset.halfIndex)
+                    );
+                    break;
+                case 'open-resident-from-map': openResidentFromMap(id, ev); break;
+                case 'open-cleaning-modal': openCleaningModal(id); break;
+            }
+        });
+    }
+
+    // Делегирование для кнопок действий с резидентом
+    const residentActions = document.getElementById('residentActions');
+    if (residentActions && !residentActions._delegated) {
+        residentActions._delegated = true;
+        residentActions.addEventListener('click', ev => {
+            const btn = ev.target.closest('[data-action]');
+            if (!btn) return;
+            switch (btn.dataset.action) {
+                case 'convert-to-checkin': convertToCheckin(); break;
+                case 'show-move-screen': showMoveScreen(); break;
+                case 'cancel-booking': cancelBooking(); break;
+                case 'checkout-resident': checkoutResident(); break;
+                case 'show-edit-dates-screen': showEditDatesScreen(); break;
+                case 'delete-resident': deleteResident(); break;
+            }
+        });
+    }
+
+    // Делегирование для списка комнат при перемещении
+    const roomsList = document.getElementById('roomsList');
+    if (roomsList && !roomsList._delegated) {
+        roomsList._delegated = true;
+        roomsList.addEventListener('click', ev => {
+            const btn = ev.target.closest('[data-action="move-to-room"]');
+            if (btn) moveToRoom(btn.dataset.id);
+        });
+    }
+}
+
 async function init() {
     await Layout.init({ module: 'housing', menuId: 'reception', itemId: 'timeline' });
     Layout.showLoader();
@@ -1969,6 +2042,7 @@ async function init() {
     renderRetreats();
     renderTable();
     syncScroll();
+    setupTimelineDelegation();
     Layout.hideLoader();
 
     // Подписка на изменения в реальном времени

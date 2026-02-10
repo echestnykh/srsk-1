@@ -577,6 +577,7 @@
     </div>
 
     <!-- Scripts -->
+    <script src="js/date-utils.js"></script>
     <script src="guest-portal/js/portal-config.js"></script>
     <script>
         const db = window.portalSupabase;
@@ -692,8 +693,8 @@
 
         // Форматирование диапазона дат
         function formatDateRange(startDate, endDate) {
-            const start = new Date(startDate);
-            const end = new Date(endDate);
+            const start = DateUtils.parseDate(startDate);
+            const end = DateUtils.parseDate(endDate);
             const locale = currentLang === 'ru' ? 'ru-RU' : currentLang === 'hi' ? 'hi-IN' : 'en-US';
 
             if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
@@ -1238,7 +1239,7 @@
                 companions: document.getElementById('app-companions').value.trim() || null,
                 accommodation_wishes: document.getElementById('app-accommodation').value.trim() || null,
                 guest_questions: document.getElementById('app-questions').value.trim() || null,
-                registration_date: new Date().toISOString().split('T')[0]
+                registration_date: DateUtils.toISO(new Date())
             };
 
             try {

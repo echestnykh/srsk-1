@@ -2,6 +2,18 @@
 // Общие функции форматирования дат для всего проекта
 
 window.DateUtils = {
+    // Безопасный парсинг даты — 'YYYY-MM-DD' без времени парсится как локальное время
+    parseDate(val) {
+        if (val instanceof Date) return val;
+        if (typeof val === 'string') {
+            if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+                return new Date(val + 'T00:00:00');
+            }
+            return new Date(val);
+        }
+        return new Date(val);
+    },
+
     // Названия месяцев по языкам
     monthNames: {
         ru: ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
@@ -40,7 +52,7 @@ window.DateUtils = {
 
     // Форматирование даты в ISO (YYYY-MM-DD)
     toISO(date) {
-        if (typeof date === 'string') date = new Date(date);
+        date = this.parseDate(date);
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
@@ -54,7 +66,7 @@ window.DateUtils = {
 
     // Форматирование для отображения: "5 января 2026"
     formatDisplay(date, lang = null) {
-        if (typeof date === 'string') date = new Date(date);
+        date = this.parseDate(date);
         lang = lang || this.getLang();
         const day = date.getDate();
         const month = this.monthNames[lang]?.[date.getMonth()] || this.monthNames.ru[date.getMonth()];
@@ -64,7 +76,7 @@ window.DateUtils = {
 
     // Короткий формат: "5 янв 2026"
     formatShort(date, lang = null) {
-        if (typeof date === 'string') date = new Date(date);
+        date = this.parseDate(date);
         lang = lang || this.getLang();
         const day = date.getDate();
         const month = this.monthNamesShort[lang]?.[date.getMonth()] || this.monthNamesShort.ru[date.getMonth()];
@@ -74,7 +86,7 @@ window.DateUtils = {
 
     // Формат с днём недели: "5 января 2026, Пн"
     formatWithWeekday(date, lang = null) {
-        if (typeof date === 'string') date = new Date(date);
+        date = this.parseDate(date);
         lang = lang || this.getLang();
         const display = this.formatDisplay(date, lang);
         const weekday = this.dayNamesShort[lang]?.[date.getDay()] || this.dayNamesShort.ru[date.getDay()];
@@ -83,8 +95,8 @@ window.DateUtils = {
 
     // Диапазон дат: "5 - 10 января 2026" или "28 декабря 2025 - 5 января 2026"
     formatRange(startDate, endDate, lang = null) {
-        if (typeof startDate === 'string') startDate = new Date(startDate);
-        if (typeof endDate === 'string') endDate = new Date(endDate);
+        startDate = this.parseDate(startDate);
+        endDate = this.parseDate(endDate);
         lang = lang || this.getLang();
 
         const sameYear = startDate.getFullYear() === endDate.getFullYear();
@@ -107,7 +119,7 @@ window.DateUtils = {
 
     // Форматирование времени: "14:30"
     formatTime(date) {
-        if (typeof date === 'string') date = new Date(date);
+        date = this.parseDate(date);
         const hours = String(date.getHours()).padStart(2, '0');
         const minutes = String(date.getMinutes()).padStart(2, '0');
         return `${hours}:${minutes}`;
@@ -115,14 +127,14 @@ window.DateUtils = {
 
     // Форматирование даты и времени: "5 янв 2026, 14:30"
     formatDateTime(date, lang = null) {
-        if (typeof date === 'string') date = new Date(date);
+        date = this.parseDate(date);
         return `${this.formatShort(date, lang)}, ${this.formatTime(date)}`;
     },
 
     // Вычисление возраста
     calculateAge(birthDate, referenceDate = null) {
-        if (typeof birthDate === 'string') birthDate = new Date(birthDate);
-        const today = referenceDate ? new Date(referenceDate) : new Date();
+        birthDate = this.parseDate(birthDate);
+        const today = referenceDate ? this.parseDate(referenceDate) : new Date();
 
         let age = today.getFullYear() - birthDate.getFullYear();
         const monthDiff = today.getMonth() - birthDate.getMonth();
@@ -136,7 +148,7 @@ window.DateUtils = {
 
     // Проверка на сегодня
     isToday(date) {
-        if (typeof date === 'string') date = new Date(date);
+        date = this.parseDate(date);
         const today = new Date();
         return date.getDate() === today.getDate() &&
                date.getMonth() === today.getMonth() &&
@@ -145,7 +157,7 @@ window.DateUtils = {
 
     // Проверка на завтра
     isTomorrow(date) {
-        if (typeof date === 'string') date = new Date(date);
+        date = this.parseDate(date);
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         return date.getDate() === tomorrow.getDate() &&
@@ -155,7 +167,7 @@ window.DateUtils = {
 
     // Проверка на вчера
     isYesterday(date) {
-        if (typeof date === 'string') date = new Date(date);
+        date = this.parseDate(date);
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         return date.getDate() === yesterday.getDate() &&
@@ -181,14 +193,14 @@ window.DateUtils = {
 
     // Проверка выходного дня
     isWeekend(date) {
-        if (typeof date === 'string') date = new Date(date);
+        date = this.parseDate(date);
         const day = date.getDay();
         return day === 0 || day === 6;
     },
 
     // Добавить дни к дате
     addDays(date, days) {
-        if (typeof date === 'string') date = new Date(date);
+        date = this.parseDate(date);
         const result = new Date(date);
         result.setDate(result.getDate() + days);
         return result;
@@ -196,8 +208,8 @@ window.DateUtils = {
 
     // Разница в днях между датами
     diffInDays(startDate, endDate) {
-        if (typeof startDate === 'string') startDate = new Date(startDate);
-        if (typeof endDate === 'string') endDate = new Date(endDate);
+        startDate = this.parseDate(startDate);
+        endDate = this.parseDate(endDate);
         const diff = endDate - startDate;
         return Math.floor(diff / (1000 * 60 * 60 * 24));
     }
