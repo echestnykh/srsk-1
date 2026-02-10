@@ -129,6 +129,47 @@ function getPrintHeader(dateText, extraInfo = '') {
     `;
 }
 
+// ==================== HASH STATE ====================
+function updateHash() {
+    let hash;
+    if (currentView === 'day') {
+        hash = `#day/${formatDate(currentDate)}`;
+    } else if (currentView === 'week') {
+        hash = `#week/${formatDate(currentWeekStart)}`;
+    } else if (currentView === 'month') {
+        const y = currentMonth.getFullYear();
+        const m = String(currentMonth.getMonth() + 1).padStart(2, '0');
+        hash = `#month/${y}-${m}`;
+    } else if (currentView === 'period' && periodStart && periodEnd) {
+        hash = `#period/${formatDate(periodStart)}/${formatDate(periodEnd)}`;
+    } else {
+        return;
+    }
+    history.replaceState(null, '', hash);
+}
+
+function restoreFromHash() {
+    const hash = location.hash.slice(1); // убираем #
+    if (!hash) return;
+    const parts = hash.split('/');
+    const view = parts[0];
+    if (view === 'day' && parts[1]) {
+        currentView = 'day';
+        currentDate = parseLocalDate(parts[1]);
+    } else if (view === 'week' && parts[1]) {
+        currentView = 'week';
+        currentWeekStart = parseLocalDate(parts[1]);
+    } else if (view === 'month' && parts[1]) {
+        currentView = 'month';
+        const [y, m] = parts[1].split('-').map(Number);
+        currentMonth = new Date(y, m - 1, 1);
+    } else if (view === 'period' && parts[1] && parts[2]) {
+        currentView = 'period';
+        periodStart = parseLocalDate(parts[1]);
+        periodEnd = parseLocalDate(parts[2]);
+    }
+}
+
 // ==================== DATE HELPERS ====================
 function getWeekStart(date) {
     const d = new Date(date);
@@ -1036,9 +1077,8 @@ function renderMonth() {
 }
 
 // ==================== VIEW NAVIGATION ====================
-function setView(view) {
-    currentView = view;
-
+// Переключение UI вида без загрузки данных
+function switchViewUI(view) {
     // Show/hide nav groups and buttons
     Layout.$('#dayNav').classList.toggle('hidden', view !== 'day');
     Layout.$('#dayBtn').classList.toggle('hidden', view === 'day');
@@ -1058,6 +1098,11 @@ function setView(view) {
     // Show/hide template button (only in week/month/period view)
     const showTemplateButtons = view === 'week' || view === 'month' || view === 'period';
     Layout.$('#applyTemplateBtn')?.classList.toggle('hidden', !showTemplateButtons);
+}
+
+function setView(view) {
+    currentView = view;
+    switchViewUI(view);
 
     // Для периода: при первом открытии — ставим даты текущей недели
     if (view === 'period') {
@@ -1071,6 +1116,7 @@ function setView(view) {
     }
 
     loadMenuData();
+    updateHash();
 }
 
 function prevPeriod() {
@@ -1082,6 +1128,7 @@ function prevPeriod() {
         currentMonth.setMonth(currentMonth.getMonth() - 1);
     }
     loadMenuData();
+    updateHash();
 }
 
 function nextPeriod() {
@@ -1093,11 +1140,13 @@ function nextPeriod() {
         currentMonth.setMonth(currentMonth.getMonth() + 1);
     }
     loadMenuData();
+    updateHash();
 }
 
 function goToToday() {
     currentDate = new Date();
     loadMenuData();
+    updateHash();
 }
 
 function onPeriodDatesChange() {
@@ -1114,6 +1163,7 @@ function onPeriodDatesChange() {
     }
 
     loadMenuData();
+    updateHash();
 }
 
 function openDayDetail(dateStr) {
@@ -2077,6 +2127,21 @@ function setupRecipeDelegation() {
 
 async function init() {
     await Layout.init({ module: 'kitchen', menuId: 'kitchen', itemId: 'menu' });
+
+    // Восстановить вид и дату из hash до загрузки данных
+    restoreFromHash();
+
+    // Заполнить поля дат для period-вида
+    if (currentView === 'period' && periodStart && periodEnd) {
+        Layout.$('#periodStartDate').value = formatDate(periodStart);
+        Layout.$('#periodEndDate').value = formatDate(periodEnd);
+    }
+
+    // UI-переключение без повторной загрузки (loadData вызовет loadMenuData)
+    if (currentView !== 'day') {
+        switchViewUI(currentView);
+    }
+
     Layout.showLoader();
     await loadData();
     Layout.hideLoader();
