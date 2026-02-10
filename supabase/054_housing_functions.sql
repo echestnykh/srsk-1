@@ -49,7 +49,7 @@ BEGIN
         FROM residents res
         WHERE res.status = 'confirmed'
           AND res.check_in <= target_date
-          AND (res.check_out IS NULL OR res.check_out >= target_date)
+          AND (res.check_out IS NULL OR res.check_out > target_date)
         GROUP BY res.room_id
     ) occ ON occ.room_id = r.id
     WHERE r.is_active = true
@@ -90,7 +90,7 @@ BEGIN
         FROM residents res
         WHERE res.status = 'confirmed'
           AND res.check_in <= target_date
-          AND (res.check_out IS NULL OR res.check_out >= target_date)
+          AND (res.check_out IS NULL OR res.check_out > target_date)
     ),
     building_stats AS (
         SELECT COUNT(*)::INTEGER AS buildings
