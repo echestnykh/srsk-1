@@ -1906,7 +1906,7 @@ async function openMealDetailsModal(dateStr, mealType) {
     const date = DateUtils.parseDate(dateStr);
     const m = getMonthNames();
     const d = getDayNames();
-    const portions = getEatingTotal(dateStr, mealType);
+    const portions = (mealData.portions && mealData.portions !== 50) ? mealData.portions : getEatingTotal(dateStr, mealType);
     const cook = mealData.cook;
 
     // Заголовки
