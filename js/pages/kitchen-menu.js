@@ -367,13 +367,33 @@ function formatEatingLine(dateStr, cssClass) {
 
     const titleText = t('eating_tooltip');
 
-    // Если числа совпадают — одна строка
+    // Авторасчёт
+    let autoLine;
     if (bfTotal === lnTotal) {
-        return `<div class="${cssClass}" title="${titleText}">${t('breakfast_and_lunch')}: ${bf.guests}+${bf.team}+${bf.residents || 0}=${bfTotal}</div>`;
+        autoLine = `${t('breakfast_and_lunch')}: ${bf.guests}+${bf.team}+${bf.residents || 0}=${bfTotal}`;
+    } else {
+        autoLine = `${t('breakfast')}: ${bfTotal}, ${t('lunch')}: ${lnTotal}`;
     }
 
-    // Разные — показываем завтрак и обед
-    return `<div class="${cssClass}" title="${titleText}">${t('breakfast')}: ${bfTotal}, ${t('lunch')}: ${lnTotal}</div>`;
+    // Проверяем ручные порции повара
+    const dayMenu = menuData[dateStr];
+    if (dayMenu) {
+        const cookBf = dayMenu.breakfast?.portions;
+        const cookLn = dayMenu.lunch?.portions;
+        const hasBfOverride = cookBf && cookBf !== bfTotal;
+        const hasLnOverride = cookLn && cookLn !== lnTotal;
+
+        if (hasBfOverride || hasLnOverride) {
+            const actualBf = cookBf || bfTotal;
+            const actualLn = cookLn || lnTotal;
+            const cookStr = (actualBf === actualLn)
+                ? actualBf
+                : `${actualBf}/${actualLn}`;
+            autoLine += ` → ${t('cook')}: ${cookStr}`;
+        }
+    }
+
+    return `<div class="${cssClass}" title="${titleText}">${autoLine}</div>`;
 }
 
 // ==================== EATING COUNT CHANGE ALERT ====================
