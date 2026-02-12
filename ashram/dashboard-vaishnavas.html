@@ -212,6 +212,9 @@
         </div>
     </div>
 
+    <!-- Kitchen totals (unhoused guests + groups) -->
+    <div id="kitchenTotals" class="hidden text-sm text-base-content/60 mb-4 px-1"></div>
+
     <!-- Category sections -->
     <div class="flex flex-col gap-4" id="categorySections">
         <div class="text-center py-8"><span class="loading loading-spinner loading-lg"></span></div>
@@ -226,6 +229,7 @@
 <script src="../js/utils.js?v=2"></script>
 <script src="../js/layout.js"></script>
 <script src="../js/date-utils.js"></script>
+<script src="../js/eating-utils.js"></script>
 
 <script>
 const t = key => Layout.t(key);
@@ -464,6 +468,51 @@ async function loadDashboard() {
     });
 
     renderDashboard(allPresent);
+    loadKitchenTotals();
+}
+
+async function loadKitchenTotals() {
+    const today = DateUtils.toISO(new Date());
+    const counts = await EatingUtils.loadCounts(today, today);
+    const day = counts[today];
+    if (!day) return;
+
+    const container = document.getElementById('kitchenTotals');
+    const bf = day.breakfast;
+    const ln = day.lunch;
+    if (!bf && !ln) return;
+
+    const sum = mc => (mc.team || 0) + (mc.volunteers || 0) + (mc.vips || 0) + (mc.guests || 0) + (mc.groups || 0);
+    const bfTotal = bf ? sum(bf) : 0;
+    const lnTotal = ln ? sum(ln) : 0;
+    if (bfTotal === 0 && lnTotal === 0) return;
+
+    // Подробная разбивка
+    const fmtParts = (mc) => {
+        if (!mc) return '';
+        const items = [];
+        if (mc.team) items.push(`${t('status_team') || 'команда'} ${mc.team}`);
+        if (mc.volunteers) items.push(`${t('category_volunteer') || 'волонтёры'} ${mc.volunteers}`);
+        if (mc.vips) items.push(`${t('category_vip') || 'ВИП'} ${mc.vips}`);
+        if (mc.guests) items.push(`${t('status_guest') || 'гости'} ${mc.guests}`);
+        if (mc.groups) items.push(`${t('nav_groups') || 'группы'} ${mc.groups}`);
+        return items.join(', ');
+    };
+
+    const cookIcon = `<svg class="w-4 h-4 inline -mt-0.5 mr-1 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1A3.75 3.75 0 0012 18z" /></svg>`;
+
+    let html = cookIcon;
+    html += `${t('kitchen_total') || 'Кухня на сегодня'}: `;
+
+    if (bfTotal === lnTotal) {
+        html += `<b>${bfTotal}</b> (${fmtParts(bf)})`;
+    } else {
+        html += `${t('breakfast') || 'завтрак'} <b>${bfTotal}</b>, ${t('lunch') || 'обед'} <b>${lnTotal}</b>`;
+        html += ` <span class="opacity-60">(${fmtParts(bf || ln)})</span>`;
+    }
+
+    container.innerHTML = html;
+    container.classList.remove('hidden');
 }
 
 function applySearch() {
