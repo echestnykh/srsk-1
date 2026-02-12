@@ -421,18 +421,15 @@ function formatEatingDetailed(dateStr) {
         if (mc.residents) parts.push(`${t('residents') || 'Резиденты'} – ${mc.residents}`);
         if (mc.groups) parts.push(`${t('nav_groups') || 'Группы'} – ${mc.groups}`);
 
-        let cookLine = '';
         const cookPortions = dayMenu?.[mealKey]?.portions;
-        if (cookPortions && cookPortions !== total) {
-            cookLine = `<div class="text-xs opacity-60 mt-0.5">${t('cook') || 'Повар'}: ${cookPortions}</div>`;
+        const hasCookOverride = cookPortions && cookPortions !== total;
+
+        let line = `<span class="text-sm">${label}: ${parts.join(', ')} = ${total}</span>`;
+        if (hasCookOverride) {
+            line += ` <span class="text-sm font-bold">→ ${t('cook') || 'Повар'}: ${cookPortions}</span>`;
         }
 
-        return `
-            <div class="mb-2">
-                <div class="font-semibold text-sm">${label}: ${parts.join(', ')} = ${total}</div>
-                ${cookLine}
-            </div>
-        `;
+        return `<div class="mb-1">${line}</div>`;
     };
 
     const bfHtml = renderMeal(counts.breakfast, 'breakfast', t('breakfast') || 'Завтрак');
