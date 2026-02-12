@@ -150,9 +150,19 @@
 <div id="header-placeholder"></div>
 
 <main class="container mx-auto px-4 py-6 flex-1">
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold" data-i18n="nav_dashboard_vaishnavas">Вайшнавы</h1>
-        <p class="text-base-content/50 text-sm mt-1" data-i18n="dashboard_present_now">Присутствуют</p>
+    <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-bold" data-i18n="nav_dashboard_vaishnavas">Вайшнавы</h1>
+            <p class="text-base-content/50 text-sm mt-1" data-i18n="dashboard_present_now">Присутствуют</p>
+        </div>
+        <div class="relative w-full sm:w-64">
+            <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
+            <input type="text" id="searchInput" class="input input-bordered input-sm w-full pl-9"
+                   placeholder="Поиск по имени..." data-i18n-placeholder="search_placeholder"
+                   oninput="applySearch()" />
+        </div>
     </div>
 
     <!-- Bento Grid -->
@@ -422,6 +432,8 @@ function renderCategorySection(slug, catName, residents) {
 }
 
 // ==================== LOAD ====================
+let allPresent = []; // все присутствующие (без фильтра поиска)
+
 async function loadDashboard() {
     const { data, error } = await Layout.db
         .from('residents')
@@ -437,13 +449,26 @@ async function loadDashboard() {
 
     const today = DateUtils.toISO(new Date());
 
-    // Filter: present now + not retreat category (sort_order < 999)
-    const present = data.filter(r => {
+    allPresent = data.filter(r => {
         const cat = r.resident_categories;
         if (!cat || cat.sort_order >= 999) return false;
         return r.check_in <= today && (!r.check_out || r.check_out >= today);
     });
 
+    renderDashboard(allPresent);
+}
+
+function applySearch() {
+    const query = document.getElementById('searchInput').value.trim().toLowerCase();
+    if (!query) {
+        renderDashboard(allPresent);
+        return;
+    }
+    const filtered = allPresent.filter(r => getDisplayName(r).toLowerCase().includes(query));
+    renderDashboard(filtered);
+}
+
+function renderDashboard(present) {
     // Group by category slug
     const groups = {};
     present.forEach(r => {
@@ -457,45 +482,51 @@ async function loadDashboard() {
         arr.sort((a, b) => getDisplayName(a).localeCompare(getDisplayName(b)));
     });
 
-    // Metrics
-    const totalPresent = present.length;
-    const totalEating = present.filter(r => r.has_meals).length;
-    const totalAll = data.length;
+    // Metrics — всегда от полного набора
+    const totalPresent = allPresent.length;
+    const totalEating = allPresent.filter(r => r.has_meals).length;
 
     document.getElementById('metricTotal').textContent = totalPresent;
     document.getElementById('metricTotalSub').textContent =
         `${t('dashboard_of_them_eat') || 'из них едят'}: ${totalEating}`;
 
-    const teamRes = groups.team || [];
-    const volRes = groups.volunteer || [];
-    const vipRes = groups.vip || [];
-    const guestRes = groups.guest || [];
+    const allGroups = {};
+    allPresent.forEach(r => {
+        const slug = r.resident_categories.slug;
+        if (!allGroups[slug]) allGroups[slug] = [];
+        allGroups[slug].push(r);
+    });
 
-    document.getElementById('metricTeam').textContent = teamRes.length;
+    const teamAll = allGroups.team || [];
+    const volAll = allGroups.volunteer || [];
+    const vipAll = allGroups.vip || [];
+    const guestAll = allGroups.guest || [];
+
+    document.getElementById('metricTeam').textContent = teamAll.length;
     document.getElementById('metricTeamSub').textContent =
-        `${teamRes.filter(r => r.has_meals).length} ${t('dashboard_eating') || 'едят'}`;
+        `${teamAll.filter(r => r.has_meals).length} ${t('dashboard_eating') || 'едят'}`;
 
-    document.getElementById('metricVolunteer').textContent = volRes.length;
+    document.getElementById('metricVolunteer').textContent = volAll.length;
     document.getElementById('metricVolunteerSub').textContent =
-        `${volRes.filter(r => r.has_meals).length} ${t('dashboard_eating') || 'едят'}`;
+        `${volAll.filter(r => r.has_meals).length} ${t('dashboard_eating') || 'едят'}`;
 
-    document.getElementById('metricVip').textContent = vipRes.length;
+    document.getElementById('metricVip').textContent = vipAll.length;
     document.getElementById('metricVipSub').textContent =
-        `${vipRes.filter(r => r.has_meals).length} ${t('dashboard_eating') || 'едят'}`;
+        `${vipAll.filter(r => r.has_meals).length} ${t('dashboard_eating') || 'едят'}`;
 
-    document.getElementById('metricGuest').textContent = guestRes.length;
+    document.getElementById('metricGuest').textContent = guestAll.length;
     document.getElementById('metricGuestSub').textContent =
-        `${guestRes.filter(r => r.has_meals).length} ${t('dashboard_eating') || 'едят'}`;
+        `${guestAll.filter(r => r.has_meals).length} ${t('dashboard_eating') || 'едят'}`;
 
-    // Render sections
+    // Render sections (отфильтрованные)
     const container = document.getElementById('categorySections');
     const sections = CATEGORY_ORDER
         .filter(slug => (groups[slug] || []).length > 0)
         .map(slug => {
-            const residents = groups[slug];
-            const cat = residents[0].resident_categories;
+            const list = groups[slug];
+            const cat = list[0].resident_categories;
             const catName = Layout.getName(cat);
-            return renderCategorySection(slug, catName, residents);
+            return renderCategorySection(slug, catName, list);
         });
 
     if (sections.length === 0) {
