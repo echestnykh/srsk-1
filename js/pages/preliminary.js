@@ -1584,7 +1584,8 @@ function openPlacementModal(registrationId) {
         currentBuildingId: buildings[0]?.id || null,
         currentFloor: 1,
         existingResidentId: reg.resident?.id || null,
-        regStatus: reg.status || null
+        regStatus: reg.status || null,
+        mealType: reg.meal_type || null
     };
 
     const modal = document.getElementById('placementModal');
@@ -1904,7 +1905,7 @@ async function selectPlacementRoom(roomId, buildingId) {
         status: 'confirmed',
         category_id: STATUS_CATEGORY_MAP[placementState.regStatus] || DEFAULT_CATEGORY_ID,
         has_housing: true,
-        has_meals: true
+        has_meals: placementState.mealType ? placementState.mealType !== 'self' : true
     };
 
     try {
