@@ -367,7 +367,7 @@ function filterRegistrations() {
             aVal = (a.resident?.rooms?.number || 'zzz').toLowerCase();
             bVal = (b.resident?.rooms?.number || 'zzz').toLowerCase();
         } else if (sortField === 'status') {
-            const statusOrder = { guest: 1, team: 2, cancelled: 3 };
+            const statusOrder = { team: 1, volunteer: 2, guest: 3, vip: 4, cancelled: 5 };
             aVal = statusOrder[a.status] || 99;
             bVal = statusOrder[b.status] || 99;
         } else if (sortField === 'meal_type') {
@@ -457,6 +457,8 @@ function renderTable() {
     // Переводы для статусов
     const statusGuest = t('status_guest');
     const statusTeam = t('status_team');
+    const statusVolunteer = t('status_volunteer') || 'Волонтёр';
+    const statusVip = t('status_vip') || 'ВИП';
     const statusCancelled = t('status_cancelled');
 
     // Переводы для типов питания
@@ -590,11 +592,13 @@ function renderTable() {
                 </td>
                 <td class="text-sm whitespace-nowrap ${v?.gender === 'male' ? 'bg-blue-500/10' : v?.gender === 'female' ? 'bg-pink-500/10' : ''}">${genderAge}</td>
                 <td class="text-sm" data-stop-propagation>
-                    <select class="select select-xs select-bordered w-full ${reg.status === 'guest' ? 'status-guest' : reg.status === 'team' ? 'status-team' : reg.status === 'cancelled' ? 'status-cancelled' : ''}"
+                    <select class="select select-xs select-bordered w-full ${reg.status === 'guest' ? 'status-guest' : reg.status === 'team' ? 'status-team' : reg.status === 'volunteer' ? 'status-volunteer' : reg.status === 'vip' ? 'status-vip' : reg.status === 'cancelled' ? 'status-cancelled' : ''}"
                         data-action="status-change" data-id="${reg.id}"
                         ${disabledAttr}>
                         <option value="guest" ${reg.status === 'guest' ? 'selected' : ''}>${statusGuest}</option>
                         <option value="team" ${reg.status === 'team' ? 'selected' : ''}>${statusTeam}</option>
+                        <option value="volunteer" ${reg.status === 'volunteer' ? 'selected' : ''}>${statusVolunteer}</option>
+                        <option value="vip" ${reg.status === 'vip' ? 'selected' : ''}>${statusVip}</option>
                         <option value="cancelled" ${reg.status === 'cancelled' ? 'selected' : ''}>${statusCancelled}</option>
                     </select>
                 </td>
@@ -1509,7 +1513,9 @@ let floorPlans = [];
 // Маппинг статуса регистрации → category_id для шахматки
 const STATUS_CATEGORY_MAP = {
     'team': '10c4c929-6aaf-4b73-a15a-b7c5ab70f64b',   // Команда
-    'guest': '6ad3bfdd-cb95-453a-b589-986717615736'    // Гость
+    'guest': '6ad3bfdd-cb95-453a-b589-986717615736',   // Гость
+    'volunteer': 'cdb7a43e-51a8-47cd-ac97-c6fdf4fccd5e', // Волонтёр
+    'vip': 'ab57efc9-504a-4a31-93e6-6de8daa46bb7'      // Важный гость
 };
 const DEFAULT_CATEGORY_ID = '6ad3bfdd-cb95-453a-b589-986717615736'; // Гость
 
