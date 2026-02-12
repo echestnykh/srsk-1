@@ -21,7 +21,7 @@ INSERT INTO translations (key, ru, en, hi, page) VALUES
 
     -- Индексировать необработанные
     ('reindex_pending', 'Индексировать необработанные', 'Index unprocessed', 'असंसाधित अनुक्रमित करें', 'photos'),
-    ('reindex_pending_hint', 'Только pending и failed фото', 'Only pending and failed photos', 'केवल लंबित और विफल फोटो', 'photos'),
+    ('reindex_pending_hint', 'Только фото со статусом "Ожидает" и "Ошибка"', 'Only pending and failed photos', 'केवल लंबित और विफल फोटो', 'photos'),
     ('reindex_pending_confirm', 'Индексировать необработанные фото?', 'Index unprocessed photos?', 'असंसाधित फ़ोटो अनुक्रमित करें?', 'photos'),
     ('reindex_pending_confirm_text', 'Будут проиндексированы только фото со статусом "ожидает" и "ошибка". Проиндексированные фото не будут затронуты.', 'Only photos with "pending" and "failed" status will be indexed. Already indexed photos won''t be affected.', 'केवल "लंबित" और "विफल" स्थिति वाली फ़ोटो अनुक्रमित की जाएंगी। पहले से अनुक्रमित फ़ोटो प्रभावित नहीं होंगी।', 'photos'),
 

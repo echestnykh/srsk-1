@@ -131,7 +131,7 @@ serve(async (req) => {
   // 1) Fetch photos to index
   // We take pending and failed (so you can rerun after fixing)
   console.log(`Fetching photos for retreat ${retreat_id}...`);
-  const { data: photos, error: selErr } = await supabase
+  const { data: candidatePhotos, error: selErr } = await supabase
     .from("retreat_photos")
     .select("id, storage_path, index_status")
     .eq("retreat_id", retreat_id)
@@ -144,21 +144,32 @@ serve(async (req) => {
     return json({ error: "DB select failed", details: selErr.message }, 500);
   }
 
-  if (!photos || photos.length === 0) {
+  if (!candidatePhotos || candidatePhotos.length === 0) {
     console.log("No photos to index");
     return json({ ok: true, retreat_id, indexed: 0, skipped: 0, message: "No photos to index" });
   }
 
-  console.log(`Found ${photos.length} photos to index`);
+  console.log(`Found ${candidatePhotos.length} candidate photos to index`);
 
-  // 2) Mark as processing
-  const photoIds = photos.map((p) => p.id);
-  const { error: updErr } = await supabase
+  // 2) Atomically mark as processing ONLY if still pending/failed
+  // This prevents race conditions from multiple concurrent calls
+  const photoIds = candidatePhotos.map((p) => p.id);
+  const { data: lockedPhotos, error: updErr } = await supabase
     .from("retreat_photos")
-    .update({ index_status: "processing", index_error: null })
-    .in("id", photoIds);
+    .update({ index_status: "processing", index_error: null, updated_at: new Date().toISOString() })
+    .in("id", photoIds)
+    .in("index_status", ["pending", "failed"]) // Only update if still pending/failed
+    .select("id, storage_path");
 
   if (updErr) return json({ error: "Failed to mark processing", details: updErr.message }, 500);
+
+  if (!lockedPhotos || lockedPhotos.length === 0) {
+    console.log("No photos locked (already being processed by another call)");
+    return json({ ok: true, retreat_id, indexed: 0, skipped: candidatePhotos.length, message: "Already processing" });
+  }
+
+  const photos = lockedPhotos; // Use locked photos for processing
+  console.log(`Locked ${photos.length} photos for processing`);
 
   // 3) Process each photo
   const results: Array<{
@@ -265,6 +276,10 @@ serve(async (req) => {
   const indexed = results.filter((r) => r.status === "indexed").length;
   const failed = results.filter((r) => r.status === "failed").length;
 
+  // Проверить: завершена ли индексация всех фото ретрита?
+  // Если да — отправить Telegram уведомление участникам
+  await checkAndNotifyIfIndexingComplete(supabase, retreat_id);
+
   return json({
     ok: true,
     retreat_id,
@@ -275,3 +290,99 @@ serve(async (req) => {
     results,
   });
 });
+
+// Проверка завершения индексации и отправка уведомления
+async function checkAndNotifyIfIndexingComplete(supabase: any, retreatId: string) {
+  try {
+    // Получить статистику индексации для ретрита
+    const { data: photos, error } = await supabase
+      .from('retreat_photos')
+      .select('index_status')
+      .eq('retreat_id', retreatId);
+
+    if (error || !photos || photos.length === 0) {
+      return; // Нет фото или ошибка
+    }
+
+    const total = photos.length;
+    const indexed = photos.filter((p: any) => p.index_status === 'indexed').length;
+    const failed = photos.filter((p: any) => p.index_status === 'failed').length;
+    const pending = photos.filter((p: any) => p.index_status === 'pending').length;
+    const processing = photos.filter((p: any) => p.index_status === 'processing').length;
+
+    // Если индексация завершена (все фото indexed или failed, нет pending/processing)
+    if (indexed + failed === total && pending === 0 && processing === 0 && indexed > 0) {
+      console.log(`✅ Индексация ретрита ${retreatId} завершена: ${indexed} indexed, ${failed} failed`);
+
+      // Получить название ретрита
+      const { data: retreat } = await supabase
+        .from('retreats')
+        .select('name_ru, name_en, name_hi')
+        .eq('id', retreatId)
+        .single();
+
+      if (!retreat) {
+        console.warn('Retreat not found for notification');
+        return;
+      }
+
+      const retreatName = retreat.name_ru || retreat.name_en || retreat.name_hi || 'Ретрит';
+
+      // Определяем URL (production vs dev)
+      const baseUrl = SUPABASE_URL.includes('vzuiwpeovnzfokekdetq')
+        ? 'https://dev.rupaseva.com' // Dev environment (Vercel)
+        : 'https://in.rupaseva.com'; // Production
+
+      const photoUrl = `${baseUrl}/guest-portal/photos.html`;
+
+      const message = `📸 *Новые фото с ретрита!*\n\n${retreatName}\n\nЗагружено ${indexed} ${pluralizePhotos(indexed)}.\n\n[Посмотреть фотографии](${photoUrl})`;
+
+      console.log('📤 Sending Telegram notification for retreat:', retreatId);
+
+      // Вызвать Edge Function send-notification (service role, без проверки прав)
+      const notificationResp = await fetch(`${SUPABASE_URL}/functions/v1/send-notification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        },
+        body: JSON.stringify({
+          type: 'broadcast',
+          retreatId: retreatId,
+          message: message,
+          parseMode: 'Markdown'
+        })
+      });
+
+      if (!notificationResp.ok) {
+        const errorText = await notificationResp.text();
+        console.error('❌ Failed to send notification:', notificationResp.status, errorText);
+      } else {
+        const result = await notificationResp.json();
+        console.log('✅ Telegram notifications sent:', result);
+      }
+    } else {
+      console.log(`⏳ Индексация ретрита ${retreatId} не завершена: ${indexed}/${total} indexed, ${pending} pending, ${processing} processing`);
+    }
+  } catch (err) {
+    console.error('Error checking indexing completion:', err);
+  }
+}
+
+// Плюрализация для русского языка
+function pluralizePhotos(count: number): string {
+  const lastDigit = count % 10;
+  const lastTwoDigits = count % 100;
+
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+    return 'фотографий';
+  }
+
+  if (lastDigit === 1) {
+    return 'фотография';
+  } else if (lastDigit >= 2 && lastDigit <= 4) {
+    return 'фотографии';
+  } else {
+    return 'фотографий';
+  }
+}

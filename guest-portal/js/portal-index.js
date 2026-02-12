@@ -1174,7 +1174,12 @@ async function loadPhotoGalleryPreview(vaishnavId) {
             .in('status', ['guest', 'team']);
 
         if (regError || !registrations || registrations.length === 0) {
-            return; // No retreats - hide gallery preview
+            // Нет ретритов - скрыть весь блок галереи
+            const galleryBlock = document.getElementById('galleryPreview');
+            if (galleryBlock && galleryBlock.parentElement) {
+                galleryBlock.parentElement.style.display = 'none';
+            }
+            return;
         }
 
         const retreatIds = registrations.map(r => r.retreat_id);
@@ -1276,19 +1281,17 @@ async function loadPhotoGalleryPreview(vaishnavId) {
             photos = recentPhotos || [];
         }
 
-        if (!photos || photos.length === 0) {
-            return; // No photos
-        }
-
-        // Add retreat info to photos
-        const photosWithRetreats = photos.map((photo, idx) => ({
-            ...photo,
-            _idx: idx,
-            retreat: retreatsMap[photo.retreat_id]
-        }));
+        // Add retreat info to photos (даже если пусто — для заглушки)
+        const photosWithRetreats = photos && photos.length > 0
+            ? photos.map((photo, idx) => ({
+                ...photo,
+                _idx: idx,
+                retreat: retreatsMap[photo.retreat_id]
+            }))
+            : [];
 
         console.debug('[gallery] photos final count:', photosWithRetreats.length);
-        renderPhotoPreview(photosWithRetreats, totalCount || photos.length, myPhotoIds);
+        renderPhotoPreview(photosWithRetreats, totalCount || photosWithRetreats.length, myPhotoIds);
     } catch (e) {
         console.error('Error loading photo gallery preview:', e);
     }
@@ -1297,8 +1300,32 @@ async function loadPhotoGalleryPreview(vaishnavId) {
 function renderPhotoPreview(photos, totalCount, myPhotoIds = []) {
     const container = document.getElementById('photoPreviewContainer');
     const titleEl = document.getElementById('galleryTitle');
+    const prevBtn = document.getElementById('photoPreviewPrev');
+    const nextBtn = document.getElementById('photoPreviewNext');
     const lang = localStorage.getItem('language') || 'ru';
     const myPhotoIdSet = new Set(myPhotoIds.map(id => String(id)));
+
+    // Заглушка, если нет фото
+    if (!photos || photos.length === 0) {
+        if (titleEl) {
+            titleEl.textContent = 'Фотографии ретрита';
+        }
+
+        // Скрыть кнопки навигации
+        if (prevBtn) prevBtn.classList.add('hidden');
+        if (nextBtn) nextBtn.classList.add('hidden');
+
+        container.innerHTML = `
+            <div class="w-full flex flex-col items-center justify-center py-12 px-4">
+                <svg class="w-20 h-20 text-blue-200 mb-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                </svg>
+                <div class="text-gray-400 text-center mb-2 font-medium">Пока нет фотографий</div>
+                <div class="text-gray-400 text-sm text-center">Фотографии появятся после вашего ретрита</div>
+            </div>
+        `;
+        return;
+    }
 
     // Update title with count
     if (titleEl) {
@@ -1321,6 +1348,9 @@ function renderPhotoPreview(photos, totalCount, myPhotoIds = []) {
             </div>
         `;
     }).join('');
+
+    // Обновить видимость стрелок
+    setupPhotoPreviewScroller();
 }
 
 function setupPhotoPreviewScroller() {

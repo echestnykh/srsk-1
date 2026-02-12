@@ -615,6 +615,7 @@
     let lastProcessingCount = 0;
     let stuckCounter = 0;
     let edgeFunctionErrorCounter = 0;
+    let notificationSent = false; // Флаг: уведомление уже отправлено
 
     // Polling для отслеживания прогресса индексации
     async function startIndexingPolling(retreatId) {
@@ -632,6 +633,7 @@
         lastProcessingCount = 0;
         stuckCounter = 0;
         edgeFunctionErrorCounter = 0;
+        notificationSent = false; // Сброс флага при новом polling
 
         // Обновление каждые 3 секунды
         pollingInterval = setInterval(async () => {
@@ -739,7 +741,9 @@
             }
 
             // Если всё проиндексировано — остановить polling
-            if (indexed + failed === total && processing === 0) {
+            if (indexed + failed === total && processing === 0 && pending === 0) {
+                console.log(`✅ Индексация завершена: ${indexed} проиндексировано, ${failed} с ошибками, ${totalFaces} лиц найдено`);
+
                 clearInterval(pollingInterval);
                 pollingInterval = null;
 
@@ -749,10 +753,9 @@
                 completeDiv.classList.remove('hidden');
                 completeDiv.classList.add('flex');
 
-                console.log(`Индексация завершена: ${indexed} проиндексировано, ${failed} с ошибками, ${totalFaces} лиц найдено`);
-
-                // Отправить Telegram уведомление участникам ретрита
-                if (indexed > 0) {
+                // Отправить Telegram уведомление участникам ретрита (один раз)
+                if (indexed > 0 && !notificationSent) {
+                    notificationSent = true;
                     await sendNewPhotosNotification(retreatId, indexed);
                 }
             }
@@ -781,11 +784,14 @@
             const retreatName = Layout.getName(retreat);
 
             // Определяем URL в зависимости от окружения
-            const baseUrl = window.location.hostname.includes('localhost') || window.location.hostname.includes('dev')
-                ? window.location.origin
-                : 'https://in.rupaseva.com';
+            const isDev = window.location.hostname.includes('localhost') ||
+                         window.location.hostname.includes('dev') ||
+                         window.location.hostname.includes('vercel.app');
 
-            const message = `📸 *Новые фото с ретрита!*\n\n${retreatName}\n\nЗагружено ${photosCount} ${pluralizePhotos(photosCount)}.\n\nПосмотреть: ${baseUrl}/guest-portal/photos.html`;
+            const baseUrl = isDev ? 'https://dev.rupaseva.com' : 'https://in.rupaseva.com';
+            const photoUrl = `${baseUrl}/guest-portal/photos.html`;
+
+            const message = `📸 *Новые фото с ретрита!*\n\n${retreatName}\n\nЗагружено ${photosCount} ${pluralizePhotos(photosCount)}.\n\n[Посмотреть фотографии](${photoUrl})`;
 
             console.log('📤 Вызов send-notification:', { retreatId, message });
 
@@ -803,6 +809,9 @@
                 console.error('❌ Ошибка отправки Telegram уведомления:', error);
             } else {
                 console.log('✅ Telegram уведомления отправлены:', data);
+                if (data) {
+                    console.log(`   → Отправлено: ${data.sent || 0}, Ошибок: ${data.failed || 0}, Заблокировано: ${data.blocked || 0}, Всего подписчиков: ${data.total || 0}`);
+                }
             }
 
         } catch (err) {
