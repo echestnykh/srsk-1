@@ -11,6 +11,7 @@ let departments = [];
 let teamMembers = [];
 let spiritualTeachers = [];
 let buildings = [];
+let residentCategories = [];
 let isEditMode = false;
 
 const today = DateUtils.toISO(new Date());
@@ -44,7 +45,8 @@ async function init() {
     // Сначала загружаем справочники, чтобы select'ы были заполнены
     await Promise.all([
         loadDepartments(),
-        loadBuildingsAndRooms()
+        loadBuildingsAndRooms(),
+        loadResidentCategories()
     ]);
     populateCountriesList();
     // Потом загружаем человека (renderPerson установит значения в select'ы)
@@ -156,7 +158,7 @@ async function loadRegistrations(personId) {
         if (retreatIds.length > 0) {
             const { data: residentsData } = await Layout.db
                 .from('residents')
-                .select('retreat_id, room_id, rooms(number, buildings(name_ru, name_en, name_hi))')
+                .select('id, retreat_id, room_id, category_id, resident_categories:category_id(id, slug, color, name_ru, name_en, name_hi), rooms(number, buildings(name_ru, name_en, name_hi))')
                 .eq('vaishnava_id', personId)
                 .in('retreat_id', retreatIds)
                 .eq('status', 'confirmed');
@@ -174,6 +176,7 @@ async function loadRegistrations(personId) {
     }
 
     renderRegistrations();
+    toggleTeamSections();
 }
 
 function renderPerson() {
@@ -320,9 +323,14 @@ function renderPerson() {
 
 function toggleTeamSections() {
     const isTeam = person?.is_team_member || document.getElementById('editIsTeamMember')?.checked;
+    const isVolunteer = registrations.some(r =>
+        r.resident?.resident_categories?.slug === 'volunteer');
+    const showServiceFields = isTeam || isVolunteer;
+
     document.getElementById('staysSection').style.display = isTeam ? 'block' : 'none';
-    document.getElementById('teamSection').style.display = isTeam ? 'block' : 'none';
-    document.getElementById('indiaExperienceField').style.display = isTeam ? 'none' : 'block';
+    document.getElementById('teamSection').style.display = showServiceFields ? 'block' : 'none';
+    document.getElementById('teamOnlyFields').style.display = isTeam ? '' : 'none';
+    document.getElementById('indiaExperienceField').style.display = showServiceFields ? 'none' : 'block';
 }
 
 function toggleTeamFields() {
@@ -851,6 +859,18 @@ async function loadBuildingsAndRooms() {
     }, 3600000) || [];
 }
 
+async function loadResidentCategories() {
+    residentCategories = await Cache.getOrLoad('resident_categories', async () => {
+        const { data, error } = await Layout.db
+            .from('resident_categories')
+            .select('id, slug, name_ru, name_en, name_hi, color, sort_order')
+            .lt('sort_order', 999)
+            .order('sort_order');
+        if (error) { console.error('Error loading categories:', error); return []; }
+        return data || [];
+    }, 5 * 60 * 1000);
+}
+
 // ==================== REGISTRATION STATUS ====================
 
 async function updateRegistrationStatus(registrationId, newStatus, selectElement) {
@@ -881,6 +901,23 @@ async function updateRegistrationStatus(registrationId, newStatus, selectElement
         if (selectElement && oldStatus) {
             selectElement.value = oldStatus;
         }
+    }
+}
+
+async function changeResidentCategory(residentId, categoryId) {
+    if (!residentId || !categoryId) return;
+
+    try {
+        const { error } = await Layout.db
+            .from('residents')
+            .update({ category_id: categoryId })
+            .eq('id', residentId);
+        if (error) throw error;
+
+        await loadRegistrations(person.id);
+    } catch (err) {
+        console.error('Error changing category:', err);
+        Layout.showNotification((t('error_saving') || 'Ошибка сохранения') + ': ' + err.message, 'error');
     }
 }
 
@@ -1468,6 +1505,8 @@ function renderRegistrations() {
             ev.stopPropagation();
             if (target.dataset.action === 'update-registration-status') {
                 updateRegistrationStatus(target.dataset.id, target.value, target);
+            } else if (target.dataset.action === 'change-category') {
+                changeResidentCategory(target.dataset.residentId, target.value);
             }
         });
     }
@@ -1576,6 +1615,25 @@ function renderRegistrations() {
                 <div class="detail-section">
                     <div class="detail-label">🏠 Размещение</div>
                     <div class="text-sm font-medium text-success">${accommodation.building_name ? accommodation.building_name + ', ' : ''}${accommodation.room_number}</div>
+                </div>
+            `;
+        }
+
+        // Категория проживающего
+        if (resident) {
+            const cat = resident.resident_categories;
+            const catOptionsHtml = residentCategories.map(c =>
+                `<option value="${c.id}" ${c.id === resident.category_id ? 'selected' : ''}>${Layout.getName(c)}</option>`
+            ).join('');
+            detailsHtml += `
+                <div class="detail-section">
+                    <div class="detail-label" data-i18n="category">${t('category') || 'Категория'}</div>
+                    <div class="flex items-center gap-2">
+                        ${cat ? `<span class="badge badge-sm" style="background-color: ${cat.color}20; color: ${cat.color}; border-color: ${cat.color}">${Layout.getName(cat)}</span>` : ''}
+                        <select class="select select-xs select-bordered" data-action="change-category" data-resident-id="${resident.id}">
+                            ${catOptionsHtml}
+                        </select>
+                    </div>
                 </div>
             `;
         }

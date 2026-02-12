@@ -1513,6 +1513,20 @@ const STATUS_CATEGORY_MAP = {
 };
 const DEFAULT_CATEGORY_ID = '6ad3bfdd-cb95-453a-b589-986717615736'; // Гость
 
+let residentCategories = [];
+
+async function loadResidentCategories() {
+    residentCategories = await Cache.getOrLoad('resident_categories', async () => {
+        const { data, error } = await Layout.db
+            .from('resident_categories')
+            .select('id, slug, name_ru, name_en, name_hi, color, sort_order')
+            .lt('sort_order', 999)
+            .order('sort_order');
+        if (error) { console.error('Error loading categories:', error); return []; }
+        return data || [];
+    }, 5 * 60 * 1000);
+}
+
 let placementState = {
     registrationId: null,
     vaishnavId: null,
@@ -1600,6 +1614,15 @@ function openPlacementModal(registrationId) {
         <div class="font-medium">${e(name)}${e(spiritualName)}</div>
         ${reg.accommodation_wishes ? `<div class="text-sm opacity-60 mt-1">Пожелания: ${e(reg.accommodation_wishes)}</div>` : ''}
     `;
+
+    // Заполнить dropdown категории
+    const catSelect = document.getElementById('placementCategory');
+    catSelect.innerHTML = residentCategories.map(c =>
+        `<option value="${c.id}">${Layout.getName(c)}</option>`
+    ).join('');
+    // Предвыбрать по статусу регистрации
+    const preselectedCat = STATUS_CATEGORY_MAP[reg.status] || DEFAULT_CATEGORY_ID;
+    catSelect.value = preselectedCat;
 
     // Установить даты из ретрита
     document.getElementById('placementCheckIn').value = placementState.checkIn || '';
@@ -1903,7 +1926,9 @@ async function selectPlacementRoom(roomId, buildingId) {
         check_in: placementState.checkIn || null,
         check_out: placementState.checkOut || null,
         status: 'confirmed',
-        category_id: STATUS_CATEGORY_MAP[placementState.regStatus] || DEFAULT_CATEGORY_ID,
+        category_id: document.getElementById('placementCategory')?.value
+            || STATUS_CATEGORY_MAP[placementState.regStatus]
+            || DEFAULT_CATEGORY_ID,
         has_housing: true,
         has_meals: placementState.mealType ? placementState.mealType !== 'self' : true
     };
@@ -2967,7 +2992,7 @@ async function init() {
     await Layout.init({ module: 'housing', menuId: 'placement', itemId: 'preliminary' });
     Layout.showLoader();
 
-    await Promise.all([loadAllRetreats(), loadVaishnavas(), loadBuildingsAndRooms()]);
+    await Promise.all([loadAllRetreats(), loadVaishnavas(), loadBuildingsAndRooms(), loadResidentCategories()]);
 
     setupFilters();
     updateSortIcons();
