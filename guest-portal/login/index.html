@@ -467,7 +467,7 @@
                 // Проверяем пользователя
                 const { data: vaishnava, error: userError } = await db
                     .from('vaishnavas')
-                    .select('user_type, is_active, is_team_member')
+                    .select('user_type, is_active, is_team_member, approval_status')
                     .eq('user_id', data.user.id)
                     .maybeSingle();
 
@@ -486,6 +486,17 @@
                 }
 
                 if (vaishnava.is_active === false) {
+                    await db.auth.signOut();
+                    showError('error_account_disabled');
+                    return;
+                }
+
+                if (vaishnava.approval_status === 'pending') {
+                    window.location.href = '/pending-approval.html';
+                    return;
+                }
+
+                if (vaishnava.approval_status === 'rejected' || vaishnava.approval_status === 'blocked') {
                     await db.auth.signOut();
                     showError('error_account_disabled');
                     return;
@@ -539,17 +550,21 @@
                 // Проверяем есть ли пользователь в vaishnavas
                 const { data: vaishnava } = await db
                     .from('vaishnavas')
-                    .select('user_type, is_active, is_team_member')
+                    .select('user_type, is_active, is_team_member, approval_status')
                     .eq('user_id', session.user.id)
                     .single();
 
-                if (vaishnava && vaishnava.is_active !== false) {
-                    // Уже залогинен — редирект по типу
+                if (vaishnava && vaishnava.is_active !== false && vaishnava.approval_status === 'approved') {
+                    // Уже залогинен и одобрен — редирект по типу
                     if (vaishnava.is_team_member) {
                         window.location.href = '/';
                     } else {
                         window.location.href = '/guest-portal/';
                     }
+                    return;
+                }
+                if (vaishnava && vaishnava.approval_status === 'pending') {
+                    window.location.href = '/pending-approval.html';
                     return;
                 }
             }

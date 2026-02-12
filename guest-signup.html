@@ -152,8 +152,8 @@
 
                 if (rpcError) throw rpcError;
 
-                // 5. Перенаправить в guest portal
-                window.location.href = '/guest-portal/';
+                // 5. Перенаправить на страницу ожидания одобрения
+                window.location.href = '/pending-approval.html';
 
             } catch (err) {
                 console.error('Signup error:', err);
