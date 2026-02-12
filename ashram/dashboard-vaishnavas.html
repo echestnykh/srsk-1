@@ -28,10 +28,11 @@
             margin-bottom: 0.5rem;
         }
         .bento-value {
-            font-size: 1.75rem;
+            font-size: 1.25rem;
             font-weight: 700;
             font-variant-numeric: tabular-nums;
             line-height: 1.1;
+            white-space: nowrap;
         }
         .metric-card-compact {
             padding: 1rem 1.25rem;
@@ -496,12 +497,15 @@ function renderDashboard(present) {
     });
 
     // Metrics — всегда от полного набора
-    const totalPresent = allPresent.length;
-    const totalEating = allPresent.filter(r => r.has_meals).length;
+    function setMetric(idPrefix, arr) {
+        const total = arr.length;
+        const eating = arr.filter(r => r.has_meals).length;
+        const housing = arr.filter(r => r.has_housing).length;
+        document.getElementById(idPrefix).textContent = `${total} / ${eating} / ${housing}`;
+        document.getElementById(idPrefix + 'Sub').textContent = 'всего / едят / живут';
+    }
 
-    document.getElementById('metricTotal').textContent = totalPresent;
-    document.getElementById('metricTotalSub').textContent =
-        `${t('dashboard_of_them_eat') || 'из них едят'}: ${totalEating}`;
+    setMetric('metricTotal', allPresent);
 
     const allGroups = {};
     allPresent.forEach(r => {
@@ -510,26 +514,10 @@ function renderDashboard(present) {
         allGroups[slug].push(r);
     });
 
-    const teamAll = allGroups.team || [];
-    const volAll = allGroups.volunteer || [];
-    const vipAll = allGroups.vip || [];
-    const guestAll = allGroups.guest || [];
-
-    document.getElementById('metricTeam').textContent = teamAll.length;
-    document.getElementById('metricTeamSub').textContent =
-        `${teamAll.filter(r => r.has_meals).length} ${t('dashboard_eating') || 'едят'}`;
-
-    document.getElementById('metricVolunteer').textContent = volAll.length;
-    document.getElementById('metricVolunteerSub').textContent =
-        `${volAll.filter(r => r.has_meals).length} ${t('dashboard_eating') || 'едят'}`;
-
-    document.getElementById('metricVip').textContent = vipAll.length;
-    document.getElementById('metricVipSub').textContent =
-        `${vipAll.filter(r => r.has_meals).length} ${t('dashboard_eating') || 'едят'}`;
-
-    document.getElementById('metricGuest').textContent = guestAll.length;
-    document.getElementById('metricGuestSub').textContent =
-        `${guestAll.filter(r => r.has_meals).length} ${t('dashboard_eating') || 'едят'}`;
+    setMetric('metricTeam', allGroups.team || []);
+    setMetric('metricVolunteer', allGroups.volunteer || []);
+    setMetric('metricVip', allGroups.vip || []);
+    setMetric('metricGuest', allGroups.guest || []);
 
     // Render sections (отфильтрованные)
     const container = document.getElementById('categorySections');
