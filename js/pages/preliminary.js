@@ -575,7 +575,7 @@ function renderTable() {
         const childBadge = isChild ? ' <span class="badge badge-xs badge-warning">ребёнок</span>' : '';
 
         return `
-            <tr class="hover align-top${isChild ? ' opacity-80' : ''}">
+            <tr class="hover align-top${reg.status === 'cancelled' ? ' row-cancelled' : ''}${isChild ? ' opacity-80' : ''}">
                 <td class="cursor-pointer ${buildingId === 'self' ? 'bg-error/20' : (buildingId && roomId) ? 'bg-success/20' : ''}" data-action="navigate-person" data-id="${v?.id}">
                     <div class="flex gap-3 items-center${isChild ? ' pl-4' : ''}">
                         ${photoUrl
