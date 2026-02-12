@@ -159,9 +159,14 @@
             <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
             </svg>
-            <input type="text" id="searchInput" class="input input-bordered input-sm w-full pl-9"
+            <input type="text" id="searchInput" class="input input-bordered input-sm w-full pl-9 pr-8"
                    placeholder="Поиск по имени..." data-i18n-placeholder="search_placeholder"
                    oninput="applySearch()" />
+            <button type="button" id="searchClear" class="absolute right-2 top-1/2 -translate-y-1/2 opacity-40 hover:opacity-100 hidden" onclick="clearSearch()">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
         </div>
     </div>
 
@@ -459,13 +464,21 @@ async function loadDashboard() {
 }
 
 function applySearch() {
-    const query = document.getElementById('searchInput').value.trim().toLowerCase();
+    const input = document.getElementById('searchInput');
+    const query = input.value.trim().toLowerCase();
+    document.getElementById('searchClear').classList.toggle('hidden', !query);
     if (!query) {
         renderDashboard(allPresent);
         return;
     }
     const filtered = allPresent.filter(r => getDisplayName(r).toLowerCase().includes(query));
     renderDashboard(filtered);
+}
+
+function clearSearch() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('searchClear').classList.add('hidden');
+    renderDashboard(allPresent);
 }
 
 function renderDashboard(present) {
