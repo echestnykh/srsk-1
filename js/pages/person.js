@@ -160,7 +160,7 @@ async function loadRegistrations(personId) {
         if (retreatIds.length > 0) {
             const { data: residentsData } = await Layout.db
                 .from('residents')
-                .select('id, retreat_id, room_id, check_in, check_out, category_id, resident_categories:category_id(id, slug, color, name_ru, name_en, name_hi), rooms(number, buildings(name_ru, name_en, name_hi))')
+                .select('id, retreat_id, room_id, check_in, check_out, has_meals, category_id, resident_categories:category_id(id, slug, color, name_ru, name_en, name_hi), rooms(number, buildings(name_ru, name_en, name_hi))')
                 .eq('vaishnava_id', personId)
                 .in('retreat_id', retreatIds)
                 .eq('status', 'confirmed');
@@ -879,7 +879,7 @@ async function loadResidentCategories() {
 async function loadPermanentResident(personId) {
     const { data } = await Layout.db
         .from('residents')
-        .select('id, room_id, category_id, check_in, check_out, resident_categories:category_id(id, slug, color, name_ru, name_en, name_hi), rooms(number, buildings(name_ru, name_en, name_hi))')
+        .select('id, room_id, category_id, check_in, check_out, has_meals, resident_categories:category_id(id, slug, color, name_ru, name_en, name_hi), rooms(number, buildings(name_ru, name_en, name_hi))')
         .eq('vaishnava_id', personId)
         .is('retreat_id', null)
         .eq('status', 'confirmed')
@@ -943,6 +943,13 @@ function renderPermanentResident() {
                     ${catOptionsHtml}
                 </select>
             </div>
+            <div class="flex items-center gap-2">
+                <span class="opacity-60 text-sm">${t('meal_type') || 'Питание'}</span>
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" class="checkbox checkbox-sm checkbox-success" id="permResMeals" ${res.has_meals ? 'checked' : ''} onchange="changePermanentResidentMeals(this.checked)" />
+                    <span class="text-sm">${t('meal_type_prasad') || 'Питается с нами'}</span>
+                </label>
+            </div>
         </div>
     `;
 }
@@ -996,6 +1003,23 @@ async function changePermanentResidentCategory(categoryId) {
         await loadPermanentResident(person.id);
     } catch (err) {
         console.error('Error changing category:', err);
+        Layout.showNotification((t('error_saving') || 'Ошибка сохранения') + ': ' + err.message, 'error');
+    }
+}
+
+async function changePermanentResidentMeals(hasMeals) {
+    if (!permanentResident?.id) return;
+
+    try {
+        const { error } = await Layout.db
+            .from('residents')
+            .update({ has_meals: hasMeals })
+            .eq('id', permanentResident.id);
+        if (error) throw error;
+
+        permanentResident.has_meals = hasMeals;
+    } catch (err) {
+        console.error('Error changing meals:', err);
         Layout.showNotification((t('error_saving') || 'Ошибка сохранения') + ': ' + err.message, 'error');
     }
 }
@@ -1069,6 +1093,29 @@ async function changeResidentCategory(residentId, categoryId) {
         await loadRegistrations(person.id);
     } catch (err) {
         console.error('Error changing category:', err);
+        Layout.showNotification((t('error_saving') || 'Ошибка сохранения') + ': ' + err.message, 'error');
+    }
+}
+
+async function changeResidentMeals(residentId, hasMeals) {
+    if (!residentId) return;
+
+    try {
+        const { error } = await Layout.db
+            .from('residents')
+            .update({ has_meals: hasMeals })
+            .eq('id', residentId);
+        if (error) throw error;
+
+        // Обновить локальные данные без полной перезагрузки
+        for (const reg of registrations) {
+            if (reg.resident?.id === residentId) {
+                reg.resident.has_meals = hasMeals;
+                break;
+            }
+        }
+    } catch (err) {
+        console.error('Error changing meals:', err);
         Layout.showNotification((t('error_saving') || 'Ошибка сохранения') + ': ' + err.message, 'error');
     }
 }
@@ -1661,6 +1708,8 @@ function renderRegistrations() {
                 changeResidentCategory(target.dataset.residentId, target.value);
             } else if (target.dataset.action === 'change-resident-dates') {
                 changeResidentDate(target.dataset.residentId, target.dataset.field, target.value);
+            } else if (target.dataset.action === 'change-meals') {
+                changeResidentMeals(target.dataset.residentId, target.checked);
             }
         });
     }
@@ -1804,6 +1853,15 @@ function renderRegistrations() {
                             ${catOptionsHtml}
                         </select>
                     </div>
+                </div>
+            `;
+            detailsHtml += `
+                <div class="detail-section">
+                    <div class="detail-label">${t('meal_type') || 'Питание'}</div>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" class="checkbox checkbox-xs checkbox-success" data-action="change-meals" data-resident-id="${resident.id}" ${resident.has_meals ? 'checked' : ''} />
+                        <span class="text-sm">${t('meal_type_prasad') || 'Питается с нами'}</span>
+                    </label>
                 </div>
             `;
         }
