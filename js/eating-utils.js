@@ -24,7 +24,7 @@ const EatingUtils = {
         const staffIds = (staffData || []).map(s => s.id);
 
         // Параллельные запросы
-        const [guestRegResult, teamStaysResult, residentsResult] = await Promise.all([
+        const [guestRegResult, teamStaysResult, residentsResult, mealGroupsResult] = await Promise.all([
             retreatIds.length > 0
                 ? Layout.db
                     .from('retreat_registrations')
@@ -48,12 +48,18 @@ const EatingUtils = {
                 .eq('status', 'confirmed')
                 .or('meal_type.eq.prasad,meal_type.is.null')
                 .lte('check_in', endDate)
-                .or(`check_out.gte.${startDate},check_out.is.null`)
+                .or(`check_out.gte.${startDate},check_out.is.null`),
+            Layout.db
+                .from('meal_groups')
+                .select('id, start_date, end_date, people_count, breakfast, lunch')
+                .lte('start_date', endDate)
+                .gte('end_date', startDate)
         ]);
 
         const guestRegistrations = guestRegResult.data || [];
         const teamStays = teamStaysResult.data || [];
         const residentsData = residentsResult.data || [];
+        const mealGroups = mealGroupsResult.data || [];
 
         // Хелпер форматирования даты
         const fmt = d => {
@@ -151,9 +157,18 @@ const EatingUtils = {
                 }
             }
 
+            // Группы (meal_groups)
+            let breakfastGroups = 0, lunchGroups = 0;
+            for (const mg of mealGroups) {
+                if (mg.start_date <= dateStr && mg.end_date >= dateStr) {
+                    if (mg.breakfast) breakfastGroups += mg.people_count;
+                    if (mg.lunch) lunchGroups += mg.people_count;
+                }
+            }
+
             counts[dateStr] = {
-                breakfast: { guests: breakfastGuestIds.size, team: teamBreakfast.size, residents: breakfastResidents },
-                lunch:     { guests: lunchGuestIds.size,     team: teamLunch.size,     residents: lunchResidents }
+                breakfast: { guests: breakfastGuestIds.size, team: teamBreakfast.size, residents: breakfastResidents, groups: breakfastGroups },
+                lunch:     { guests: lunchGuestIds.size,     team: teamLunch.size,     residents: lunchResidents,     groups: lunchGroups }
             };
         }
 
@@ -173,7 +188,7 @@ const EatingUtils = {
         const key = (mealType === 'breakfast') ? 'breakfast' : 'lunch';
         const mc = dayData[key];
         if (!mc) return 50;
-        const total = mc.guests + mc.team + (mc.residents || 0);
+        const total = mc.guests + mc.team + (mc.residents || 0) + (mc.groups || 0);
         return total > 0 ? total : 50;
     }
 };

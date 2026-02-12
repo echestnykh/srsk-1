@@ -258,10 +258,12 @@ function renderBoard() {
             const mc = counts?.[key];
             let eatingHtml = '';
             if (mc) {
-                const total = mc.guests + mc.team + (mc.residents || 0);
+                const total = mc.guests + mc.team + (mc.residents || 0) + (mc.groups || 0);
                 if (total > 0) {
                     const mealLabel = t(mt) || mt;
-                    eatingHtml = `<div class="eating-badge"><b style="color:#111">${e(mealLabel)}</b> ${mc.guests}+${mc.team}+${mc.residents || 0}=${total}</div>`;
+                    let parts = `${mc.guests}+${mc.team}+${mc.residents || 0}`;
+                    if (mc.groups) parts += `+${mc.groups}`;
+                    eatingHtml = `<div class="eating-badge"><b style="color:#111">${e(mealLabel)}</b> ${parts}=${total}</div>`;
                 }
             }
 

@@ -58,6 +58,7 @@ const modules = {
             { id: 'placement', items: [
                 { id: 'retreat_guests', href: 'vaishnavas/retreat-guests.html' },
                 { id: 'preliminary', href: 'vaishnavas/preliminary.html' },
+                { id: 'groups', href: 'vaishnavas/groups.html' },
                 { id: 'arrivals', href: 'placement/arrivals.html' },
                 { id: 'departures', href: 'placement/departures.html' },
                 { id: 'transfers', href: 'placement/transfers.html' }
@@ -162,6 +163,7 @@ const pagePermissions = {
     'placement/bookings.html': 'view_bookings',
     'vaishnavas/retreat-guests.html': 'view_retreat_guests',
     'vaishnavas/preliminary.html': 'view_preliminary',
+    'vaishnavas/groups.html': 'view_preliminary',
     'placement/arrivals.html': 'view_arrivals',
     'placement/departures.html': 'view_departures',
     'placement/transfers.html': 'view_transfers',

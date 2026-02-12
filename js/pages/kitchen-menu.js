@@ -348,7 +348,7 @@ function getEatingTotal(dateStr, mealType) {
     const key = (mealType === 'breakfast') ? 'breakfast' : 'lunch';
     const mc = counts[key];
     if (!mc) return 50;
-    const total = mc.guests + mc.team + (mc.residents || 0);
+    const total = mc.guests + mc.team + (mc.residents || 0) + (mc.groups || 0);
     return total > 0 ? total : 50;
 }
 
@@ -361,16 +361,23 @@ function formatEatingLine(dateStr, cssClass) {
     const ln = counts.lunch;
     if (!bf && !ln) return '';
 
-    const bfTotal = bf ? bf.guests + bf.team + (bf.residents || 0) : 0;
-    const lnTotal = ln ? ln.guests + ln.team + (ln.residents || 0) : 0;
+    const bfTotal = bf ? bf.guests + bf.team + (bf.residents || 0) + (bf.groups || 0) : 0;
+    const lnTotal = ln ? ln.guests + ln.team + (ln.residents || 0) + (ln.groups || 0) : 0;
     if (bfTotal === 0 && lnTotal === 0) return '';
 
     const titleText = t('eating_tooltip');
 
+    // Формирование строки разбивки
+    const fmtParts = (mc) => {
+        let parts = `${mc.guests}+${mc.team}+${mc.residents || 0}`;
+        if (mc.groups) parts += `+${mc.groups}`;
+        return parts;
+    };
+
     // Авторасчёт
     let autoLine;
     if (bfTotal === lnTotal) {
-        autoLine = `${t('breakfast_and_lunch')}: ${bf.guests}+${bf.team}+${bf.residents || 0}=${bfTotal}`;
+        autoLine = `${t('breakfast_and_lunch')}: ${fmtParts(bf)}=${bfTotal}`;
     } else {
         autoLine = `${t('breakfast')}: ${bfTotal}, ${t('lunch')}: ${lnTotal}`;
     }
@@ -405,8 +412,8 @@ function getEatingTotalForDate(dateStr) {
     if (!counts) return null;
     const bf = counts.breakfast;
     const ln = counts.lunch;
-    const bfTotal = bf ? bf.guests + bf.team + (bf.residents || 0) : 0;
-    const lnTotal = ln ? ln.guests + ln.team + (ln.residents || 0) : 0;
+    const bfTotal = bf ? bf.guests + bf.team + (bf.residents || 0) + (bf.groups || 0) : 0;
+    const lnTotal = ln ? ln.guests + ln.team + (ln.residents || 0) + (ln.groups || 0) : 0;
     if (bfTotal === 0 && lnTotal === 0) return null;
     return { breakfast: bfTotal, lunch: lnTotal };
 }
