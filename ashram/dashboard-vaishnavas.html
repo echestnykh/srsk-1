@@ -500,7 +500,7 @@ function renderDashboard(present) {
     function setMetric(idPrefix, arr) {
         const total = arr.length;
         const eating = arr.filter(r => r.has_meals).length;
-        const housing = arr.filter(r => r.has_housing).length;
+        const housing = arr.filter(r => r.rooms).length;
         document.getElementById(idPrefix).textContent = `${total} / ${eating} / ${housing}`;
         document.getElementById(idPrefix + 'Sub').textContent = 'всего / едят / живут';
     }
