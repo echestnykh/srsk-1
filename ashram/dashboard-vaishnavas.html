@@ -152,7 +152,7 @@
     </div>
 
     <!-- Bento Grid -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
         <div class="bento-card metric-card-compact" style="background: white;">
             <div>
                 <div class="bento-label" style="color: #888;" data-i18n="dashboard_present_now">Присутствуют</div>
@@ -179,6 +179,13 @@
                 <div class="bento-label text-white/70">ВИП</div>
                 <div class="bento-value text-white" id="metricVip">-</div>
                 <div class="bento-subtitle text-white/70" id="metricVipSub"></div>
+            </div>
+        </div>
+        <div class="bento-card metric-card-compact" style="background: #3b82f6;">
+            <div>
+                <div class="bento-label text-white/70">Гости</div>
+                <div class="bento-value text-white" id="metricGuest">-</div>
+                <div class="bento-subtitle text-white/70" id="metricGuestSub"></div>
             </div>
         </div>
     </div>
@@ -412,6 +419,7 @@ async function loadDashboard() {
     const teamRes = groups.team || [];
     const volRes = groups.volunteer || [];
     const vipRes = groups.vip || [];
+    const guestRes = groups.guest || [];
 
     document.getElementById('metricTeam').textContent = teamRes.length;
     document.getElementById('metricTeamSub').textContent =
@@ -424,6 +432,10 @@ async function loadDashboard() {
     document.getElementById('metricVip').textContent = vipRes.length;
     document.getElementById('metricVipSub').textContent =
         `${vipRes.filter(r => r.has_meals).length} ${t('dashboard_eating') || 'едят'}`;
+
+    document.getElementById('metricGuest').textContent = guestRes.length;
+    document.getElementById('metricGuestSub').textContent =
+        `${guestRes.filter(r => r.has_meals).length} ${t('dashboard_eating') || 'едят'}`;
 
     // Render sections
     const container = document.getElementById('categorySections');
