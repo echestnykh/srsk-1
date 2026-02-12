@@ -493,7 +493,7 @@
 
                 // Успешно! Редирект в зависимости от типа
                 const redirect = new URLSearchParams(window.location.search).get('redirect');
-                if (redirect) {
+                if (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) {
                     window.location.href = redirect;
                 } else if (vaishnava.is_team_member) {
                     // Команда → полное приложение
