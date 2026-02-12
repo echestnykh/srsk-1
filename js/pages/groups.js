@@ -8,6 +8,7 @@ let groups = [];
 let editingGroupId = null;
 
 const t = key => Layout.t(key);
+const e = str => Layout.escapeHtml(str);
 
 function formatDate(dateStr) {
     if (!dateStr) return '—';
