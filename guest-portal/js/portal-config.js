@@ -51,7 +51,10 @@ window.PORTAL_CONFIG = {
     },
 
     // Storage bucket для фото
-    PHOTO_BUCKET: 'vaishnava-photos'
+    PHOTO_BUCKET: 'vaishnava-photos',
+
+    // Telegram бот
+    TELEGRAM_BOT_NAME: 'rupaseva_bot'
 };
 
 // Лог для отладки
