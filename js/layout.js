@@ -1122,6 +1122,7 @@ async function initLayout(page = { module: null, menuId: 'kitchen', itemId: null
     // Если auth ещё не готов — перестроить меню после авторизации (фильтрация по правам)
     if (!window.currentUser) {
         window.addEventListener('authReady', () => {
+            buildLocationOptions();
             buildMobileMenu();
             buildSubmenuBar();
             updateUserInfo();
