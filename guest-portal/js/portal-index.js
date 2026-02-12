@@ -848,7 +848,7 @@ async function saveChildPortal(event) {
 
     let result;
     if (childId) {
-        result = await PortalData.updateChild(childId, childData);
+        result = await PortalData.updateChild(childId, guest.id, childData);
     } else {
         result = await PortalData.createChild(guest.id, childData);
     }
@@ -871,7 +871,9 @@ async function deleteChildPortal() {
 
     if (!confirm('Удалить ребёнка из вашего профиля?')) return;
 
-    const result = await PortalData.deleteChild(childId);
+    const guest = window.currentGuest;
+    if (!guest?.id) return;
+    const result = await PortalData.deleteChild(childId, guest.id);
     if (!result.success) {
         alert('Ошибка удаления: ' + (result.error || ''));
         return;
