@@ -385,7 +385,7 @@ async function saveNewPerson(event, opts = {}) {
     }
 
     if (!data.first_name && !data.spiritual_name) {
-        Layout.showNotification(t('name_or_spiritual_required') || 'Укажите имя или духовное имя', 'warning');
+        Layout.showNotification(t('name_or_spiritual_required'), 'warning');
         return;
     }
 

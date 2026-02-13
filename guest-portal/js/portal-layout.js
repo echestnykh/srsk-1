@@ -161,7 +161,7 @@ function renderHeader(activeNav) {
     if (!header) return;
 
     const guest = window.currentGuest;
-    const guestName = guest ? (guest.spiritualName || guest.firstName || 'Гость') : '';
+    const guestName = guest ? (guest.spiritualName || guest.firstName || t('portal_guest')) : '';
     const guestPhoto = guest?.photoUrl || '';
 
     header.innerHTML = `

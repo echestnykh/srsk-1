@@ -166,7 +166,7 @@ function formatBirthDate(dateStr) {
 function getDisplayName(guest) {
     return guest.spiritualName ||
            `${guest.firstName || ''} ${guest.lastName || ''}`.trim() ||
-           'Гость';
+           PortalLayout.t('portal_guest');
 }
 
 // Вычислить процент заполнения профиля
@@ -202,11 +202,11 @@ function calculateCompleteness(guest) {
 // Получить статус пользователя
 function getUserStatus(userType) {
     const statuses = {
-        'guest': 'Гость',
-        'staff': 'Команда',
-        'admin': 'Администратор'
+        'guest': PortalLayout.t('portal_status_guest'),
+        'staff': PortalLayout.t('portal_status_staff'),
+        'admin': PortalLayout.t('portal_status_admin')
     };
-    return statuses[userType] || 'Гость';
+    return statuses[userType] || PortalLayout.t('portal_status_guest');
 }
 
 // Заполнить профиль данными

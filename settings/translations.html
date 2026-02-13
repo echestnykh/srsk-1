@@ -5,7 +5,7 @@
     <script src="../js/color-init.js"></script>
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Переводы — ШРСК</title>
+    <title data-i18n="translations_page_title">Переводы — ШРСК</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" />
     <script src="https://cdn.tailwindcss.com"></script>
@@ -80,7 +80,7 @@
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div>
                 <h1 class="text-2xl font-bold" data-i18n="translations_title">Переводы интерфейса</h1>
-                <p class="text-sm opacity-60" id="translationsCount">Загрузка...</p>
+                <p class="text-sm opacity-60" id="translationsCount" data-i18n="loading">Загрузка...</p>
             </div>
             <button class="btn btn-primary gap-2" data-permission="edit_translations" onclick="openAddModal()">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -101,7 +101,7 @@
                 </button>
             </div>
             <select class="select select-bordered" id="pageFilter">
-                <option value="">Все страницы</option>
+                <option value="" data-i18n="translations_all_pages">Все страницы</option>
             </select>
         </div>
 
@@ -125,7 +125,7 @@
                         </tr>
                     </thead>
                     <tbody id="translationsTable">
-                        <tr><td colspan="5" class="text-center py-8 opacity-50">Загрузка...</td></tr>
+                        <tr><td colspan="5" class="text-center py-8 opacity-50" data-i18n="loading">Загрузка...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -144,7 +144,7 @@
             <form id="addForm" class="space-y-4">
                 <div>
                     <label class="label"><span class="label-text font-medium" data-i18n="col_key">Ключ</span></label>
-                    <input type="text" name="key" class="input input-bordered w-full" placeholder="например: btn_submit" required />
+                    <input type="text" name="key" class="input input-bordered w-full" placeholder="например: btn_submit" data-i18n-placeholder="translations_key_placeholder" required />
                     <p class="text-xs opacity-50 mt-1" data-i18n="key_hint">Уникальный идентификатор, латиница и подчёркивания</p>
                 </div>
                 <div>
@@ -170,8 +170,8 @@
                     <select name="page" id="modalPageSelect" class="select select-bordered w-full" required></select>
                 </div>
                 <div>
-                    <label class="label"><span class="label-text font-medium" data-i18n="context">Контекст</span> <span class="text-xs opacity-50">(необязательно)</span></label>
-                    <input type="text" name="context" class="input input-bordered w-full" placeholder="Уточнение где используется" />
+                    <label class="label"><span class="label-text font-medium" data-i18n="context">Контекст</span> <span class="text-xs opacity-50" data-i18n="translations_optional">(необязательно)</span></label>
+                    <input type="text" name="context" class="input input-bordered w-full" placeholder="Уточнение где используется" data-i18n-placeholder="translations_context_placeholder" />
                 </div>
                 <div class="modal-action">
                     <button type="button" class="btn btn-ghost" onclick="addModal.close()" data-i18n="cancel">Отмена</button>

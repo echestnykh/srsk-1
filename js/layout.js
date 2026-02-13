@@ -1281,14 +1281,14 @@ async function logout() {
         const { error } = await db.auth.signOut();
         if (error) {
             console.error('Logout error:', error);
-            showNotification('Ошибка выхода', 'error');
+            showNotification(t('layout_logout_error'), 'error');
             return;
         }
         // Редирект на страницу логина
         window.location.href = '/login.html';
     } catch (err) {
         console.error('Logout exception:', err);
-        showNotification('Ошибка выхода', 'error');
+        showNotification(t('layout_logout_error'), 'error');
     }
 }
 
