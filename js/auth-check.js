@@ -13,6 +13,8 @@
         return;
     }
 
+    window._authInProgress = true;
+
     try {
         // Используем централизованный Supabase клиент из config.js
         const db = window.supabaseClient;
