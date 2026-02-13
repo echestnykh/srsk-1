@@ -33,8 +33,8 @@
             <a role="tab" class="tab" data-tab="pending" onclick="switchTab('pending')">
                 Ожидают (<span id="countPending">0</span>)
             </a>
-            <a role="tab" class="tab" data-tab="staff" onclick="switchTab('staff')">
-                Команда (<span id="countStaff">0</span>)
+            <a role="tab" class="tab" data-tab="team" onclick="switchTab('team')">
+                Команда и волонтёры (<span id="countTeam">0</span>)
             </a>
             <a role="tab" class="tab" data-tab="guest" onclick="switchTab('guest')">
                 Гости (<span id="countGuest">0</span>)
@@ -208,6 +208,16 @@
         let approvalAction = null;
         let countsLoaded = false;
         let isLoading = false;
+        let volunteerIds = new Set(); // vaishnava_id волонтёров (для фильтрации табов)
+
+        // Загрузить ID волонтёров из residents
+        async function loadVolunteerIds() {
+            const { data } = await db
+                .from('residents')
+                .select('vaishnava_id, resident_categories!inner(name_ru)')
+                .eq('resident_categories.name_ru', 'Волонтёр');
+            volunteerIds = new Set(data?.map(r => r.vaishnava_id).filter(Boolean) || []);
+        }
 
         // Загрузка только счётчиков (параллельные count-запросы, без лимита 1000)
         async function loadCounts() {
@@ -222,10 +232,17 @@
                     db.from('vaishnavas').select('id', { count: 'exact', head: true }).eq('is_deleted', false).is('user_id', null).not('email', 'is', null)
                 ]);
 
+                // Волонтёры-гости = пересечение volunteerIds с guest user_type
+                const guestVolCount = volunteerIds.size > 0
+                    ? (await db.from('vaishnavas').select('id', { count: 'exact', head: true })
+                        .eq('is_deleted', false).eq('user_type', 'guest')
+                        .in('id', [...volunteerIds])).count || 0
+                    : 0;
+
                 document.getElementById('countAll').textContent = allRes.count || 0;
                 document.getElementById('countPending').textContent = pendingRes.count || 0;
-                document.getElementById('countStaff').textContent = staffRes.count || 0;
-                document.getElementById('countGuest').textContent = guestRes.count || 0;
+                document.getElementById('countTeam').textContent = (staffRes.count || 0) + guestVolCount;
+                document.getElementById('countGuest').textContent = (guestRes.count || 0) - guestVolCount;
                 document.getElementById('countBlocked').textContent = blockedRes.count || 0;
                 document.getElementById('countNoAccount').textContent = noAccountRes.count || 0;
                 countsLoaded = true;
@@ -264,8 +281,14 @@
                 // Применить фильтры на уровне БД
                 if (filter.tab === 'pending') {
                     query = query.eq('approval_status', 'pending');
-                } else if (filter.tab === 'staff') {
-                    query = query.eq('user_type', 'staff');
+                } else if (filter.tab === 'team') {
+                    // Команда + волонтёры-гости
+                    const volIds = [...volunteerIds];
+                    if (volIds.length > 0) {
+                        query = query.or(`user_type.eq.staff,id.in.(${volIds.join(',')})`);
+                    } else {
+                        query = query.eq('user_type', 'staff');
+                    }
                 } else if (filter.tab === 'guest') {
                     query = query.eq('user_type', 'guest');
                 } else if (filter.tab === 'blocked') {
@@ -307,10 +330,36 @@
                     }
                 }
 
-                // Присвоить роли пользователям
+                // Загрузить категории размещения (для отображения реального типа)
+                const vaishnavasIds = users.map(u => u.id);
+                let categoryMap = {};
+                if (vaishnavasIds.length > 0) {
+                    const { data: resData } = await db
+                        .from('residents')
+                        .select('vaishnava_id, resident_categories(name_ru, color)')
+                        .in('vaishnava_id', vaishnavasIds)
+                        .order('check_in', { ascending: false });
+
+                    if (resData) {
+                        resData.forEach(r => {
+                            // Берём первую (последнюю по дате) категорию
+                            if (!categoryMap[r.vaishnava_id] && r.resident_categories) {
+                                categoryMap[r.vaishnava_id] = r.resident_categories;
+                            }
+                        });
+                    }
+                }
+
+                // Присвоить роли и категории пользователям
                 users.forEach(u => {
                     u.roles = rolesMap[u.user_id] || [];
+                    u.category = categoryMap[u.id] || null;
                 });
+
+                // На вкладке «Гости» исключаем волонтёров (они на вкладке «Команда и волонтёры»)
+                if (filter.tab === 'guest') {
+                    users = users.filter(u => !volunteerIds.has(u.id));
+                }
 
                 allUsers = users;
                 renderUsers();
@@ -410,9 +459,7 @@
                     </td>
                     <td>${safeEmail}</td>
                     <td>
-                        <span class="badge ${user.user_type === 'staff' ? 'badge-primary' : 'badge-secondary'}">
-                            ${user.user_type === 'staff' ? 'Команда' : 'Гость'}
-                        </span>
+                        ${getCategoryBadge(user)}
                     </td>
                     <td>
                         ${getStatusBadge(user)}
@@ -448,6 +495,17 @@
                 </tr>
                 `;
             }).join('');
+        }
+
+        // Получить badge категории (из resident_categories или fallback на user_type)
+        function getCategoryBadge(user) {
+            if (user.category) {
+                const color = Utils.isValidColor(user.category.color) ? user.category.color : '#6b7280';
+                return `<span class="badge text-white border-0" style="background-color: ${escapeHtml(color)}">${escapeHtml(user.category.name_ru)}</span>`;
+            }
+            return `<span class="badge ${user.user_type === 'staff' ? 'badge-primary' : 'badge-secondary'}">
+                ${user.user_type === 'staff' ? 'Команда' : 'Гость'}
+            </span>`;
         }
 
         // Получить badge статуса
@@ -992,7 +1050,8 @@
                 return;
             }
 
-            // Быстрая загрузка: только счётчики + placeholder
+            // Загрузить ID волонтёров, затем счётчики + placeholder
+            await loadVolunteerIds();
             loadCounts();
             showPlaceholder();
         });
