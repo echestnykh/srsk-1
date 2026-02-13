@@ -665,9 +665,9 @@ const guestsTableEl = document.getElementById('guestsTable');
 if (guestsTableEl && !guestsTableEl._delegated) {
     guestsTableEl._delegated = true;
     guestsTableEl.addEventListener('click', ev => {
-        // Предотвращение всплытия для ячеек с формами
-        if (ev.target.closest('[data-stop-propagation]')) return;
+        // Предотвращение всплытия для ячеек с формами, но пропускаем data-action элементы
         const btn = ev.target.closest('[data-action]');
+        if (!btn && ev.target.closest('[data-stop-propagation]')) return;
         if (!btn) return;
         const id = btn.dataset.id;
         switch (btn.dataset.action) {
