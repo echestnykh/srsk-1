@@ -2044,7 +2044,7 @@ function openInfoModal(registrationId) {
                     <div class="text-xs opacity-50 mb-1">${t('preliminary_arrival_flight')}</div>
                     <div class="font-medium">${arrDate}</div>
                     ${arrival.flight_number ? `<div class="text-sm opacity-70">${arrival.flight_number}</div>` : ''}
-                    ${arrival.needs_transfer === 'yes' ? '<div class="text-sm">${t('preliminary_needs_transfer')}</div>' : ''}
+                    ${arrival.needs_transfer === 'yes' ? `<div class="text-sm">${t('preliminary_needs_transfer')}</div>` : ''}
                 </div>
             `;
         }
@@ -2055,7 +2055,7 @@ function openInfoModal(registrationId) {
                     <div class="text-xs opacity-50 mb-1">${t('preliminary_departure_flight')}</div>
                     <div class="font-medium">${depDate}</div>
                     ${departure.flight_number ? `<div class="text-sm opacity-70">${departure.flight_number}</div>` : ''}
-                    ${departure.needs_transfer === 'yes' ? '<div class="text-sm">${t('preliminary_needs_transfer')}</div>' : ''}
+                    ${departure.needs_transfer === 'yes' ? `<div class="text-sm">${t('preliminary_needs_transfer')}</div>` : ''}
                 </div>
             `;
         }
