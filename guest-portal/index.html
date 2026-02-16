@@ -268,6 +268,30 @@
                             <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
                         </svg>
                     </button>
+
+                    <!-- Telegram мини-плашка -->
+                    <div id="telegram-mini" class="mt-4 w-full rounded-xl px-4 py-3 bg-white/20 text-white text-sm">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                                </svg>
+                                <div id="telegram-mini-status" class="text-white/80">Уведомления</div>
+                            </div>
+                            <div id="telegram-mini-connected" class="hidden items-center gap-1 text-green-300 text-xs font-medium">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span>Подключено</span>
+                            </div>
+                            <button id="telegram-mini-connect-btn" onclick="connectTelegram()" class="hidden text-xs bg-white text-srsk-green font-medium px-3 py-1 rounded-lg hover:bg-white/90 transition-colors">
+                                Подключить
+                            </button>
+                            <button id="telegram-mini-disconnect-btn" onclick="disconnectTelegram()" class="hidden text-xs text-white/60 hover:text-white transition-colors">
+                                Отключить
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- === РЕЖИМ РЕДАКТИРОВАНИЯ === -->
@@ -382,8 +406,8 @@
                 </div>
             </div>
 
-            <!-- Telegram уведомления -->
-            <div id="telegram-card" class="card md:col-span-3 bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+            <!-- Telegram уведомления (скрыт — перенесён в profile-card как #telegram-mini) -->
+            <div id="telegram-card" class="hidden card md:col-span-3 bg-gradient-to-br from-blue-500 to-blue-600 text-white">
                 <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div class="flex items-start gap-3">
                         <svg class="w-10 h-10 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
@@ -418,7 +442,7 @@
             </div>
 
             <!-- Правая колонка: Ретрит + Трансфер -->
-            <div class="md:col-span-3 flex flex-col gap-4">
+            <div class="md:col-span-2 flex flex-col gap-4">
 
                 <!-- Скелетон загрузки ретрита -->
                 <div id="retreat-skeleton" class="card flex-1 p-0 overflow-hidden animate-pulse" style="background: #F5F5F5;">
@@ -706,6 +730,25 @@
                     <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
                     <div class="h-3 bg-gray-200 rounded w-1/2"></div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Фото со мной -->
+        <div id="my-photos-section" class="card mb-4 hidden border-2 border-transparent hover:border-orange-300 transition-all cursor-pointer" style="background: #FFF7ED;" onclick="window.location.href='photos.html?filter=me'">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <div class="card-label mb-1" style="color: #EA7B2E;">Фото ретрита</div>
+                    <div class="text-xl font-semibold text-gray-800">Фото со мной</div>
+                </div>
+                <a href="photos.html?filter=me" class="text-sm font-medium hover:underline flex items-center gap-1" style="color: #EA7B2E;" onclick="event.stopPropagation()">
+                    Все мои фото
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                    </svg>
+                </a>
+            </div>
+            <div id="myPhotosPreview" class="relative">
+                <div id="myPhotosContainer" class="flex gap-3 overflow-x-auto hide-scrollbar pb-2 snap-x snap-mandatory"></div>
             </div>
         </div>
 

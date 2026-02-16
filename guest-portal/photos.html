@@ -62,6 +62,29 @@
             outline: 4px solid #147D30;
             outline-offset: -4px;
         }
+        .badge-mine {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #EA7B2E;
+            color: white;
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.15s;
+            z-index: 5;
+            user-select: none;
+            white-space: nowrap;
+        }
+        .badge-mine:hover {
+            background: #dc2626;
+        }
+        .badge-mine .label-default { display: inline; }
+        .badge-mine .label-hover   { display: none; }
+        .badge-mine:hover .label-default { display: none; }
+        .badge-mine:hover .label-hover   { display: inline; }
         .lightbox {
             display: none;
             position: fixed;
@@ -273,6 +296,12 @@
                 </svg>
                 Скачать
             </button>
+            <button id="removeMeBtn" type="button" onclick="removeMyTag()" class="hidden px-6 py-3 bg-orange-500 text-white rounded-xl font-medium hover:bg-orange-600 transition-colors flex items-center gap-2 cursor-pointer">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Убрать отметку
+            </button>
         </div>
     </div>
 
@@ -420,7 +449,8 @@
                 const { data: myPhotoData } = await supabase
                     .from('face_tags')
                     .select('photo_id')
-                    .eq('vaishnava_id', currentUser.id);
+                    .eq('vaishnava_id', currentUser.id)
+                    .eq('rejected', false);
 
                 myPhotos = myPhotoData?.map(t => t.photo_id) || [];
 
@@ -475,6 +505,12 @@
             } else {
                 myPhotosCheckbox.disabled = true;
                 myPhotosCheckbox.parentElement.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+
+            // Автоматически включить фильтр "Фото со мной" если пришли с ?filter=me
+            if (new URLSearchParams(window.location.search).get('filter') === 'me' && myPhotos.length > 0) {
+                myPhotosCheckbox.checked = true;
+                showMyPhotosOnly = true;
             }
         }
 
@@ -581,7 +617,7 @@
                                         <input type="checkbox" class="photo-checkbox" data-photo-id="${photo.id}" ${isSelected ? 'checked' : ''}
                                                onclick="event.stopPropagation(); togglePhotoSelection('${photo.id}')">
                                         <img src="${thumbUrl}" alt="Photo" loading="lazy" onclick="openLightbox(${globalIdx})">
-                                        ${isMine ? '<div class="absolute top-2 right-2 bg-srsk-orange text-white text-xs px-2 py-1 rounded-full">Вы</div>' : ''}
+                                        ${isMine ? `<span class="badge-mine" data-action="remove-tag" data-photo-id="${photo.id}"><span class="label-default">Вы</span><span class="label-hover">Не я</span></span>` : ''}
                                         ${currentRetreatFilter === 'all' && retreatName ? `<div class="absolute bottom-2 left-2 right-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded truncate">${retreatName}</div>` : ''}
                                     </div>
                                 `;
@@ -593,6 +629,22 @@
 
             // Update selection UI after render
             updateSelectionUI();
+        }
+
+        // Перезагрузить myPhotos из БД с учётом rejected=false
+        async function reloadMyPhotos() {
+            const currentUser = window.currentGuest;
+            if (!currentUser?.id) return;
+            const supabase = window.portalSupabase;
+            if (!supabase) return;
+
+            const { data } = await supabase
+                .from('face_tags')
+                .select('photo_id')
+                .eq('vaishnava_id', currentUser.id)
+                .eq('rejected', false);
+
+            myPhotos = data?.map(t => t.photo_id) || [];
         }
 
         function getPhotoUrl(storagePath) {
@@ -645,6 +697,64 @@
             downloadBtn.removeAttribute('href');
             downloadBtn.removeAttribute('download');
             downloadBtn.onclick = () => downloadPhotoFile(url, filename);
+
+            // Показываем кнопку "Убрать отметку" только если это моё фото
+            const removeMeBtn = document.getElementById('removeMeBtn');
+            if (removeMeBtn) {
+                const isMine = myPhotos.includes(photo.id);
+                removeMeBtn.classList.toggle('hidden', !isMine);
+                removeMeBtn._photoId = photo.id;
+            }
+        }
+
+        async function removeMyTag() {
+            const removeMeBtn = document.getElementById('removeMeBtn');
+            const photoId = removeMeBtn?._photoId;
+            if (!photoId || !window.currentGuest?.id) return;
+
+            const supabase = window.portalSupabase;
+            if (!supabase) return;
+
+            removeMeBtn.disabled = true;
+
+            const { error } = await supabase
+                .from('face_tags')
+                .update({ rejected: true })
+                .eq('photo_id', photoId)
+                .eq('vaishnava_id', window.currentGuest.id);
+
+            removeMeBtn.disabled = false;
+
+            if (error) {
+                console.error('Ошибка снятия отметки:', error);
+                alert('Не удалось убрать отметку. Попробуйте ещё раз.');
+                return;
+            }
+
+            // Убираем из локального массива и обновляем UI
+            myPhotos = myPhotos.filter(id => id !== photoId);
+
+            // Обновить счётчик
+            const countEl = document.getElementById('myPhotosCount');
+            if (myPhotos.length > 0) {
+                if (countEl) countEl.textContent = `(${myPhotos.length})`;
+            } else {
+                if (countEl) {
+                    countEl.textContent = '';
+                    countEl.classList.add('hidden');
+                }
+                // Отключить чекбокс если нет своих фото
+                const cb = document.getElementById('myPhotosOnly');
+                if (cb) {
+                    cb.disabled = true;
+                    cb.checked = false;
+                    cb.parentElement.classList.add('opacity-50', 'cursor-not-allowed');
+                    showMyPhotosOnly = false;
+                }
+            }
+
+            applyFilters();
+            updateLightbox();
         }
 
         async function downloadPhotoFile(url, filename) {
@@ -844,8 +954,8 @@
                     }
                 }
 
-                // Обновить myPhotos и применить фильтры
-                myPhotos = Array.from(allFoundPhotoIds);
+                // Обновить myPhotos из БД (с учётом rejected=false) и применить фильтры
+                await reloadMyPhotos();
 
                 if (myPhotos.length === 0) {
                     statusDiv.classList.remove('bg-blue-50', 'border-blue-200');
@@ -990,8 +1100,8 @@
                 // 4. Удалить временное селфи
                 await supabase.storage.from('retreat-photos').remove([fileName]);
 
-                // 5. Обновить myPhotos и применить фильтры
-                myPhotos = Array.from(allFoundPhotoIds);
+                // 5. Обновить myPhotos из БД (с учётом rejected=false) и применить фильтры
+                await reloadMyPhotos();
 
                 if (myPhotos.length === 0) {
                     statusDiv.classList.remove('bg-blue-50', 'border-blue-200');
@@ -1071,6 +1181,51 @@
         // Close on background click
         document.getElementById('lightbox').addEventListener('click', (e) => {
             if (e.target.id === 'lightbox') closeLightbox();
+        });
+
+        // Event delegation для бейджей "Вы" (снятие отметки)
+        document.getElementById('galleryContainer').addEventListener('click', async (e) => {
+            const badge = e.target.closest('[data-action="remove-tag"]');
+            if (!badge) return;
+            e.stopPropagation();
+            e.preventDefault();
+
+            const photoId = badge.dataset.photoId;
+            if (!photoId || !window.currentGuest?.id) return;
+
+            const supabase = window.portalSupabase;
+            if (!supabase) return;
+
+            badge.style.pointerEvents = 'none';
+            badge.style.opacity = '0.6';
+
+            const { error } = await supabase
+                .from('face_tags')
+                .update({ rejected: true })
+                .eq('photo_id', photoId)
+                .eq('vaishnava_id', window.currentGuest.id);
+
+            if (error) {
+                console.error('Ошибка снятия отметки:', error);
+                badge.style.pointerEvents = '';
+                badge.style.opacity = '';
+                return;
+            }
+
+            myPhotos = myPhotos.filter(id => id !== photoId);
+
+            // Обновить счётчик
+            const countEl = document.getElementById('myPhotosCount');
+            if (myPhotos.length > 0) {
+                if (countEl) countEl.textContent = `(${myPhotos.length})`;
+            } else {
+                if (countEl) { countEl.textContent = ''; countEl.classList.add('hidden'); }
+                const cb = document.getElementById('myPhotosOnly');
+                if (cb && cb.checked) { cb.checked = false; showMyPhotosOnly = false; }
+                if (cb) { cb.disabled = true; cb.parentElement.classList.add('opacity-50', 'cursor-not-allowed'); }
+            }
+
+            applyFilters();
         });
 
         // ==================== START ====================

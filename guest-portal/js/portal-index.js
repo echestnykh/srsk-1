@@ -1220,7 +1220,8 @@ async function loadPhotoGalleryPreview(vaishnavId) {
             const { data: myPhotoData } = await supabase
                 .from('face_tags')
                 .select('photo_id')
-                .eq('vaishnava_id', window.currentGuest.id);
+                .eq('vaishnava_id', window.currentGuest.id)
+                .eq('rejected', false);
 
             myPhotoIds = myPhotoData?.map(t => t.photo_id) || [];
             console.debug('[gallery] myPhotoIds loaded:', myPhotoIds.length);
@@ -1291,7 +1292,13 @@ async function loadPhotoGalleryPreview(vaishnavId) {
             : [];
 
         console.debug('[gallery] photos final count:', photosWithRetreats.length);
+
+        // Собираем полные объекты "моих" фото для отдельной секции
+        const myPhotoIdSet = new Set(myPhotoIds.map(id => String(id)));
+        const myPhotosWithRetreats = photosWithRetreats.filter(p => myPhotoIdSet.has(String(p.id)));
+
         renderPhotoPreview(photosWithRetreats, totalCount || photosWithRetreats.length, myPhotoIds);
+        renderMyPhotosPreview(myPhotosWithRetreats, retreatsMap);
     } catch (e) {
         console.error('Error loading photo gallery preview:', e);
     }
@@ -1393,6 +1400,36 @@ function setupPhotoPreviewScroller() {
     }
 }
 
+function renderMyPhotosPreview(myPhotos) {
+    const section = document.getElementById('my-photos-section');
+    const container = document.getElementById('myPhotosContainer');
+    if (!section || !container) return;
+
+    if (!myPhotos || myPhotos.length === 0) {
+        section.classList.add('hidden');
+        return;
+    }
+
+    const lang = localStorage.getItem('language') || 'ru';
+
+    container.innerHTML = myPhotos.slice(0, 10).map(photo => {
+        const url = getPhotoStorageUrl(photo.thumb_path || photo.storage_path);
+        const retreatName = photo.retreat ? (photo.retreat[`name_${lang}`] || photo.retreat.name_ru) : '';
+
+        return `
+            <div class="flex-shrink-0 w-64 h-44 rounded-xl overflow-hidden cursor-pointer hover:scale-[1.02] transition-transform snap-start relative group">
+                <img src="${url}" alt="Фото" class="w-full h-full object-cover">
+                <div class="absolute top-2 right-2 bg-srsk-orange text-white text-xs px-2 py-1 rounded-full font-medium">Вы</div>
+                <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div class="text-white text-sm truncate">${escapeHtml(retreatName)}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    section.classList.remove('hidden');
+}
+
 function getPhotoStorageUrl(storagePath) {
     const supabase = window.portalSupabase;
     if (!supabase) return '';
@@ -1432,22 +1469,41 @@ async function checkTelegramStatus() {
 
     const connected = !!guest.telegram_chat_id;
 
-    // Показываем/скрываем элементы в зависимости от статуса
+    // Старые элементы (скрытый #telegram-card, оставляем для совместимости)
     const connectedEl = document.getElementById('telegram-connected');
     const connectBtn = document.getElementById('telegram-connect-btn');
     const disconnectBtn = document.getElementById('telegram-disconnect-btn');
 
-    if (connected) {
-        connectedEl.classList.remove('hidden');
-        connectedEl.classList.add('flex');
-        connectBtn.classList.add('hidden');
-        disconnectBtn.classList.remove('hidden');
-    } else {
-        connectedEl.classList.add('hidden');
-        connectedEl.classList.remove('flex');
-        connectBtn.classList.remove('hidden');
-        disconnectBtn.classList.add('hidden');
+    if (connectedEl) {
+        if (connected) {
+            connectedEl.classList.remove('hidden');
+            connectedEl.classList.add('flex');
+        } else {
+            connectedEl.classList.add('hidden');
+            connectedEl.classList.remove('flex');
+        }
     }
+    if (connectBtn) connectBtn.classList.toggle('hidden', connected);
+    if (disconnectBtn) disconnectBtn.classList.toggle('hidden', !connected);
+
+    // Мини-плашка в profile-card
+    const miniConnected = document.getElementById('telegram-mini-connected');
+    const miniConnectBtn = document.getElementById('telegram-mini-connect-btn');
+    const miniDisconnectBtn = document.getElementById('telegram-mini-disconnect-btn');
+    const miniStatus = document.getElementById('telegram-mini-status');
+
+    if (miniConnected) {
+        if (connected) {
+            miniConnected.classList.remove('hidden');
+            miniConnected.classList.add('flex');
+        } else {
+            miniConnected.classList.add('hidden');
+            miniConnected.classList.remove('flex');
+        }
+    }
+    if (miniConnectBtn) miniConnectBtn.classList.toggle('hidden', connected);
+    if (miniDisconnectBtn) miniDisconnectBtn.classList.toggle('hidden', !connected);
+    if (miniStatus) miniStatus.textContent = connected ? 'Уведомления подключены' : 'Уведомления';
 }
 
 // Подключить Telegram уведомления

@@ -235,15 +235,21 @@ serve(async (req) => {
     if (rows.length > 0) {
       const { error: upErr } = await supabase
         .from("face_tags")
-        .upsert(rows, { onConflict: "photo_id,vaishnava_id" });
+        .upsert(rows, { onConflict: "photo_id,vaishnava_id", ignoreDuplicates: true });
 
       if (upErr) {
         return json({ error: "Upsert face_tags failed", details: upErr.message }, 500);
       }
 
-      // Отправить Telegram уведомление пользователю о найденных фото
-      if (matchedPhotoIds.length > 0) {
-        await sendFoundPhotosNotification(supabase, vaishnava_id, matchedPhotoIds.length);
+      // Считаем актуальное количество тегов (без rejected)
+      const { count } = await supabase
+        .from("face_tags")
+        .select("*", { count: "exact", head: true })
+        .eq("vaishnava_id", vaishnava_id)
+        .eq("rejected", false);
+
+      if (count && count > 0) {
+        await sendFoundPhotosNotification(supabase, vaishnava_id, count);
       }
     }
 
