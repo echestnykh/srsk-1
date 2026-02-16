@@ -334,6 +334,13 @@ function filterRegistrations() {
             return advFilters.companions.has(has ? 'has' : 'empty');
         });
     }
+    if (advFilters.travels) {
+        filtered = filtered.filter(r => {
+            const transfers = r.guest_transfers || [];
+            const has = transfers.some(tr => tr.flight_datetime);
+            return advFilters.travels.has(has ? 'has' : 'empty');
+        });
+    }
     if (advFilters.notes) {
         filtered = filtered.filter(r => {
             const n = getLocalNotes(r.id);
@@ -1222,6 +1229,7 @@ let advFilters = {
     meals: null,        // Set<'prasad'|'self'|'child'|''>
     companions: null,   // Set<'has'|'empty'>
     notes: null,        // Set<'has'|'empty'>
+    travels: null,      // Set<'has'|'empty'>
 };
 
 function getAdvFullSets() {
@@ -1231,6 +1239,7 @@ function getAdvFullSets() {
         meals: new Set(['prasad', 'self', 'child', '']),
         companions: new Set(['has', 'empty']),
         notes: new Set(['has', 'empty']),
+        travels: new Set(['has', 'empty']),
     };
 }
 
@@ -1285,6 +1294,7 @@ function resetAdvFilters() {
     advFilters.meals = null;
     advFilters.companions = null;
     advFilters.notes = null;
+    advFilters.travels = null;
     renderFilterPanel();
     updateAdvFilterBadge();
     renderTable();
@@ -1346,6 +1356,12 @@ function renderFilterPanel() {
     html += section(t('companions'), [
         ['companions', 'has', t('filter_has')],
         ['companions', 'empty', t('filter_empty')],
+    ]);
+
+    // Перелёт
+    html += section(t('arrival_flight'), [
+        ['travels', 'has', t('filter_has')],
+        ['travels', 'empty', t('filter_empty')],
     ]);
 
     // Заметки
