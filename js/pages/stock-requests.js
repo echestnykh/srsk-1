@@ -163,6 +163,7 @@ async function loadBuyers() {
 }
 
 async function loadStock() {
+    if (!locationId) return;
     const { data } = await Layout.db
         .from('stock')
         .select('*')
@@ -844,6 +845,11 @@ async function autoArchiveOldRequests() {
 
 // ==================== SAVED REQUESTS ====================
 async function loadSavedRequests() {
+    if (!locationId) {
+        await loadLocationId();
+        if (!locationId) return;
+    }
+
     const { data, error } = await Layout.db
         .from('purchase_requests')
         .select('*, items:purchase_request_items(*, products(*, product_categories(*)))')
