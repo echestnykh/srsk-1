@@ -1207,7 +1207,11 @@ function renderViewedRequest() {
     sortedGroups.forEach(group => {
         const cat = group.cat;
         // Заголовок категории
-        html += `<tr class="print-category-header"><td colspan="4" class="font-semibold" style="background-color: ${cat?.color || '#999'}15;">${cat?.emoji || ''} ${Layout.getName(cat) || tr('uncategorized', 'Без категории')}</td></tr>`;
+        html += `<tr class="print-category-header"><td colspan="4" class="py-2">
+            <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold text-white" style="background-color: ${cat?.color || '#999'}">
+                ${cat?.emoji || ''} ${Layout.getName(cat) || tr('uncategorized', 'Без категории')}
+            </span>
+        </td></tr>`;
 
         group.items.forEach(item => {
             const index = item.originalIndex;
@@ -1258,21 +1262,21 @@ function renderViewedRequest() {
 
     tbody.innerHTML = html;
 
-    // Печатная версия (две колонки) - в отдельном контейнере
+    // Печатная версия (таблица с колонками для заполнения)
     let printHtml = '';
     sortedGroups.forEach(group => {
         const cat = group.cat;
-        printHtml += `<div class="print-category">`;
-        printHtml += `<div class="print-category-title">${cat?.emoji || ''} ${Layout.getName(cat) || tr('uncategorized', 'Без категории')}</div>`;
+        printHtml += `<tr class="print-category-row"><td colspan="4">${cat?.emoji || ''} ${Layout.getName(cat) || tr('uncategorized', 'Без категории')}</td></tr>`;
         group.items.forEach(item => {
             const product = item.product;
             const unit = localizeUnit(item.unit);
-            printHtml += `<div class="print-item">
-                <span class="print-item-name">${Layout.getName(product)}</span>
-                <span class="print-item-qty">${formatQty(item.quantity, item.unit)} ${unit}</span>
-            </div>`;
+            printHtml += `<tr class="print-item-row">
+                <td>${Layout.getName(product)}</td>
+                <td class="print-item-qty">${formatQty(item.quantity, item.unit)} ${unit}</td>
+                <td class="print-item-actual"></td>
+                <td class="print-item-sum"></td>
+            </tr>`;
         });
-        printHtml += `</div>`;
     });
     Layout.$('#printContainerItems').innerHTML = printHtml;
     Layout.$('#printContainerCount').textContent = viewingItems.length;
