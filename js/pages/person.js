@@ -532,9 +532,24 @@ function updateInviteButton() {
     }
 }
 
+function setInviteLoading(loading) {
+    const label = document.querySelector('#inviteDropdown > label');
+    if (!label) return;
+    if (loading) {
+        label._originalHtml = label.innerHTML;
+        label.innerHTML = '<span class="loading loading-spinner loading-sm"></span>';
+        label.classList.add('btn-disabled');
+    } else {
+        label.innerHTML = label._originalHtml || '';
+        label.classList.remove('btn-disabled');
+    }
+    document.activeElement?.blur();
+}
+
 async function sendInviteEmail() {
     if (!person?.email || !person?.id) return;
 
+    setInviteLoading(true);
     try {
         const { data: { session } } = await Layout.db.auth.getSession();
         if (!session) {
@@ -570,12 +585,15 @@ async function sendInviteEmail() {
     } catch (err) {
         console.error('Send invite error:', err);
         Layout.showNotification(err.message, 'error');
+    } finally {
+        setInviteLoading(false);
     }
 }
 
 async function copyInviteLink() {
     if (!person?.email || !person?.id) return;
 
+    setInviteLoading(true);
     try {
         const { data: { session } } = await Layout.db.auth.getSession();
         if (!session) {
@@ -614,6 +632,8 @@ async function copyInviteLink() {
     } catch (err) {
         console.error('Copy invite link error:', err);
         Layout.showNotification(err.message, 'error');
+    } finally {
+        setInviteLoading(false);
     }
 }
 
