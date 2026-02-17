@@ -295,7 +295,7 @@ function waitForAuth() {
 
 // Найти первый доступный модуль (для автопереключения)
 function getFirstAccessibleModule() {
-    const order = ['kitchen', 'housing', 'crm', 'portal', 'admin'];
+    const order = ['kitchen', 'housing', 'crm', 'photos', 'portal', 'admin'];
     for (const id of order) {
         if (id === 'admin' && !window.currentUser?.is_superuser) continue;
         const config = filterMenuByPermissions(modules[id]?.menuConfig || []);
