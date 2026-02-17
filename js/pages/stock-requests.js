@@ -1268,21 +1268,23 @@ function renderViewedRequest() {
 
     tbody.innerHTML = html;
 
-    // Печатная версия (таблица с колонками для заполнения)
+    // Печатная версия (две колонки с полями для заполнения)
     let printHtml = '';
     sortedGroups.forEach(group => {
         const cat = group.cat;
-        printHtml += `<tr class="print-category-row"><td colspan="4">${cat?.emoji || ''} ${Layout.getName(cat) || tr('uncategorized', 'Без категории')}</td></tr>`;
+        printHtml += `<div class="print-category">`;
+        printHtml += `<div class="print-category-title">${cat?.emoji || ''} ${Layout.getName(cat) || tr('uncategorized', 'Без категории')}</div>`;
         group.items.forEach(item => {
             const product = item.product;
             const unit = localizeUnit(item.unit);
-            printHtml += `<tr class="print-item-row">
-                <td>${Layout.getName(product)}</td>
-                <td class="print-item-qty">${formatQty(item.quantity, item.unit)} ${unit}</td>
-                <td class="print-item-actual"></td>
-                <td class="print-item-sum"></td>
-            </tr>`;
+            printHtml += `<div class="print-item">
+                <span class="print-item-name">${Layout.getName(product)}</span>
+                <span class="print-item-qty">${formatQty(item.quantity, item.unit)} ${unit}</span>
+                <span class="print-item-blank"></span>
+                <span class="print-item-blank"></span>
+            </div>`;
         });
+        printHtml += `</div>`;
     });
     Layout.$('#printContainerItems').innerHTML = printHtml;
     Layout.$('#printContainerCount').textContent = viewingItems.length;

@@ -186,27 +186,11 @@
                 </div>
             </div>
         </div>
-        <table id="printContainerTable" class="print-table">
-            <thead>
-                <tr>
-                    <th class="print-th-name" data-i18n="product">Продукт</th>
-                    <th class="print-th-plan" data-i18n="needed">Нужно</th>
-                    <th class="print-th-actual" data-i18n="purchased">Куплено</th>
-                    <th class="print-th-sum" data-i18n="sum">Сумма ₹</th>
-                </tr>
-            </thead>
-            <tbody id="printContainerItems"></tbody>
-            <tfoot>
-                <tr>
-                    <td class="print-th-name" style="font-weight: 600;">
-                        <span data-i18n="total_items_short">Позиций</span>: <span id="printContainerCount"></span>
-                    </td>
-                    <td></td>
-                    <td></td>
-                    <td class="print-th-sum" style="font-weight: 700; border-top: 2px solid #000;" data-i18n="total">Итого</td>
-                </tr>
-            </tfoot>
-        </table>
+        <div id="printContainerItems" class="print-columns"></div>
+        <div style="margin-top: 1rem; display: flex; justify-content: space-between; font-size: 13px;">
+            <span><span data-i18n="total_items_short">Позиций</span>: <span id="printContainerCount"></span></span>
+            <span><span data-i18n="total">Итого</span>: ______________ ₹</span>
+        </div>
     </div>
 
     <!-- Add Product Modal -->
@@ -403,7 +387,7 @@
     <script src="../js/date-utils.js"></script>
     <script src="../js/layout.js?v=5"></script>
     <script src="../js/eating-utils.js"></script>
-    <script src="../js/pages/stock-requests.js?v=5"></script>
+    <script src="../js/pages/stock-requests.js?v=6"></script>
 
     <style>
         /* Убираем стрелки у числовых полей */
@@ -438,47 +422,42 @@
             .no-print {
                 display: none !important;
             }
-            .print-table {
-                width: 100%;
-                border-collapse: collapse;
+            .print-columns {
+                column-count: 2;
+                column-gap: 1.5rem;
+                font-size: 13px;
             }
-            .print-table th {
-                text-align: left;
-                font-size: 12px;
-                font-weight: 600;
-                padding: 4px 8px;
-                border-bottom: 2px solid #000;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-                color: #555;
+            .print-category {
+                break-inside: avoid;
+                margin-bottom: 0.5rem;
             }
-            .print-th-plan, .print-th-actual, .print-th-sum {
-                text-align: right !important;
-                width: 90px;
-            }
-            .print-category-row td {
+            .print-category-title {
                 font-weight: 700;
-                font-size: 14px;
-                padding: 8px 8px 4px;
-                border-bottom: 1px solid #999;
-                background-color: #f0f0f0 !important;
+                font-size: 13px;
+                padding: 3px 6px;
+                margin-bottom: 2px;
+                background-color: #e8e8e8 !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
-            .print-item-row td {
-                padding: 5px 8px;
+            .print-item {
+                display: flex;
+                align-items: baseline;
+                padding: 3px 6px;
                 border-bottom: 1px dotted #ccc;
-                font-size: 14px;
+                gap: 4px;
             }
-            .print-item-row .print-item-qty {
-                text-align: right;
+            .print-item-name {
+                flex: 1;
+            }
+            .print-item-qty {
                 font-weight: 600;
                 white-space: nowrap;
             }
-            .print-item-row .print-item-actual,
-            .print-item-row .print-item-sum {
-                text-align: right;
-                border-bottom: 1px solid #bbb;
+            .print-item-blank {
+                width: 50px;
+                border-bottom: 1px solid #aaa;
+                display: inline-block;
             }
         }
 
