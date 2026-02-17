@@ -746,23 +746,13 @@ function renderPortalChildren(childrenData) {
 
     if (!section || !list) return;
 
-    // Показываем секцию всегда (даже без детей — чтобы можно было добавить)
-    // Но в публичном режиме — только если есть дети
-    if (isPublicView && childrenData.length === 0) {
+    // Скрываем секцию если детей нет
+    if (childrenData.length === 0) {
         section.classList.add('hidden');
         return;
     }
 
     section.classList.remove('hidden');
-
-    if (childrenData.length === 0) {
-        list.innerHTML = `
-            <div class="text-center py-4 text-gray-400 text-sm">
-                Нет привязанных детей
-            </div>
-        `;
-        return;
-    }
 
     list.innerHTML = childrenData.map(child => {
         const name = child.spiritual_name || `${child.first_name || ''} ${child.last_name || ''}`.trim() || '—';
