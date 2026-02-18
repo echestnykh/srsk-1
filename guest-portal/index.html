@@ -526,6 +526,25 @@
                     <a href="#upcoming-retreats" class="text-srsk-orange hover:underline text-sm">Посмотреть ближайшие →</a>
                 </div>
 
+                <!-- Расписание на сегодня -->
+                <div id="schedule-block" class="hidden card" style="background: #E8F5E9;">
+                    <div class="card-label" style="color: #147D30;" data-i18n="portal_schedule_today">Расписание на сегодня</div>
+                    <div id="schedule-theme" class="hidden text-sm font-medium text-srsk-green mb-3"></div>
+                    <div id="schedule-items" class="relative pl-6">
+                        <!-- Timeline line -->
+                        <div class="absolute left-[7px] top-2 bottom-2 w-0.5 bg-srsk-green/20"></div>
+                        <!-- Items rendered by JS -->
+                    </div>
+                </div>
+
+                <!-- Меню на сегодня -->
+                <div id="menu-block" class="hidden card" style="background: #FFF8E1;">
+                    <div class="card-label" style="color: #997A00;" data-i18n="portal_menu_today">Меню на сегодня</div>
+                    <div id="menu-meals" class="space-y-4">
+                        <!-- Meals rendered by JS -->
+                    </div>
+                </div>
+
                 <!-- Трансфер -->
                 <div id="transfer-block" class="hidden card" style="background: #FFF3CD;">
                     <div class="card-label" style="color: #997A00;">Трансфер</div>
