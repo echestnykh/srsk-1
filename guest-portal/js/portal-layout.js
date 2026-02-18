@@ -44,44 +44,52 @@ async function init(options = {}) {
  * Загрузка переводов из БД
  */
 async function loadTranslations() {
-    const CACHE_KEY = 'portal_translations_v2';
-    const CACHE_TIME_KEY = 'portal_translations_v2_time';
+    const CACHE_KEY = 'portal_translations_v3';
+    const CACHE_TIME_KEY = 'portal_translations_v3_time';
 
     try {
-        // Удаляем старый кэш (v1 загружал только 1000 строк)
+        // Удаляем устаревшие кэши
         localStorage.removeItem('portal_translations');
         localStorage.removeItem('portal_translations_time');
+        localStorage.removeItem('portal_translations_v2');
+        localStorage.removeItem('portal_translations_v2_time');
 
         // Пробуем из localStorage кэша
         const cached = localStorage.getItem(CACHE_KEY);
         const cacheTime = localStorage.getItem(CACHE_TIME_KEY);
 
-        // Кэш валиден 1 час
         if (cached && cacheTime && (Date.now() - parseInt(cacheTime)) < 3600000) {
             translations = JSON.parse(cached);
+            console.log('[Translations] Из кэша:', Object.keys(translations).length, 'ключей');
             return;
         }
 
         // Загружаем из БД с пагинацией (Supabase отдаёт макс. 1000 строк за раз)
+        const supabase = db || window.portalSupabase;
+        console.log('[Translations] Загрузка из БД, supabase =', !!supabase);
+        if (!supabase) {
+            console.error('[Translations] Supabase клиент не инициализирован!');
+            return;
+        }
+
         let allData = [];
         const pageSize = 1000;
         let from = 0;
-        console.log('[Translations] Загрузка из БД, db =', !!db);
         while (true) {
-            const { data, error } = await db
+            const { data, error } = await supabase
                 .from('translations')
                 .select('key, ru, en, hi')
                 .range(from, from + pageSize - 1);
             if (error) {
-                console.error('Ошибка загрузки переводов:', error);
+                console.error('[Translations] Ошибка:', error);
                 break;
             }
-            console.log('[Translations] Загружено', data.length, 'записей (offset', from + ')');
+            console.log('[Translations] Страница', Math.floor(from / pageSize) + 1 + ':', data.length, 'записей');
             allData = allData.concat(data);
             if (data.length < pageSize) break;
             from += pageSize;
         }
-        console.log('[Translations] Итого:', allData.length, 'записей');
+        console.log('[Translations] Итого загружено:', allData.length);
 
         // Преобразуем в объект
         translations = {};
@@ -98,7 +106,7 @@ async function loadTranslations() {
         localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
 
     } catch (error) {
-        console.error('Ошибка загрузки переводов:', error);
+        console.error('[Translations] Исключение:', error);
     }
 }
 
