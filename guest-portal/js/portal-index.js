@@ -766,18 +766,10 @@ async function loadActiveRetreat(guestId) {
         retreatBlock.classList.remove('hidden');
         noRetreatBlock.classList.add('hidden');
 
-        // Добавляем переход на страницу ретрита по клику
-        retreatBlock.onclick = () => {
-            window.location.href = `/retreat.html?id=${retreat.id}`;
-        };
-
         // Заполняем данные ретрита
-        document.getElementById('retreat-label').textContent = data.isCurrentRetreat ? 'Ваш ретрит' : 'Предстоящий ретрит';
-        document.getElementById('retreat-name').textContent = retreat.name_ru;
+        document.getElementById('retreat-summary-name').textContent = retreat.name_ru || '';
         document.getElementById('retreat-dates').textContent = formatRetreatDates(retreat.start_date, retreat.end_date);
         document.getElementById('retreat-description').textContent = retreat.description_ru || '';
-
-        // Картинка ретрита убрана
 
         // Размещение
         if (data.accommodation) {
