@@ -44,10 +44,17 @@ async function init(options = {}) {
  * Загрузка переводов из БД
  */
 async function loadTranslations() {
+    const CACHE_KEY = 'portal_translations_v2';
+    const CACHE_TIME_KEY = 'portal_translations_v2_time';
+
     try {
+        // Удаляем старый кэш (v1 загружал только 1000 строк)
+        localStorage.removeItem('portal_translations');
+        localStorage.removeItem('portal_translations_time');
+
         // Пробуем из localStorage кэша
-        const cached = localStorage.getItem('portal_translations');
-        const cacheTime = localStorage.getItem('portal_translations_time');
+        const cached = localStorage.getItem(CACHE_KEY);
+        const cacheTime = localStorage.getItem(CACHE_TIME_KEY);
 
         // Кэш валиден 1 час
         if (cached && cacheTime && (Date.now() - parseInt(cacheTime)) < 3600000) {
@@ -55,34 +62,27 @@ async function loadTranslations() {
             return;
         }
 
-        // Загружаем из БД (limit > 1000 т.к. Supabase по умолчанию отдаёт макс. 1000)
+        // Загружаем из БД с пагинацией (Supabase отдаёт макс. 1000 строк за раз)
         let allData = [];
         const pageSize = 1000;
         let from = 0;
         while (true) {
-            const { data, error: err } = await db
+            const { data, error } = await db
                 .from('translations')
                 .select('key, ru, en, hi')
                 .range(from, from + pageSize - 1);
-            if (err) {
-                console.error('Ошибка загрузки переводов:', err);
+            if (error) {
+                console.error('Ошибка загрузки переводов:', error);
                 break;
             }
             allData = allData.concat(data);
             if (data.length < pageSize) break;
             from += pageSize;
         }
-        const data = allData;
-        const error = null;
-
-        if (error) {
-            console.error('Ошибка загрузки переводов:', error);
-            return;
-        }
 
         // Преобразуем в объект
         translations = {};
-        for (const row of data) {
+        for (const row of allData) {
             translations[row.key] = {
                 ru: row.ru,
                 en: row.en,
@@ -91,8 +91,8 @@ async function loadTranslations() {
         }
 
         // Сохраняем в кэш
-        localStorage.setItem('portal_translations', JSON.stringify(translations));
-        localStorage.setItem('portal_translations_time', Date.now().toString());
+        localStorage.setItem(CACHE_KEY, JSON.stringify(translations));
+        localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
 
     } catch (error) {
         console.error('Ошибка загрузки переводов:', error);
