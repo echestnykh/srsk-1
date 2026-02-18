@@ -60,17 +60,12 @@ async function loadTranslations() {
 
         if (cached && cacheTime && (Date.now() - parseInt(cacheTime)) < 3600000) {
             translations = JSON.parse(cached);
-            console.log('[Translations] Из кэша:', Object.keys(translations).length, 'ключей');
             return;
         }
 
         // Загружаем из БД с пагинацией (Supabase отдаёт макс. 1000 строк за раз)
         const supabase = db || window.portalSupabase;
-        console.log('[Translations] Загрузка из БД, supabase =', !!supabase);
-        if (!supabase) {
-            console.error('[Translations] Supabase клиент не инициализирован!');
-            return;
-        }
+        if (!supabase) return;
 
         let allData = [];
         const pageSize = 1000;
@@ -80,16 +75,11 @@ async function loadTranslations() {
                 .from('translations')
                 .select('key, ru, en, hi')
                 .range(from, from + pageSize - 1);
-            if (error) {
-                console.error('[Translations] Ошибка:', error);
-                break;
-            }
-            console.log('[Translations] Страница', Math.floor(from / pageSize) + 1 + ':', data.length, 'записей');
+            if (error) break;
             allData = allData.concat(data);
             if (data.length < pageSize) break;
             from += pageSize;
         }
-        console.log('[Translations] Итого загружено:', allData.length);
 
         // Преобразуем в объект
         translations = {};
@@ -106,8 +96,6 @@ async function loadTranslations() {
             localStorage.setItem(CACHE_KEY, JSON.stringify(translations));
             localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
         } else {
-            console.warn('[Translations] Получено 0 записей — кэш не сохраняем');
-            // Удаляем битый кэш если есть
             localStorage.removeItem(CACHE_KEY);
             localStorage.removeItem(CACHE_TIME_KEY);
         }
