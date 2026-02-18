@@ -55,10 +55,25 @@ async function loadTranslations() {
             return;
         }
 
-        // Загружаем из БД
-        const { data, error } = await db
-            .from('translations')
-            .select('key, ru, en, hi');
+        // Загружаем из БД (limit > 1000 т.к. Supabase по умолчанию отдаёт макс. 1000)
+        let allData = [];
+        const pageSize = 1000;
+        let from = 0;
+        while (true) {
+            const { data, error: err } = await db
+                .from('translations')
+                .select('key, ru, en, hi')
+                .range(from, from + pageSize - 1);
+            if (err) {
+                console.error('Ошибка загрузки переводов:', err);
+                break;
+            }
+            allData = allData.concat(data);
+            if (data.length < pageSize) break;
+            from += pageSize;
+        }
+        const data = allData;
+        const error = null;
 
         if (error) {
             console.error('Ошибка загрузки переводов:', error);
