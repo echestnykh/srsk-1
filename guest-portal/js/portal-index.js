@@ -1041,6 +1041,9 @@ async function init() {
     // Всегда проверяем авторизацию — для отображения в хедере
     const loggedInUser = await PortalAuth.checkGuestAuth();
 
+    // Загружаем переводы (нужно до рендера профиля для бейджей и т.д.)
+    await PortalLayout.init({ activeNav: 'dashboard' });
+
     if (viewId && loggedInUser && viewId === loggedInUser.id) {
         // Свой профиль через ?view= — редирект на обычный режим
         window.location.replace('index.html');
