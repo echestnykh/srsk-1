@@ -105,14 +105,15 @@ serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   // Определяем начало сегодняшнего дня (Indian Standard Time)
+  // Используем Intl для надёжного получения даты в IST (UTC+5:30)
   const now = new Date();
-  const istOffset = 5.5 * 60 * 60 * 1000; // UTC+5:30
-  const istNow = new Date(now.getTime() + istOffset);
-  const todayStart = new Date(istNow.getFullYear(), istNow.getMonth(), istNow.getDate());
-  const todayStartUTC = new Date(todayStart.getTime() - istOffset);
+  const istDateStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(now);
+  // istDateStr = "YYYY-MM-DD" в IST
+  const todayStartUTC = new Date(istDateStr + "T00:00:00+05:30");
 
-  console.log(`Today start (IST): ${todayStart.toISOString()}`);
-  console.log(`Today start (UTC): ${todayStartUTC.toISOString()}`);
+  console.log(`Now (UTC): ${now.toISOString()}`);
+  console.log(`Today in IST: ${istDateStr}`);
+  console.log(`Today start UTC threshold: ${todayStartUTC.toISOString()}`);
 
   try {
     // 1. Получить всех пользователей с подключенным Telegram
@@ -159,12 +160,15 @@ serve(async (req) => {
         const retreat = (reg as any).retreats;
         if (!retreat) continue;
 
-        // Подсчитать новые фото за сегодня
+        // Подсчитать новые фото за сегодня (по IST)
         const { data: photos, error: photosError } = await supabase
           .from("retreat_photos")
           .select("id")
           .eq("retreat_id", retreat.id)
           .gte("uploaded_at", todayStartUTC.toISOString());
+
+        const retreatName = retreat.name_ru || retreat.name_en || retreat.name_hi || "Ретрит";
+        console.log(`Retreat "${retreatName}": ${photos?.length ?? 0} new photos today (filter: >= ${todayStartUTC.toISOString()})`);
 
         if (photosError || !photos || photos.length === 0) {
           continue;
@@ -172,7 +176,7 @@ serve(async (req) => {
 
         retreatsWithPhotos.push({
           retreat_id: retreat.id,
-          retreat_name: retreat.name_ru || retreat.name_en || retreat.name_hi || "Ретрит",
+          retreat_name: retreatName,
           photos_count: photos.length,
         });
       }
